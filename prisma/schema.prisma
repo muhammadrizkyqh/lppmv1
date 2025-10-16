@@ -1,0 +1,368 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUM TYPES
+// ==========================================
+
+enum UserRole {
+  ADMIN
+  DOSEN
+  MAHASISWA
+  REVIEWER
+}
+
+enum UserStatus {
+  AKTIF
+  NONAKTIF
+}
+
+enum ProposalStatus {
+  DRAFT
+  DIAJUKAN
+  REVIEW
+  REVISI
+  DISETUJUI
+  DITOLAK
+  SELESAI
+}
+
+enum ReviewerType {
+  INTERNAL
+  EKSTERNAL
+}
+
+enum SkemaType {
+  DASAR
+  TERAPAN
+  PENGEMBANGAN
+  MANDIRI
+}
+
+enum ReviewRecommendation {
+  DITERIMA
+  REVISI
+  DITOLAK
+}
+
+enum PeriodeStatus {
+  AKTIF
+  NONAKTIF
+  SELESAI
+}
+
+// ==========================================
+// USER & AUTHENTICATION
+// ==========================================
+
+model User {
+  id                String         @id @default(cuid())
+  username          String         @unique
+  email             String         @unique
+  password          String
+  role              UserRole
+  status            UserStatus     @default(AKTIF)
+  mustChangePassword Boolean       @default(true)
+  lastLogin         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relations
+  dosen             Dosen?
+  mahasiswa         Mahasiswa?
+  reviewer          Reviewer?
+  proposals         Proposal[]     @relation("ProposalCreator")
+  reviews           Review[]
+  notifications     Notification[]
+
+  @@index([email])
+  @@index([username])
+}
+
+// ==========================================
+// DATA MASTER
+// ==========================================
+
+model Dosen {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  nidn            String    @unique
+  nama            String
+  email           String    @unique
+  noHp            String?
+  bidangKeahlianId String?
+  status          UserStatus @default(AKTIF)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
+  proposals       Proposal[] @relation("ProposalKetua")
+  proposalMembers ProposalMember[]
+
+  @@index([nidn])
+  @@index([email])
+}
+
+model Mahasiswa {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  nim             String    @unique
+  nama            String
+  email           String    @unique
+  prodi           String
+  angkatan        String
+  status          UserStatus @default(AKTIF)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proposalMembers ProposalMember[]
+
+  @@index([nim])
+  @@index([email])
+}
+
+model Reviewer {
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  nama            String
+  email           String        @unique
+  institusi       String
+  bidangKeahlianId String?
+  tipe            ReviewerType
+  status          UserStatus    @default(AKTIF)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
+  reviews         Review[]
+
+  @@index([email])
+}
+
+model BidangKeahlian {
+  id          String    @id @default(cuid())
+  nama        String    @unique
+  deskripsi   String?   @db.Text
+  status      UserStatus @default(AKTIF)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  dosens      Dosen[]
+  reviewers   Reviewer[]
+  proposals   Proposal[]
+}
+
+// ==========================================
+// SETTING SISTEM
+// ==========================================
+
+model Periode {
+  id          String        @id @default(cuid())
+  tahun       String
+  nama        String
+  tanggalBuka DateTime
+  tanggalTutup DateTime
+  kuota       Int           @default(0)
+  status      PeriodeStatus @default(NONAKTIF)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  proposals   Proposal[]
+
+  @@index([status])
+}
+
+model Skema {
+  id          String     @id @default(cuid())
+  nama        String     @unique
+  tipe        SkemaType
+  dana        Decimal    @db.Decimal(15, 2)
+  deskripsi   String?    @db.Text
+  status      UserStatus @default(AKTIF)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  proposals   Proposal[]
+}
+
+// ==========================================
+// PROPOSAL & PENELITIAN
+// ==========================================
+
+model Proposal {
+  id              String          @id @default(cuid())
+  periodeId       String
+  skemaId         String
+  ketuaId         String
+  creatorId       String
+  bidangKeahlianId String?
+  
+  judul           String          @db.Text
+  abstrak         String          @db.Text
+  filePath        String?
+  fileName        String?
+  fileSize        Int?
+  
+  status          ProposalStatus  @default(DRAFT)
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  
+  nilaiTotal      Decimal?        @db.Decimal(5, 2)
+  revisiCount     Int             @default(0)
+  catatan         String?         @db.Text
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  periode         Periode         @relation(fields: [periodeId], references: [id])
+  skema           Skema           @relation(fields: [skemaId], references: [id])
+  ketua           Dosen           @relation("ProposalKetua", fields: [ketuaId], references: [id])
+  creator         User            @relation("ProposalCreator", fields: [creatorId], references: [id])
+  bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
+  
+  members         ProposalMember[]
+  reviews         Review[]
+  revisions       ProposalRevision[]
+  monitorings     Monitoring[]
+
+  @@index([periodeId])
+  @@index([status])
+  @@index([ketuaId])
+  @@index([creatorId])
+}
+
+model ProposalMember {
+  id          String    @id @default(cuid())
+  proposalId  String
+  dosenId     String?
+  mahasiswaId String?
+  role        String    // "Ketua" | "Anggota" | "Mahasiswa"
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  proposal    Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  dosen       Dosen?     @relation(fields: [dosenId], references: [id])
+  mahasiswa   Mahasiswa? @relation(fields: [mahasiswaId], references: [id])
+
+  @@unique([proposalId, dosenId])
+  @@unique([proposalId, mahasiswaId])
+  @@index([proposalId])
+}
+
+model ProposalRevision {
+  id          String    @id @default(cuid())
+  proposalId  String
+  revisiKe    Int
+  filePath    String
+  fileName    String
+  fileSize    Int
+  catatan     String?   @db.Text
+  uploadedAt  DateTime  @default(now())
+  
+  // Relations
+  proposal    Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+}
+
+// ==========================================
+// REVIEW & PENILAIAN
+// ==========================================
+
+model Review {
+  id              String                @id @default(cuid())
+  proposalId      String
+  reviewerId      String
+  userId          String
+  
+  // Kriteria Penilaian (25% each)
+  nilaiKesesuaian Int?                 // 1-100
+  nilaiMetode     Int?                 // 1-100
+  nilaiTimeline   Int?                 // 1-100
+  nilaiManfaat    Int?                 // 1-100
+  
+  nilaiTotal      Decimal?             @db.Decimal(5, 2)
+  rekomendasi     ReviewRecommendation?
+  catatan         String?              @db.Text
+  
+  status          String               @default("PENDING") // PENDING | COMPLETED
+  deadline        DateTime
+  completedAt     DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Relations
+  proposal        Proposal             @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  reviewer        Reviewer             @relation(fields: [reviewerId], references: [id])
+  user            User                 @relation(fields: [userId], references: [id])
+
+  @@unique([proposalId, reviewerId])
+  @@index([proposalId])
+  @@index([reviewerId])
+}
+
+// ==========================================
+// MONITORING & LAPORAN
+// ==========================================
+
+model Monitoring {
+  id              String    @id @default(cuid())
+  proposalId      String
+  
+  laporanKemajuan String?   @db.Text
+  laporanAkhir    String?   @db.Text
+  fileKemajuan    String?
+  fileAkhir       String?
+  
+  persentaseKemajuan Int    @default(0)
+  status          String    @default("BERJALAN") // BERJALAN | SELESAI
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  proposal        Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+}
+
+// ==========================================
+// NOTIFIKASI
+// ==========================================
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  message     String    @db.Text
+  type        String    // INFO | SUCCESS | WARNING | ERROR
+  isRead      Boolean   @default(false)
+  link        String?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}

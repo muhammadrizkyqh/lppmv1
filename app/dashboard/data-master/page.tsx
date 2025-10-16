@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Search,
   Plus,
@@ -20,345 +20,334 @@ import {
   Phone,
   BookOpen,
   UserCheck,
-  UserX,
-  MoreVertical
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { SearchFilter, USER_FILTERS } from "@/components/ui/search-filter";
-import { NoUsersFound } from "@/components/ui/empty-states";
 import { toast } from "sonner";
 import { useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useDosen, useMahasiswa, useReviewer, useBidangKeahlian } from "@/hooks/use-data";
+import { DosenFormDialog } from "@/components/data-master/dosen-form-dialog";
+import { MahasiswaFormDialog } from "@/components/data-master/mahasiswa-form-dialog";
+import { ReviewerFormDialog } from "@/components/data-master/reviewer-form-dialog";
+import { DeleteConfirmDialog } from "@/components/data-master/delete-confirm-dialog";
+import { dosenApi, mahasiswaApi, reviewerApi } from "@/lib/api-client";
+import type { Dosen, Mahasiswa, Reviewer } from "@/lib/api-client";
 
 export default function DataMasterPage() {
-  const [searchValue, setSearchValue] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [activeTab, setActiveTab] = useState("dosen");
   
-  // Filter states for each tab
-  const [dosenSearchValue, setDosenSearchValue] = useState('');
-  const [dosenActiveFilters, setDosenActiveFilters] = useState<Record<string, string>>({});
-  const [mahasiswaSearchValue, setMahasiswaSearchValue] = useState('');
-  const [mahasiswaActiveFilters, setMahasiswaActiveFilters] = useState<Record<string, string>>({});
-  const [reviewerSearchValue, setReviewerSearchValue] = useState('');
-  const [reviewerActiveFilters, setReviewerActiveFilters] = useState<Record<string, string>>({});
+  // Search states
+  const [dosenSearch, setDosenSearch] = useState("");
+  const [mahasiswaSearch, setMahasiswaSearch] = useState("");
+  const [reviewerSearch, setReviewerSearch] = useState("");
 
-  const handleFilterChange = (key: string, value: any) => {
-    setActiveFilters(prev => ({ ...prev, [key]: value }));
+  // Dialog states
+  const [dosenDialogOpen, setDosenDialogOpen] = useState(false);
+  const [mahasiswaDialogOpen, setMahasiswaDialogOpen] = useState(false);
+  const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDosen, setSelectedDosen] = useState<Dosen | null>(null);
+  const [selectedMahasiswa, setSelectedMahasiswa] = useState<Mahasiswa | null>(null);
+  const [selectedReviewer, setSelectedReviewer] = useState<Reviewer | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: string; id: string; name: string } | null>(null);
+
+  // Fetch data dengan hooks
+  const { data: dosenData, loading: dosenLoading, error: dosenError, refetch: refetchDosen } = useDosen({ search: dosenSearch });
+  const { data: mahasiswaData, loading: mahasiswaLoading, error: mahasiswaError, refetch: refetchMahasiswa } = useMahasiswa({ search: mahasiswaSearch });
+  const { data: reviewerData, loading: reviewerLoading, error: reviewerError, refetch: refetchReviewer } = useReviewer({ search: reviewerSearch });
+  const { data: bidangKeahlianData } = useBidangKeahlian();
+
+  // Handle actions
+  const handleEditDosen = (dosen: Dosen) => {
+    setSelectedDosen(dosen);
+    setDosenDialogOpen(true);
   };
 
-  const handleClearFilters = () => {
-    setActiveFilters({});
-    setSearchValue("");
+  const handleDeleteDosen = (dosen: Dosen) => {
+    setDeleteTarget({ type: 'dosen', id: dosen.id, name: dosen.nama });
+    setDeleteDialogOpen(true);
   };
 
-  const handleViewUser = (user: any) => {
-    toast.info(`Melihat detail ${user.nama}`, {
-      description: "Membuka profil pengguna..."
-    });
+  const handleEditMahasiswa = (mahasiswa: Mahasiswa) => {
+    setSelectedMahasiswa(mahasiswa);
+    setMahasiswaDialogOpen(true);
   };
 
-  const handleEditUser = (user: any) => {
-    toast.info(`Edit ${user.nama}`, {
-      description: "Membuka form edit pengguna..."
-    });
+  const handleDeleteMahasiswa = (mahasiswa: Mahasiswa) => {
+    setDeleteTarget({ type: 'mahasiswa', id: mahasiswa.id, name: mahasiswa.nama });
+    setDeleteDialogOpen(true);
   };
 
-  const handleDeleteUser = (user: any) => {
-    toast.success(`${user.nama} berhasil dihapus`, {
-      description: "Data pengguna telah dihapus dari sistem"
-    });
+  const handleEditReviewer = (reviewer: Reviewer) => {
+    setSelectedReviewer(reviewer);
+    setReviewerDialogOpen(true);
   };
 
-  // Mock data
-  const dosenData = [
-    {
-      id: "1",
-      nidn: "2112345678",
-      nama: "Dr. Ahmad Suharto, M.Pd",
-      email: "ahmad.suharto@staiali.ac.id",
-      noHp: "081234567890",
-      bidangKeahlian: "Pendidikan Agama Islam",
-      jenisDosen: "tetap",
-      status: "aktif",
-      proposalAktif: 2,
-      totalProposal: 5
-    },
-    {
-      id: "2",
-      nidn: "2123456789",
-      nama: "Dr. Siti Aminah, S.Pd.I, M.A",
-      email: "siti.aminah@staiali.ac.id",
-      noHp: "081234567891",
-      bidangKeahlian: "Pendidikan Bahasa Arab",
-      jenisDosen: "tetap",
-      status: "aktif",
-      proposalAktif: 1,
-      totalProposal: 3
-    },
-    {
-      id: "3",
-      nidn: "2134567890",
-      nama: "Prof. Dr. Muhammad Ridwan, M.Ag",
-      email: "m.ridwan@staiali.ac.id",
-      noHp: "081234567892",
-      bidangKeahlian: "Hukum Ekonomi Syariah",
-      jenisDosen: "tetap",
-      status: "aktif",
-      proposalAktif: 3,
-      totalProposal: 8
-    }
-  ];
+  const handleDeleteReviewer = (reviewer: Reviewer) => {
+    setDeleteTarget({ type: 'reviewer', id: reviewer.id, name: reviewer.nama });
+    setDeleteDialogOpen(true);
+  };
 
-  const mahasiswaData = [
-    {
-      id: "1",
-      nim: "2021001",
-      nama: "Muhammad Rifqi Pratama",
-      email: "rifqi.pratama@student.staiali.ac.id",
-      prodi: "Pendidikan Agama Islam",
-      angkatan: "2021",
-      status: "aktif",
-      proposalTerlibat: 2
-    },
-    {
-      id: "2",
-      nim: "2021002",
-      nama: "Fatimah Zahra",
-      email: "fatimah.zahra@student.staiali.ac.id",
-      prodi: "Pendidikan Bahasa Arab",
-      angkatan: "2021",
-      status: "aktif",
-      proposalTerlibat: 1
-    },
-    {
-      id: "3",
-      nim: "2020015",
-      nama: "Abdullah Al-Farisi",
-      email: "abdullah.alfarisi@student.staiali.ac.id",
-      prodi: "Hukum Ekonomi Syariah",
-      angkatan: "2020",
-      status: "aktif",
-      proposalTerlibat: 3
-    }
-  ];
-
-  const reviewerData = [
-    {
-      id: "R001",
-      nama: "Prof. Dr. Ahmad Wijaya, M.T.",
-      email: "ahmad.wijaya@ui.ac.id",
-      instansi: "Universitas Indonesia",
-      bidangKeahlian: "Teknologi Informasi",
-      level: "senior",
-      status: "aktif",
-      proposalDireview: 8
-    },
-    {
-      id: "R002", 
-      nama: "Dr. Siti Nurhaliza, M.Kom.",
-      email: "siti.nurhaliza@itb.ac.id",
-      instansi: "Institut Teknologi Bandung",
-      bidangKeahlian: "Sistem Informasi",
-      level: "senior",
-      status: "aktif",
-      proposalDireview: 6
-    },
-    {
-      id: "R003",
-      nama: "Dr. Bambang Suryanto, M.T.",
-      email: "bambang.suryanto@ugm.ac.id", 
-      instansi: "Universitas Gadjah Mada",
-      bidangKeahlian: "Teknik Komputer",
-      level: "junior",
-      status: "aktif",
-      proposalDireview: 4
-    }
-  ];
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "aktif":
-        return <Badge variant="outline" className="text-green-600 border-green-200">Aktif</Badge>;
-      case "nonaktif":
-        return <Badge variant="outline" className="text-red-600 border-red-200">Non-aktif</Badge>;
-      case "cuti":
-        return <Badge variant="outline" className="text-yellow-600 border-yellow-200">Cuti</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
+  const handleAddNew = () => {
+    if (activeTab === 'dosen') {
+      setSelectedDosen(null);
+      setDosenDialogOpen(true);
+    } else if (activeTab === 'mahasiswa') {
+      setSelectedMahasiswa(null);
+      setMahasiswaDialogOpen(true);
+    } else if (activeTab === 'reviewer') {
+      setSelectedReviewer(null);
+      setReviewerDialogOpen(true);
     }
   };
 
-  const getJenisDosenBadge = (jenis: string) => {
-    switch (jenis) {
-      case "tetap":
-        return <Badge variant="default">Tetap</Badge>;
-      case "tidak_tetap":
-        return <Badge variant="secondary">Tidak Tetap</Badge>;
-      default:
-        return <Badge variant="secondary">{jenis}</Badge>;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      if (deleteTarget.type === 'dosen') {
+        const result = await dosenApi.delete(deleteTarget.id);
+        if (result.success) {
+          toast.success('Dosen berhasil dihapus');
+          refetchDosen();
+        } else {
+          toast.error(result.error || 'Gagal menghapus dosen');
+        }
+      } else if (deleteTarget.type === 'mahasiswa') {
+        const result = await mahasiswaApi.delete(deleteTarget.id);
+        if (result.success) {
+          toast.success('Mahasiswa berhasil dihapus');
+          refetchMahasiswa();
+        } else {
+          toast.error(result.error || 'Gagal menghapus mahasiswa');
+        }
+      } else if (deleteTarget.type === 'reviewer') {
+        const result = await reviewerApi.delete(deleteTarget.id);
+        if (result.success) {
+          toast.success('Reviewer berhasil dihapus');
+          refetchReviewer();
+        } else {
+          toast.error(result.error || 'Gagal menghapus reviewer');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Terjadi kesalahan');
     }
   };
 
-  const stats = [
-    { label: "Total Dosen", value: dosenData.length, icon: Users, color: "text-blue-600" },
-    { label: "Dosen Aktif", value: dosenData.filter(d => d.status === "aktif").length, icon: UserCheck, color: "text-green-600" },
-    { label: "Total Mahasiswa", value: mahasiswaData.length, icon: GraduationCap, color: "text-purple-600" },
-    { label: "Mahasiswa Aktif", value: mahasiswaData.filter(m => m.status === "aktif").length, icon: BookOpen, color: "text-orange-600" }
-  ];
-
-  const dosenColumns = [
+  // Column definitions untuk Dosen
+  const dosenColumns: any[] = [
     {
-      key: 'nama' as const,
-      header: 'Nama',
-      sortable: true,
-      render: (value: string, row: any) => (
+      key: "nama",
+      header: "Dosen",
+      render: (_: any, row: any) => (
         <div className="flex items-center space-x-3">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${row.nama}`} />
-            <AvatarFallback>{row.nama.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
+          <Avatar className="w-10 h-10">
+            <AvatarFallback className="bg-green-100 text-green-700">
+              {row.nama.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{value}</p>
-            <p className="text-sm text-muted-foreground">{row.nidn}</p>
+            <p className="font-medium">{row.nama}</p>
+            <p className="text-sm text-muted-foreground">NIDN: {row.nidn}</p>
           </div>
         </div>
-      )
+      ),
     },
     {
-      key: 'email' as const,
-      header: 'Email',
-      sortable: true
+      key: "email",
+      header: "Kontak",
+      render: (_: any, row: any) => (
+        <div className="space-y-1">
+          <div className="flex items-center text-sm">
+            <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
+            {row.email}
+          </div>
+          {row.noHp && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Phone className="w-4 h-4 mr-2" />
+              {row.noHp}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
-      key: 'bidangKeahlian' as const,
-      header: 'Bidang Keahlian',
-      sortable: true
+      key: "bidangKeahlianId",
+      header: "Bidang Keahlian",
+      render: (_: any, row: any) => (
+        <div className="flex items-center">
+          <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+          {row.bidangKeahlian?.nama || '-'}
+        </div>
+      ),
     },
     {
-      key: 'jenisDosen' as const,
-      header: 'Jenis Dosen',
-      sortable: true,
-      render: (value: string) => (
-        <Badge variant={value === 'tetap' ? 'default' : 'secondary'}>
-          {value === 'tetap' ? 'Tetap' : 'Tidak Tetap'}
-        </Badge>
-      )
+      key: "status",
+      header: "Status",
+      render: (_: any, row: any) => (
+        <StatusBadge status={row.status} />
+      ),
     },
     {
-      key: 'status' as const,
-      header: 'Status',
-      sortable: true,
-      render: (value: string) => <StatusBadge status={value} />
-    }
+      key: "id",
+      header: "Aksi",
+      render: (_: any, row: any) => (
+        <div className="flex items-center space-x-2">
+          <Button size="sm" variant="ghost" onClick={() => handleEditDosen(row)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="text-red-600" onClick={() => handleDeleteDosen(row)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
-  const mahasiswaColumns = [
+  // Column definitions untuk Mahasiswa
+  const mahasiswaColumns: any[] = [
     {
-      key: 'nama' as const,
-      header: 'Nama',
-      sortable: true,
-      render: (value: string, row: any) => (
+      key: "nama",
+      header: "Mahasiswa",
+      render: (_: any, row: any) => (
         <div className="flex items-center space-x-3">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${row.nama}`} />
-            <AvatarFallback>{row.nama.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
+          <Avatar className="w-10 h-10">
+            <AvatarFallback className="bg-blue-100 text-blue-700">
+              {row.nama.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{value}</p>
-            <p className="text-sm text-muted-foreground">{row.nim}</p>
+            <p className="font-medium">{row.nama}</p>
+            <p className="text-sm text-muted-foreground">NIM: {row.nim}</p>
           </div>
         </div>
-      )
+      ),
     },
     {
-      key: 'email' as const,
-      header: 'Email',
-      sortable: true
+      key: "prodi",
+      header: "Program Studi",
+      render: (_: any, row: any) => (
+        <div>
+          <p className="font-medium">{row.prodi}</p>
+          <p className="text-sm text-muted-foreground">Angkatan {row.angkatan}</p>
+        </div>
+      ),
     },
     {
-      key: 'prodi' as const,
-      header: 'Program Studi',
-      sortable: true
+      key: "email",
+      header: "Email",
+      render: (_: any, row: any) => (
+        <div className="flex items-center text-sm">
+          <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
+          {row.email}
+        </div>
+      ),
     },
     {
-      key: 'semester' as const,
-      header: 'Semester',
-      sortable: true,
-      render: (value: number) => `Semester ${value}`
+      key: "status",
+      header: "Status",
+      render: (_: any, row: any) => (
+        <StatusBadge status={row.status} />
+      ),
     },
     {
-      key: 'status' as const,
-      header: 'Status',
-      sortable: true,
-      render: (value: string) => <StatusBadge status={value} />
-    }
+      key: "id",
+      header: "Aksi",
+      render: (_: any, row: any) => (
+        <div className="flex items-center space-x-2">
+          <Button size="sm" variant="ghost" onClick={() => handleEditMahasiswa(row)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="text-red-600" onClick={() => handleDeleteMahasiswa(row)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
-  const reviewerColumns = [
+  // Column definitions untuk Reviewer
+  const reviewerColumns: any[] = [
     {
-      key: 'nama' as const,
-      header: 'Nama',
-      sortable: true,
-      render: (value: string, row: any) => (
+      key: "nama",
+      header: "Reviewer",
+      render: (_: any, row: any) => (
         <div className="flex items-center space-x-3">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${row.nama}`} />
-            <AvatarFallback>{row.nama.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
+          <Avatar className="w-10 h-10">
+            <AvatarFallback className="bg-purple-100 text-purple-700">
+              {row.nama.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{value}</p>
-            <p className="text-sm text-muted-foreground">{row.email}</p>
+            <p className="font-medium">{row.nama}</p>
+            <p className="text-sm text-muted-foreground">{row.institusi}</p>
           </div>
         </div>
-      )
+      ),
     },
     {
-      key: 'instansi' as const,
-      header: 'Instansi',
-      sortable: true
-    },
-    {
-      key: 'bidangKeahlian' as const,
-      header: 'Bidang Keahlian',
-      sortable: true
-    },
-    {
-      key: 'level' as const,
-      header: 'Level',
-      sortable: true,
-      render: (value: string) => (
-        <Badge variant={value === 'senior' ? 'default' : 'secondary'}>
-          {value === 'senior' ? 'Senior' : 'Junior'}
+      key: "tipe",
+      header: "Tipe",
+      render: (_: any, row: any) => (
+        <Badge variant={row.tipe === 'INTERNAL' ? 'default' : 'secondary'}>
+          {row.tipe}
         </Badge>
-      )
+      ),
     },
     {
-      key: 'proposalDireview' as const,
-      header: 'Proposal Direview',
-      sortable: true,
-      render: (value: number) => (
-        <Badge variant="outline" className="text-blue-600 border-blue-200">
-          {value}
-        </Badge>
-      )
+      key: "bidangKeahlianId",
+      header: "Bidang Keahlian",
+      render: (_: any, row: any) => (
+        <div className="flex items-center">
+          <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+          {row.bidangKeahlian?.nama || '-'}
+        </div>
+      ),
     },
     {
-      key: 'status' as const,
-      header: 'Status',
-      sortable: true,
-      render: (value: string) => <StatusBadge status={value} />
-    }
+      key: "email",
+      header: "Email",
+      render: (_: any, row: any) => (
+        <div className="flex items-center text-sm">
+          <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
+          {row.email}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (_: any, row: any) => (
+        <StatusBadge status={row.status} />
+      ),
+    },
+    {
+      key: "id",
+      header: "Aksi",
+      render: (_: any, row: any) => (
+        <div className="flex items-center space-x-2">
+          <Button size="sm" variant="ghost" onClick={() => handleEditReviewer(row)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="text-red-600" onClick={() => handleDeleteReviewer(row)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
+
+  // Handle refresh
+  const handleRefresh = () => {
+    if (activeTab === 'dosen') refetchDosen();
+    else if (activeTab === 'mahasiswa') refetchMahasiswa();
+    else if (activeTab === 'reviewer') refetchReviewer();
+    
+    toast.success('Data berhasil di-refresh');
+  };
 
   return (
     <DashboardLayout>
@@ -366,12 +355,16 @@ export default function DataMasterPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Data Master</h1>
-            <p className="text-muted-foreground mt-2">
-              Kelola data dosen, mahasiswa, dan reviewer sistem LPPM
+            <h1 className="text-3xl font-bold">Data Master</h1>
+            <p className="text-muted-foreground mt-1">
+              Kelola data dosen, mahasiswa, dan reviewer
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -380,7 +373,7 @@ export default function DataMasterPage() {
               <Upload className="w-4 h-4 mr-2" />
               Import
             </Button>
-            <Button className="bg-gradient-to-r from-primary to-primary/90">
+            <Button className="bg-green-600 hover:bg-green-700" onClick={handleAddNew}>
               <Plus className="w-4 h-4 mr-2" />
               Tambah Data
             </Button>
@@ -388,266 +381,206 @@ export default function DataMasterPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          {stats.map((stat, index) => (
-            <Card key={index} className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-xl font-bold">{stat.value}</p>
-                  </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Dosen</p>
+                  <p className="text-3xl font-bold mt-2">
+                    {dosenLoading ? '-' : dosenData?.length || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Mahasiswa</p>
+                  <p className="text-3xl font-bold mt-2">
+                    {mahasiswaLoading ? '-' : mahasiswaData?.length || 0}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Reviewer</p>
+                  <p className="text-3xl font-bold mt-2">
+                    {reviewerLoading ? '-' : reviewerData?.length || 0}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <UserCheck className="w-6 h-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Data Tables */}
-        <Tabs defaultValue="dosen" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="dosen">
-              <Users className="w-4 h-4 mr-2" />
-              Data Dosen ({dosenData.length})
-            </TabsTrigger>
-            <TabsTrigger value="mahasiswa">
-              <GraduationCap className="w-4 h-4 mr-2" />
-              Data Mahasiswa ({mahasiswaData.length})
-            </TabsTrigger>
-            <TabsTrigger value="reviewer">
-              <BookOpen className="w-4 h-4 mr-2" />
-              Data Reviewer (0)
-            </TabsTrigger>
-          </TabsList>
+        {/* Tabs */}
+        <Card>
+          <CardHeader>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="dosen">Dosen</TabsTrigger>
+                <TabsTrigger value="mahasiswa">Mahasiswa</TabsTrigger>
+                <TabsTrigger value="reviewer">Reviewer</TabsTrigger>
+              </TabsList>
 
-          {/* Dosen Tab */}
-          <TabsContent value="dosen" className="space-y-4">
-            {/* Search and Filter */}
-            <SearchFilter
-              placeholder="Cari dosen berdasarkan nama, NIDN, atau bidang keahlian..."
-              searchValue={dosenSearchValue}
-              activeFilters={dosenActiveFilters}
-              filters={[
-                {
-                  key: 'status',
-                  type: 'select',
-                  label: 'Status',
-                  options: [
-                    { label: 'Aktif', value: 'aktif' },
-                    { label: 'Tidak Aktif', value: 'tidak-aktif' },
-                  ]
-                },
-                {
-                  key: 'jenisDosen',
-                  type: 'select',
-                  label: 'Jenis Dosen',
-                  options: [
-                    { label: 'Tetap', value: 'tetap' },
-                    { label: 'Tidak Tetap', value: 'tidak-tetap' },
-                  ]
-                }
-              ]}
-              onSearchChange={setDosenSearchValue}
-              onFilterChange={(key: string, value: any) => {
-                setDosenActiveFilters(prev => ({ ...prev, [key]: value }));
-              }}
-              onClearFilters={() => {
-                setDosenSearchValue('');
-                setDosenActiveFilters({});
-              }}
-            />
+              {/* Tab Content - Dosen */}
+              <TabsContent value="dosen" className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Cari dosen..."
+                      className="pl-10"
+                      value={dosenSearch}
+                      onChange={(e) => setDosenSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-            {/* Dosen Data Table */}
-            <DataTable
-              data={dosenData}
-              columns={dosenColumns}
-              pagination={{
-                page: currentPage,
-                pageSize: pageSize,
-                total: dosenData.length,
-                onPageChange: setCurrentPage,
-                onPageSizeChange: setPageSize
-              }}
-            />
-          </TabsContent>
+                {dosenError && (
+                  <div className="text-red-600 text-sm p-4 bg-red-50 rounded-lg">
+                    {dosenError}
+                  </div>
+                )}
 
-          {/* Mahasiswa Tab */}
-          <TabsContent value="mahasiswa" className="space-y-4">
-            <SearchFilter
-              placeholder="Cari mahasiswa berdasarkan nama, NIM, atau prodi..."
-              searchValue={mahasiswaSearchValue}
-              activeFilters={mahasiswaActiveFilters}
-              filters={[
-                {
-                  key: 'status',
-                  type: 'select',
-                  label: 'Status',
-                  options: [
-                    { label: 'Aktif', value: 'aktif' },
-                    { label: 'Tidak Aktif', value: 'tidak-aktif' },
-                    { label: 'Lulus', value: 'lulus' },
-                  ]
-                },
-                {
-                  key: 'prodi',
-                  type: 'select',
-                  label: 'Program Studi',
-                  options: [
-                    { label: 'Teknik Informatika', value: 'teknik-informatika' },
-                    { label: 'Sistem Informasi', value: 'sistem-informasi' },
-                    { label: 'Teknik Komputer', value: 'teknik-komputer' },
-                  ]
-                }
-              ]}
-              onSearchChange={setMahasiswaSearchValue}
-              onFilterChange={(key: string, value: any) => {
-                setMahasiswaActiveFilters(prev => ({ ...prev, [key]: value }));
-              }}
-              onClearFilters={() => {
-                setMahasiswaSearchValue('');
-                setMahasiswaActiveFilters({});
-              }}
-            />
+                {dosenLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                  </div>
+                ) : (
+                  <DataTable
+                    columns={dosenColumns}
+                    data={dosenData || []}
+                  />
+                )}
+              </TabsContent>
 
-            <DataTable
-              data={mahasiswaData}
-              columns={mahasiswaColumns.filter(col => col.key !== 'semester')}
-              pagination={{
-                page: currentPage,
-                pageSize: pageSize,
-                total: mahasiswaData.length,
-                onPageChange: setCurrentPage,
-                onPageSizeChange: setPageSize
-              }}
-            />
+              {/* Tab Content - Mahasiswa */}
+              <TabsContent value="mahasiswa" className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Cari mahasiswa..."
+                      className="pl-10"
+                      value={mahasiswaSearch}
+                      onChange={(e) => setMahasiswaSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-            {/* Mahasiswa List */}
-            <div className="space-y-4">
-              {mahasiswaData.map((mahasiswa) => (
-                <Card key={mahasiswa.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={`/placeholder-avatar-mhs-${mahasiswa.id}.jpg`} />
-                          <AvatarFallback className="bg-purple-100 text-purple-600 font-semibold">
-                            {mahasiswa.nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="font-semibold text-lg">{mahasiswa.nama}</h3>
-                            {getStatusBadge(mahasiswa.status)}
-                          </div>
-                          
-                          <div className="grid gap-2 md:grid-cols-2 text-sm text-muted-foreground mb-3">
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium">NIM:</span>
-                              <span>{mahasiswa.nim}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Mail className="w-4 h-4" />
-                              <span>{mahasiswa.email}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <GraduationCap className="w-4 h-4" />
-                              <span>{mahasiswa.prodi}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium">Angkatan:</span>
-                              <span>{mahasiswa.angkatan}</span>
-                            </div>
-                          </div>
+                {mahasiswaError && (
+                  <div className="text-red-600 text-sm p-4 bg-red-50 rounded-lg">
+                    {mahasiswaError}
+                  </div>
+                )}
 
-                          <div className="flex items-center space-x-1 text-sm">
-                            <span className="text-muted-foreground">Proposal Terlibat:</span>
-                            <Badge variant="outline" className="text-green-600 border-green-200">
-                              {mahasiswa.proposalTerlibat}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
+                {mahasiswaLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  </div>
+                ) : (
+                  <DataTable
+                    columns={mahasiswaColumns}
+                    data={mahasiswaData || []}
+                  />
+                )}
+              </TabsContent>
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Data
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Hapus Data
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+              {/* Tab Content - Reviewer */}
+              <TabsContent value="reviewer" className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Cari reviewer..."
+                      className="pl-10"
+                      value={reviewerSearch}
+                      onChange={(e) => setReviewerSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-          {/* Reviewer Tab */}
-          <TabsContent value="reviewer" className="space-y-4">
-            <SearchFilter
-              placeholder="Cari reviewer berdasarkan nama, instansi, atau bidang keahlian..."
-              searchValue={reviewerSearchValue}
-              activeFilters={reviewerActiveFilters}
-              filters={[
-                {
-                  key: 'status',
-                  type: 'select',
-                  label: 'Status',
-                  options: [
-                    { label: 'Aktif', value: 'aktif' },
-                    { label: 'Tidak Aktif', value: 'tidak-aktif' },
-                  ]
-                },
-                {
-                  key: 'level',
-                  type: 'select',
-                  label: 'Level',
-                  options: [
-                    { label: 'Senior', value: 'senior' },
-                    { label: 'Junior', value: 'junior' },
-                  ]
-                }
-              ]}
-              onSearchChange={setReviewerSearchValue}
-              onFilterChange={(key: string, value: any) => {
-                setReviewerActiveFilters(prev => ({ ...prev, [key]: value }));
-              }}
-              onClearFilters={() => {
-                setReviewerSearchValue('');
-                setReviewerActiveFilters({});
-              }}
-            />
+                {reviewerError && (
+                  <div className="text-red-600 text-sm p-4 bg-red-50 rounded-lg">
+                    {reviewerError}
+                  </div>
+                )}
 
-            <DataTable
-              data={reviewerData}
-              columns={reviewerColumns}
-              pagination={{
-                page: currentPage,
-                pageSize: pageSize,
-                total: reviewerData.length,
-                onPageChange: setCurrentPage,
-                onPageSizeChange: setPageSize
-              }}
-            />
-          </TabsContent>
-        </Tabs>
+                {reviewerLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  </div>
+                ) : (
+                  <DataTable
+                    columns={reviewerColumns}
+                    data={reviewerData || []}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardHeader>
+        </Card>
       </div>
+
+      {/* Dialogs */}
+      <DosenFormDialog
+        open={dosenDialogOpen}
+        onOpenChange={setDosenDialogOpen}
+        dosen={selectedDosen}
+        bidangKeahlianList={bidangKeahlianData || []}
+        onSuccess={() => {
+          refetchDosen();
+          setSelectedDosen(null);
+        }}
+      />
+
+      <MahasiswaFormDialog
+        open={mahasiswaDialogOpen}
+        onOpenChange={setMahasiswaDialogOpen}
+        mahasiswa={selectedMahasiswa}
+        onSuccess={() => {
+          refetchMahasiswa();
+          setSelectedMahasiswa(null);
+        }}
+      />
+
+      <ReviewerFormDialog
+        open={reviewerDialogOpen}
+        onOpenChange={setReviewerDialogOpen}
+        reviewer={selectedReviewer}
+        bidangKeahlianList={bidangKeahlianData || []}
+        onSuccess={() => {
+          refetchReviewer();
+          setSelectedReviewer(null);
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={`Hapus ${deleteTarget?.type === 'dosen' ? 'Dosen' : deleteTarget?.type === 'mahasiswa' ? 'Mahasiswa' : 'Reviewer'}`}
+        description={`Apakah Anda yakin ingin menghapus ${deleteTarget?.name}? Tindakan ini tidak dapat dibatalkan.`}
+        onConfirm={handleDelete}
+      />
     </DashboardLayout>
   );
 }

@@ -22,12 +22,14 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
-  MoreVertical
+  MoreVertical,
+  Trash2
 } from "lucide-react";
 import { SearchFilter, PROPOSAL_FILTERS } from "@/components/ui/search-filter";
 import { NoProposalsFound, NoSearchResults } from "@/components/ui/empty-states";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,10 +38,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useProposals } from "@/hooks/use-data";
+import { proposalApi, ProposalStatus } from "@/lib/api-client";
 
 export default function ProposalsPage() {
+  const router = useRouter();
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string | null; title: string | null }>({
+    open: false,
+    id: null,
+    title: null,
+  });
+  const [deleting, setDeleting] = useState(false);
+
+  // Fetch proposals from backend
+  const { data: proposalsData, loading, refetch } = useProposals();
 
   const handleFilterChange = (key: string, value: any) => {
     setActiveFilters(prev => ({ ...prev, [key]: value }));
@@ -51,91 +75,56 @@ export default function ProposalsPage() {
   };
 
   const handleViewProposal = (id: string) => {
-    toast.success(`Membuka proposal ${id}`, {
-      description: "Redirecting to proposal detail..."
-    });
+    router.push(`/dashboard/proposals/${id}`);
   };
 
   const handleEditProposal = (id: string) => {
-    toast.info(`Edit proposal ${id}`, {
-      description: "Redirecting to edit form..."
-    });
+    router.push(`/dashboard/proposals/${id}/edit`);
   };
 
-  const handleDeleteProposal = (id: string) => {
-    toast.success(`Proposal ${id} berhasil dihapus`, {
-      description: "Data proposal telah dihapus dari sistem"
-    });
-  };
-
-  // Mock data
-  const proposals = [
-    {
-      id: "P-2025-001",
-      title: "Pengembangan Aplikasi Mobile untuk Pembelajaran Al-Quran Berbasis Gamifikasi",
-      skema: "Penelitian Terapan",
-      status: "review",
-      progress: 60,
-      tanggalPengajuan: "2025-02-15",
-      tanggalDeadline: "2025-03-15",
-      dana: 5000000,
-      bidangKeahlian: "Pendidikan Agama Islam",
-      anggota: 3,
-      reviewer: ["Dr. Ahmad", "Dr. Siti"]
-    },
-    {
-      id: "P-2025-002",
-      title: "Implementasi Machine Learning dalam Analisis Sentiment Hadits Sahih Bukhari",
-      skema: "Penelitian Dasar",
-      status: "diterima",
-      progress: 85,
-      tanggalPengajuan: "2025-01-20",
-      tanggalDeadline: "2025-04-20",
-      dana: 5000000,
-      bidangKeahlian: "Teknologi Informasi",
-      anggota: 2,
-      reviewer: ["Dr. Budi", "Dr. Citra"]
-    },
-    {
-      id: "P-2025-003",
-      title: "Pelatihan Digital Marketing untuk UMKM Berbasis Ekonomi Syariah",
-      skema: "PKM",
-      status: "monitoring",
-      progress: 40,
-      tanggalPengajuan: "2025-01-10",
-      tanggalDeadline: "2025-05-10",
-      dana: 3000000,
-      bidangKeahlian: "Hukum Ekonomi Syariah",
-      anggota: 4,
-      reviewer: ["Dr. Eko", "Dr. Fitri"]
-    },
-    {
-      id: "P-2025-004",
-      title: "Analisis Dampak Pembelajaran Daring terhadap Prestasi Mahasiswa STAI Ali",
-      skema: "Penelitian Mandiri",
-      status: "revisi",
-      progress: 25,
-      tanggalPengajuan: "2025-02-01",
-      tanggalDeadline: "2025-03-20",
-      dana: 0,
-      bidangKeahlian: "Manajemen Pendidikan Islam",
-      anggota: 2,
-      reviewer: ["Dr. Hadi", "Dr. Indira"]
-    },
-    {
-      id: "P-2025-005",
-      title: "Pengembangan Kurikulum Bahasa Arab Berbasis Pendekatan Komunikatif",
-      skema: "Penelitian Pengembangan",
-      status: "ditolak",
-      progress: 0,
-      tanggalPengajuan: "2025-01-25",
-      tanggalDeadline: "-",
-      dana: 7000000,
-      bidangKeahlian: "Pendidikan Bahasa Arab",
-      anggota: 3,
-      reviewer: ["Dr. Joko", "Dr. Kartika"]
+  const handleDeleteProposal = async () => {
+    if (!deleteDialog.id) return;
+    
+    setDeleting(true);
+    try {
+      const result = await proposalApi.delete(deleteDialog.id);
+      if (result.success) {
+        toast.success("Proposal berhasil dihapus!");
+        refetch();
+        setDeleteDialog({ open: false, id: null, title: null });
+      } else {
+        toast.error(result.error || "Gagal menghapus proposal");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menghapus proposal");
+    } finally {
+      setDeleting(false);
     }
-  ];
+  };
+
+  const handleDownloadProposal = (filePath: string | null) => {
+    if (!filePath) {
+      toast.error("File proposal tidak tersedia");
+      return;
+    }
+    window.open(filePath, '_blank');
+  };
+
+  // Convert backend data to UI format
+  const proposals = proposalsData?.map(p => ({
+    id: p.id,
+    title: p.judul,
+    skema: p.skema?.nama || "-",
+    status: p.status.toLowerCase(),
+    progress: 0, // Could be calculated based on status
+    tanggalPengajuan: p.createdAt || new Date().toISOString(),
+    tanggalDeadline: "-", // Would come from periode settings
+    dana: Number(p.skema?.dana || 0),
+    bidangKeahlian: p.bidangKeahlian?.nama || "-",
+    anggota: p._count?.members || 0,
+    reviewer: [], // Would come from reviews relation
+    _original: p // Keep original data for actions
+  })) || [];
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -270,15 +259,39 @@ export default function ProposalsPage() {
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="all">Semua ({proposals.length})</TabsTrigger>
-            <TabsTrigger value="review">Review ({proposals.filter(p => p.status === "review").length})</TabsTrigger>
+            <TabsTrigger value="review">Review ({proposals.filter(p => p.status === "review" || p.status === "direview").length})</TabsTrigger>
             <TabsTrigger value="diterima">Diterima ({proposals.filter(p => p.status === "diterima").length})</TabsTrigger>
-            <TabsTrigger value="monitoring">Monitoring ({proposals.filter(p => p.status === "monitoring").length})</TabsTrigger>
+            <TabsTrigger value="monitoring">Monitoring ({proposals.filter(p => p.status === "monitoring" || p.status === "berjalan").length})</TabsTrigger>
             <TabsTrigger value="revisi">Revisi ({proposals.filter(p => p.status === "revisi").length})</TabsTrigger>
             <TabsTrigger value="selesai">Selesai ({proposals.filter(p => p.status === "selesai").length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
-            {proposals.map((proposal) => (
+            {loading ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                    <p className="text-muted-foreground">Memuat data proposal...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : proposals.length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Belum ada proposal</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Mulai ajukan proposal penelitian atau PKM Anda
+                  </p>
+                  <Button onClick={() => router.push("/dashboard/proposals/create")}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajukan Proposal Pertama
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              proposals.map((proposal) => (
               <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -318,12 +331,24 @@ export default function ProposalsPage() {
                             Edit Proposal
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => toast.success(`Download PDF ${proposal.id}`, {
-                          description: "File sedang didownload..."
-                        })}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download PDF
-                        </DropdownMenuItem>
+                        {proposal._original?.filePath && (
+                          <DropdownMenuItem onClick={() => handleDownloadProposal(proposal._original.filePath)}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download PDF
+                          </DropdownMenuItem>
+                        )}
+                        {proposal.status === "draft" && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => setDeleteDialog({ open: true, id: proposal.id, title: proposal.title })}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Hapus
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -423,7 +448,8 @@ export default function ProposalsPage() {
                   )}
                 </CardContent>
               </Card>
-            ))}
+            ))
+          )}
           </TabsContent>
 
           {/* Other tab contents would be similar but filtered by status */}
@@ -438,6 +464,29 @@ export default function ProposalsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Proposal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus proposal <strong>{deleteDialog.title}</strong>?
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProposal}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

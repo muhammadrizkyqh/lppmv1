@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,32 +22,163 @@ import {
   X,
   Plus
 } from "lucide-react";
+import { toast } from "sonner";
+import { usePeriode, useSkema, useBidangKeahlian } from "@/hooks/use-data";
+import { proposalApi, uploadApi } from "@/lib/api-client";
 
 export default function CreateProposalPage() {
-  // Mock data
-  const periode = [
-    { id: "1", nama: "Periode 1 Tahun 2025", status: "aktif" },
-    { id: "2", nama: "Periode 2 Tahun 2025", status: "draft" }
-  ];
+  const router = useRouter();
+  
+  // Fetch master data from backend
+  const { data: periode } = usePeriode();
+  const { data: skema } = useSkema();
+  const { data: bidangKeahlian } = useBidangKeahlian();
 
-  const skema = [
-    { id: "1", nama: "Penelitian Dasar", dana: 5000000 },
-    { id: "2", nama: "Penelitian Terapan", dana: 5000000 },
-    { id: "3", nama: "Penelitian Pengembangan", dana: 7000000 },
-    { id: "4", nama: "Penelitian Mandiri", dana: 0 }
-  ];
+  // Form state
+  const [formData, setFormData] = useState({
+    periodeId: "",
+    skemaId: "",
+    bidangKeahlianId: "",
+    judul: "",
+    abstrak: ""
+  });
+  
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const bidangKeahlian = [
-    { id: "1", nama: "Pendidikan Bahasa Arab (PBA)" },
-    { id: "2", nama: "Pendidikan Agama Islam (PAI)" },
-    { id: "3", nama: "Hukum Ekonomi Syariah (HES)" },
-    { id: "4", nama: "Manajemen Pendidikan Islam (MPI)" }
-  ];
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-  const anggotaTim = [
-    { id: "1", nama: "Dr. Ahmad Suharto", nidn: "2112345678", role: "ketua", type: "dosen" },
-    { id: "2", nama: "M. Rifqi Pratama", nim: "2021001", role: "anggota", type: "mahasiswa" }
-  ];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validate file type
+      if (selectedFile.type !== 'application/pdf') {
+        toast.error("File harus berformat PDF");
+        return;
+      }
+      // Validate file size (10MB)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error("Ukuran file maksimal 10MB");
+        return;
+      }
+      setFile(selectedFile);
+      toast.success("File berhasil dipilih");
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.periodeId) {
+      toast.error("Pilih periode terlebih dahulu");
+      return false;
+    }
+    if (!formData.skemaId) {
+      toast.error("Pilih skema penelitian");
+      return false;
+    }
+    if (!formData.bidangKeahlianId) {
+      toast.error("Pilih bidang keahlian");
+      return false;
+    }
+    if (!formData.judul.trim()) {
+      toast.error("Judul tidak boleh kosong");
+      return false;
+    }
+    if (formData.judul.length > 500) {
+      toast.error("Judul maksimal 500 karakter");
+      return false;
+    }
+    if (!formData.abstrak.trim()) {
+      toast.error("Abstrak tidak boleh kosong");
+      return false;
+    }
+    if (formData.abstrak.length > 500) {
+      toast.error("Abstrak maksimal 500 karakter");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSaveDraft = async () => {
+    if (!validateForm()) return;
+
+    setSaving(true);
+    try {
+      const result = await proposalApi.create({
+        periodeId: formData.periodeId,
+        skemaId: formData.skemaId,
+        bidangKeahlianId: formData.bidangKeahlianId,
+        judul: formData.judul,
+        abstrak: formData.abstrak
+      });
+
+      if (result.success && result.data) {
+        // Upload file if exists
+        if (file) {
+          await uploadApi.uploadFile(file, formData.periodeId, result.data.id);
+        }
+        toast.success("Draft proposal berhasil disimpan!");
+        router.push("/dashboard/proposals");
+      } else {
+        toast.error(result.error || "Gagal menyimpan draft");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menyimpan draft");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+    
+    if (!file) {
+      toast.error("Upload file proposal terlebih dahulu");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // 1. Create proposal
+      const createResult = await proposalApi.create({
+        periodeId: formData.periodeId,
+        skemaId: formData.skemaId,
+        bidangKeahlianId: formData.bidangKeahlianId,
+        judul: formData.judul,
+        abstrak: formData.abstrak
+      });
+
+      if (!createResult.success || !createResult.data) {
+        toast.error(createResult.error || "Gagal membuat proposal");
+        return;
+      }
+
+      const proposalId = createResult.data.id;
+
+      // 2. Upload file
+      const uploadResult = await uploadApi.uploadFile(file, formData.periodeId, proposalId);
+      if (!uploadResult.success) {
+        toast.error("Gagal upload file");
+        return;
+      }
+
+      // 3. Submit proposal
+      const submitResult = await proposalApi.submit(proposalId);
+      if (submitResult.success) {
+        toast.success("Proposal berhasil diajukan!");
+        router.push("/dashboard/proposals");
+      } else {
+        toast.error(submitResult.error || "Gagal submit proposal");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Gagal mengajukan proposal");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -57,12 +192,20 @@ export default function CreateProposalPage() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline">
-              Simpan Draft
+            <Button 
+              variant="outline"
+              onClick={handleSaveDraft}
+              disabled={saving || submitting}
+            >
+              {saving ? "Menyimpan..." : "Simpan Draft"}
             </Button>
-            <Button className="bg-gradient-to-r from-primary to-primary/90">
+            <Button 
+              className="bg-gradient-to-r from-primary to-primary/90"
+              onClick={handleSubmit}
+              disabled={saving || submitting}
+            >
               <Check className="w-4 h-4 mr-2" />
-              Submit Proposal
+              {submitting ? "Mengajukan..." : "Submit Proposal"}
             </Button>
           </div>
         </div>
@@ -85,16 +228,16 @@ export default function CreateProposalPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="periode">Periode Penelitian *</Label>
-                    <Select>
+                    <Select value={formData.periodeId} onValueChange={(value) => handleInputChange('periodeId', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih periode" />
                       </SelectTrigger>
                       <SelectContent>
-                        {periode.map((p) => (
-                          <SelectItem key={p.id} value={p.id} disabled={p.status !== "aktif"}>
+                        {periode?.map((p) => (
+                          <SelectItem key={p.id} value={p.id} disabled={p.status !== "AKTIF"}>
                             <div className="flex items-center justify-between w-full">
                               <span>{p.nama}</span>
-                              {p.status === "aktif" && (
+                              {p.status === "AKTIF" && (
                                 <Badge variant="outline" className="ml-2 text-green-600 border-green-200">
                                   Aktif
                                 </Badge>
@@ -108,17 +251,17 @@ export default function CreateProposalPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="skema">Skema Penelitian *</Label>
-                    <Select>
+                    <Select value={formData.skemaId} onValueChange={(value) => handleInputChange('skemaId', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih skema" />
                       </SelectTrigger>
                       <SelectContent>
-                        {skema.map((s) => (
+                        {skema?.map((s) => (
                           <SelectItem key={s.id} value={s.id}>
                             <div>
                               <div className="font-medium">{s.nama}</div>
                               <div className="text-sm text-muted-foreground">
-                                {s.dana > 0 ? `Rp ${s.dana.toLocaleString('id-ID')}` : "Mandiri"}
+                                {Number(s.dana) > 0 ? `Rp ${Number(s.dana).toLocaleString('id-ID')}` : "Mandiri"}
                               </div>
                             </div>
                           </SelectItem>
@@ -134,20 +277,22 @@ export default function CreateProposalPage() {
                     id="judul"
                     placeholder="Masukkan judul penelitian yang jelas dan spesifik"
                     className="text-base"
+                    value={formData.judul}
+                    onChange={(e) => handleInputChange('judul', e.target.value)}
                   />
                   <p className="text-sm text-muted-foreground">
-                    Maksimal 500 karakter
+                    {formData.judul.length}/500 karakter
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="bidang">Bidang Keahlian *</Label>
-                  <Select>
+                  <Select value={formData.bidangKeahlianId} onValueChange={(value) => handleInputChange('bidangKeahlianId', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih bidang keahlian" />
                     </SelectTrigger>
                     <SelectContent>
-                      {bidangKeahlian.map((b) => (
+                      {bidangKeahlian?.map((b) => (
                         <SelectItem key={b.id} value={b.id}>
                           {b.nama}
                         </SelectItem>
@@ -163,10 +308,12 @@ export default function CreateProposalPage() {
                     rows={6}
                     placeholder="Tuliskan abstrak penelitian dengan ringkas dan jelas (maksimal 500 karakter)"
                     className="resize-none"
+                    value={formData.abstrak}
+                    onChange={(e) => handleInputChange('abstrak', e.target.value)}
                   />
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Jelaskan latar belakang, tujuan, metode, dan manfaat penelitian</span>
-                    <span>0/500</span>
+                    <span>{formData.abstrak.length}/500</span>
                   </div>
                 </div>
               </CardContent>
@@ -188,14 +335,30 @@ export default function CreateProposalPage() {
                   <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <div className="space-y-2">
                     <p className="text-sm font-medium">
-                      Drag & drop file atau klik untuk browse
+                      {file ? file.name : "Drag & drop file atau klik untuk browse"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Hanya file PDF, maksimal 10MB
                     </p>
+                    {file && (
+                      <p className="text-xs text-green-600">
+                        Ukuran: {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    )}
                   </div>
-                  <Button variant="outline" className="mt-4">
-                    Pilih File
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                  >
+                    {file ? "Ganti File" : "Pilih File"}
                   </Button>
                 </div>
 
@@ -215,52 +378,15 @@ export default function CreateProposalPage() {
               </CardContent>
             </Card>
 
-            {/* Team Members */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    <div>
-                      <CardTitle>Anggota Tim</CardTitle>
-                      <CardDescription className="mt-1">
-                        Maksimal 4 orang (termasuk ketua)
-                      </CardDescription>
-                    </div>
+            {/* Team Members - Will be added after proposal creation */}
+            <Card className="border-0 shadow-sm bg-muted/50">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3 text-muted-foreground">
+                  <Users className="w-5 h-5" />
+                  <div>
+                    <p className="text-sm font-medium">Anggota Tim</p>
+                    <p className="text-xs">Anda dapat menambahkan anggota tim setelah menyimpan draft proposal</p>
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Tambah Anggota
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {anggotaTim.map((anggota, index) => (
-                    <div key={anggota.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                          {anggota.nama.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{anggota.nama}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {anggota.type === "dosen" ? `NIDN: ${anggota.nidn}` : `NIM: ${anggota.nim}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant={anggota.role === "ketua" ? "default" : "secondary"}>
-                          {anggota.role === "ketua" ? "Ketua" : "Anggota"}
-                        </Badge>
-                        {anggota.role !== "ketua" && (
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>

@@ -1,13 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +39,16 @@ import {
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
+}
+
+interface SessionUser {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  name?: string;
+  nidn?: string;
+  nim?: string;
 }
 
 const sidebarNavigation = [
@@ -124,6 +135,54 @@ const sidebarNavigation = [
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch current session
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session');
+        const data = await response.json();
+
+        if (data.success) {
+          setUser(data.user);
+        } else {
+          router.push('/login');
+        }
+      } catch (error) {
+        console.error('Session fetch error:', error);
+        router.push('/login');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSession();
+  }, [router]);
+
+  // Logout handler
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Logout berhasil');
+        router.push('/login');
+        router.refresh();
+      } else {
+        toast.error('Logout gagal');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Terjadi kesalahan');
+    }
+  };
 
   // Generate breadcrumbs from pathname
   const generateBreadcrumbs = () => {
@@ -150,6 +209,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const breadcrumbs = generateBreadcrumbs();
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (user?.name) {
+      return user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    return user?.username.slice(0, 2).toUpperCase() || 'U';
+  };
+
+  // Get role badge color
+  const getRoleBadgeColor = () => {
+    switch (user?.role) {
+      case 'ADMIN': return 'bg-red-100 text-red-700';
+      case 'DOSEN': return 'bg-blue-100 text-blue-700';
+      case 'MAHASISWA': return 'bg-green-100 text-green-700';
+      case 'REVIEWER': return 'bg-purple-100 text-purple-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -218,35 +308,42 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start p-2 h-auto">
                   <Avatar className="w-8 h-8 mr-3">
-                    <AvatarImage src="/placeholder-avatar.jpg" />
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                      JD
+                      {getUserInitials()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium">Dr. John Doe</p>
-                    <p className="text-xs text-muted-foreground">Dosen</p>
+                    <p className="text-sm font-medium">{user?.name || user?.username}</p>
+                    <p className="text-xs text-muted-foreground">{user?.role}</p>
                   </div>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  <div>
+                    <p className="font-medium">{user?.name || user?.username}</p>
+                    <p className="text-xs font-normal text-muted-foreground">{user?.email}</p>
+                    <Badge className={`mt-1 ${getRoleBadgeColor()}`}>
+                      {user?.role}
+                    </Badge>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <HelpCircle className="mr-2 h-4 w-4" />
-                  Help & Support
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>

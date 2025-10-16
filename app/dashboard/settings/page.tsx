@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   Settings,
   User,
@@ -26,40 +28,93 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
-import { useState } from "react";
+import { usePeriode, useSkema, useBidangKeahlian } from "@/hooks/use-data";
+import { periodeApi, skemaApi, bidangKeahlianApi, type Periode, type Skema, type BidangKeahlian } from "@/lib/api-client";
+import { PeriodeFormDialog } from "@/components/settings/periode-form-dialog";
+import { SkemaFormDialog } from "@/components/settings/skema-form-dialog";
+import { BidangKeahlianFormDialog } from "@/components/settings/bidang-keahlian-form-dialog";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const [showPassword, setShowPassword] = useState(false);
 
-  // Mock data for admin settings
-  const periodeData = [
-    { id: 1, nama: "Periode 2025-1", tanggalMulai: "2025-01-01", tanggalSelesai: "2025-06-30", status: "aktif" },
-    { id: 2, nama: "Periode 2024-2", tanggalMulai: "2024-07-01", tanggalSelesai: "2024-12-31", status: "selesai" },
-  ];
+  // Fetch data from API
+  const { data: periodeData, loading: periodeLoading, refetch: refetchPeriode } = usePeriode();
+  const { data: skemaData, loading: skemaLoading, refetch: refetchSkema } = useSkema();
+  const { data: bidangKeahlianData, loading: bidangLoading, refetch: refetchBidang } = useBidangKeahlian();
 
-  const skemaData = [
-    { id: 1, nama: "Penelitian Fundamental", dana: 15000000, durasi: 12, status: "aktif" },
-    { id: 2, nama: "Penelitian Terapan", dana: 25000000, durasi: 18, status: "aktif" },
-    { id: 3, nama: "Penelitian Kolaboratif", dana: 50000000, durasi: 24, status: "draft" },
-  ];
+  // Dialog states
+  const [periodeDialog, setPeriodeDialog] = useState({ open: false, data: null as Periode | null });
+  const [skemaDialog, setSkemaDialog] = useState({ open: false, data: null as Skema | null });
+  const [bidangDialog, setBidangDialog] = useState({ open: false, data: null as BidangKeahlian | null });
 
-  const bidangKeahlianData = [
-    { id: 1, nama: "Teknik Informatika", kode: "TI", fakultas: "Teknik" },
-    { id: 2, nama: "Sistem Informasi", kode: "SI", fakultas: "Teknik" },
-    { id: 3, nama: "Pendidikan Matematika", kode: "PM", fakultas: "Tarbiyah" },
-    { id: 4, nama: "Ekonomi Islam", kode: "EI", fakultas: "Syariah" },
-  ];
+  // Delete confirmation states
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    type: 'periode' | 'skema' | 'bidang' | null;
+    id: string | null;
+    name: string | null;
+  }>({ open: false, type: null, id: null, name: null });
+  const [deleting, setDeleting] = useState(false);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "AKTIF":
       case "aktif":
         return <Badge variant="default">Aktif</Badge>;
+      case "NONAKTIF":
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">Nonaktif</Badge>;
+      case "SELESAI":
       case "selesai":
         return <Badge variant="outline">Selesai</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDialog.id || !deleteDialog.type) return;
+
+    setDeleting(true);
+    try {
+      let result;
+      switch (deleteDialog.type) {
+        case 'periode':
+          result = await periodeApi.delete(deleteDialog.id);
+          if (result.success) {
+            toast.success("Periode berhasil dihapus!");
+            await refetchPeriode();
+            setDeleteDialog({ open: false, type: null, id: null, name: null });
+          } else {
+            toast.error(result.error || "Gagal menghapus periode");
+          }
+          break;
+        case 'skema':
+          result = await skemaApi.delete(deleteDialog.id);
+          if (result.success) {
+            toast.success("Skema berhasil dihapus!");
+            await refetchSkema();
+            setDeleteDialog({ open: false, type: null, id: null, name: null });
+          } else {
+            toast.error(result.error || "Gagal menghapus skema");
+          }
+          break;
+        case 'bidang':
+          result = await bidangKeahlianApi.delete(deleteDialog.id);
+          if (result.success) {
+            toast.success("Bidang keahlian berhasil dihapus!");
+            await refetchBidang();
+            setDeleteDialog({ open: false, type: null, id: null, name: null });
+          } else {
+            toast.error(result.error || "Gagal menghapus bidang keahlian");
+          }
+          break;
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menghapus data");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -199,42 +254,81 @@ export default function SettingsPage() {
                   Kelola periode waktu untuk submission dan review proposal
                 </p>
               </div>
-              <Button className="bg-gradient-to-r from-primary to-primary/90">
+              <Button 
+                className="bg-gradient-to-r from-primary to-primary/90"
+                onClick={() => setPeriodeDialog({ open: true, data: null })}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Tambah Periode
               </Button>
             </div>
 
-            <div className="grid gap-4">
-              {periodeData.map((periode) => (
-                <Card key={periode.id} className="border-0 shadow-sm">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h4 className="font-medium text-foreground">{periode.nama}</h4>
-                          {getStatusBadge(periode.status)}
+            {periodeLoading ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground">Loading...</p>
+                </CardContent>
+              </Card>
+            ) : periodeData && periodeData.length > 0 ? (
+              <div className="grid gap-4">
+                {periodeData.map((periode) => (
+                  <Card key={periode.id} className="border-0 shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="font-medium text-foreground">{periode.nama}</h4>
+                            {getStatusBadge(periode.status)}
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Tahun: {periode.tahun} • Kuota: {periode.kuota}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(periode.tanggalBuka).toLocaleDateString('id-ID')} - {' '}
+                            {new Date(periode.tanggalTutup).toLocaleDateString('id-ID')}
+                          </p>
+                          {periode._count && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Proposal: {periode._count.proposals}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(periode.tanggalMulai).toLocaleDateString('id-ID')} - {' '}
-                          {new Date(periode.tanggalSelesai).toLocaleDateString('id-ID')}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setPeriodeDialog({ open: true, data: periode })}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 border-red-200"
+                            onClick={() => setDeleteDialog({
+                              open: true,
+                              type: 'periode',
+                              id: periode.id,
+                              name: periode.nama,
+                            })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Hapus
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-red-600 border-red-200">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Hapus
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground">Belum ada data periode</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Skema Tab */}
@@ -246,42 +340,79 @@ export default function SettingsPage() {
                   Kelola jenis-jenis skema penelitian dan pendanaan
                 </p>
               </div>
-              <Button className="bg-gradient-to-r from-primary to-primary/90">
+              <Button 
+                className="bg-gradient-to-r from-primary to-primary/90"
+                onClick={() => setSkemaDialog({ open: true, data: null })}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Tambah Skema
               </Button>
             </div>
 
-            <div className="grid gap-4">
-              {skemaData.map((skema) => (
-                <Card key={skema.id} className="border-0 shadow-sm">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h4 className="font-medium text-foreground">{skema.nama}</h4>
-                          {getStatusBadge(skema.status)}
+            {skemaLoading ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground">Loading...</p>
+                </CardContent>
+              </Card>
+            ) : skemaData && skemaData.length > 0 ? (
+              <div className="grid gap-4">
+                {skemaData.map((skema) => (
+                  <Card key={skema.id} className="border-0 shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="font-medium text-foreground">{skema.nama}</h4>
+                            {getStatusBadge(skema.status)}
+                            <Badge variant="outline">{skema.tipe}</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                            <p>Dana: Rp {parseFloat(skema.dana).toLocaleString('id-ID')}</p>
+                            {skema.deskripsi && <p>{skema.deskripsi}</p>}
+                          </div>
+                          {skema._count && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Proposal: {skema._count.proposals}
+                            </p>
+                          )}
                         </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                          <p>Dana: Rp {skema.dana.toLocaleString('id-ID')}</p>
-                          <p>Durasi: {skema.durasi} bulan</p>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setSkemaDialog({ open: true, data: skema })}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 border-red-200"
+                            onClick={() => setDeleteDialog({
+                              open: true,
+                              type: 'skema',
+                              id: skema.id,
+                              name: skema.nama,
+                            })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Hapus
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-red-600 border-red-200">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Hapus
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground">Belum ada data skema</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Bidang Keahlian Tab */}
@@ -293,41 +424,79 @@ export default function SettingsPage() {
                   Kelola bidang keahlian untuk kategorisasi proposal
                 </p>
               </div>
-              <Button className="bg-gradient-to-r from-primary to-primary/90">
+              <Button 
+                className="bg-gradient-to-r from-primary to-primary/90"
+                onClick={() => setBidangDialog({ open: true, data: null })}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Tambah Bidang
               </Button>
             </div>
 
-            <div className="grid gap-4">
-              {bidangKeahlianData.map((bidang) => (
-                <Card key={bidang.id} className="border-0 shadow-sm">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h4 className="font-medium text-foreground">{bidang.nama}</h4>
-                          <Badge variant="outline">{bidang.kode}</Badge>
+            {bidangLoading ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground">Loading...</p>
+                </CardContent>
+              </Card>
+            ) : bidangKeahlianData && bidangKeahlianData.length > 0 ? (
+              <div className="grid gap-4">
+                {bidangKeahlianData.map((bidang) => (
+                  <Card key={bidang.id} className="border-0 shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="font-medium text-foreground">{bidang.nama}</h4>
+                            {getStatusBadge(bidang.status)}
+                          </div>
+                          {bidang.deskripsi && (
+                            <p className="text-sm text-muted-foreground mb-1">
+                              {bidang.deskripsi}
+                            </p>
+                          )}
+                          {bidang._count && (
+                            <p className="text-sm text-muted-foreground">
+                              Dosen: {bidang._count.dosens} • Reviewer: {bidang._count.reviewers} • Proposal: {bidang._count.proposals}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Fakultas: {bidang.fakultas}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setBidangDialog({ open: true, data: bidang })}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 border-red-200"
+                            onClick={() => setDeleteDialog({
+                              open: true,
+                              type: 'bidang',
+                              id: bidang.id,
+                              name: bidang.nama,
+                            })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Hapus
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-red-600 border-red-200">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Hapus
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground">Belum ada data bidang keahlian</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Security Tab */}
@@ -535,6 +704,62 @@ export default function SettingsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus {deleteDialog.type === 'periode' ? 'periode' : deleteDialog.type === 'skema' ? 'skema' : 'bidang keahlian'} <strong>{deleteDialog.name}</strong>?
+              {deleteDialog.type === 'periode' && ' Periode yang memiliki proposal tidak dapat dihapus.'}
+              {deleteDialog.type === 'skema' && ' Skema yang memiliki proposal tidak dapat dihapus.'}
+              {deleteDialog.type === 'bidang' && ' Bidang keahlian yang digunakan oleh dosen, reviewer, atau proposal tidak dapat dihapus.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Menghapus...' : 'Hapus'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Form Dialogs */}
+      <PeriodeFormDialog
+        open={periodeDialog.open}
+        onOpenChange={(open) => setPeriodeDialog({ open, data: null })}
+        periode={periodeDialog.data}
+        onSuccess={() => {
+          refetchPeriode();
+          setPeriodeDialog({ open: false, data: null });
+        }}
+      />
+
+      <SkemaFormDialog
+        open={skemaDialog.open}
+        onOpenChange={(open) => setSkemaDialog({ open, data: null })}
+        skema={skemaDialog.data}
+        onSuccess={() => {
+          refetchSkema();
+          setSkemaDialog({ open: false, data: null });
+        }}
+      />
+
+      <BidangKeahlianFormDialog
+        open={bidangDialog.open}
+        onOpenChange={(open) => setBidangDialog({ open, data: null })}
+        bidangKeahlian={bidangDialog.data}
+        onSuccess={() => {
+          refetchBidang();
+          setBidangDialog({ open: false, data: null });
+        }}
+      />
     </DashboardLayout>
   );
 }

@@ -1,16 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, GraduationCap, BookOpen, Users } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, BookOpen, Users, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/dashboard';
+
+  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: "",
+    identifier: "",
     password: ""
   });
 
@@ -21,10 +28,44 @@ export default function LoginPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log("Login attempt:", formData);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Login berhasil!', {
+          description: `Selamat datang, ${data.user.name || data.user.username}`,
+        });
+        
+        // Redirect after short delay
+        setTimeout(() => {
+          router.push(redirect);
+          router.refresh();
+        }, 500);
+      } else {
+        toast.error('Login gagal', {
+          description: data.error || 'Terjadi kesalahan',
+        });
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login gagal', {
+        description: 'Terjadi kesalahan koneksi',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -58,15 +99,16 @@ export default function LoginPage() {
             <CardContent className="space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="identifier">Username atau Email</Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="nama@staiali.ac.id"
-                    value={formData.email}
+                    id="identifier"
+                    name="identifier"
+                    type="text"
+                    placeholder="admin atau admin@stai-ali.ac.id"
+                    value={formData.identifier}
                     onChange={handleInputChange}
                     className="h-11"
+                    disabled={isLoading}
                     required
                   />
                 </div>
@@ -81,6 +123,7 @@ export default function LoginPage() {
                       value={formData.password}
                       onChange={handleInputChange}
                       className="h-11 pr-10"
+                      disabled={isLoading}
                       required
                     />
                     <Button
@@ -101,15 +144,24 @@ export default function LoginPage() {
                 <Button 
                   type="submit" 
                   className="w-full h-11 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground font-medium"
+                  disabled={isLoading}
                 >
-                  Masuk ke Sistem
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    'Masuk ke Sistem'
+                  )}
                 </Button>
               </form>
               
-              <div className="text-center">
-                <Button variant="link" className="text-sm text-muted-foreground">
-                  Lupa password?
-                </Button>
+              <div className="text-center space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  <p>Default password: <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">password123</code></p>
+                  <p className="mt-1">Username: admin, dosen1, dosen2, mhs1, dll</p>
+                </div>
               </div>
             </CardContent>
           </Card>
