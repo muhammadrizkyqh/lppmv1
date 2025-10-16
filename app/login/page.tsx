@@ -1,0 +1,185 @@
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, GraduationCap, BookOpen, Users } from "lucide-react";
+
+export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: ""
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // TODO: Implement login logic
+    console.log("Login attempt:", formData);
+  };
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Left side - Login Form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background to-secondary/20">
+        <div className="w-full max-w-md space-y-6">
+          {/* Logo and Title */}
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg">
+              <GraduationCap className="w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                LPPM STAI Ali
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Sistem Informasi Penelitian & Pengabdian Masyarakat
+              </p>
+            </div>
+          </div>
+
+          {/* Login Card */}
+          <Card className="border-0 shadow-2xl shadow-primary/5">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-2xl font-semibold">Masuk</CardTitle>
+              <CardDescription>
+                Masukkan email dan password untuk mengakses sistem
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="nama@staiali.ac.id"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="h-11"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Masukkan password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="h-11 pr-10"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground font-medium"
+                >
+                  Masuk ke Sistem
+                </Button>
+              </form>
+              
+              <div className="text-center">
+                <Button variant="link" className="text-sm text-muted-foreground">
+                  Lupa password?
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <p className="text-center text-sm text-muted-foreground">
+            © 2025 STAI Ali. All rights reserved.
+          </p>
+        </div>
+      </div>
+
+      {/* Right side - Hero Section */}
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-primary-foreground relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+        
+        <div className="relative z-10 flex flex-col justify-center p-12 space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-4xl font-bold leading-tight">
+              Mengelola Penelitian & PKM
+              <span className="block text-primary-foreground/90">dengan Mudah</span>
+            </h2>
+            <p className="text-lg text-primary-foreground/80 leading-relaxed">
+              Platform digital terintegrasi untuk proposal, review, monitoring, 
+              dan pelaporan penelitian serta pengabdian masyarakat
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-foreground/10 backdrop-blur-sm">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Pengajuan Digital</h3>
+                <p className="text-primary-foreground/70 text-sm">
+                  Submit proposal penelitian tanpa perlu print dokumen
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-foreground/10 backdrop-blur-sm">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Review Terintegrasi</h3>
+                <p className="text-primary-foreground/70 text-sm">
+                  Sistem review online dengan penilaian terstruktur
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-foreground/10 backdrop-blur-sm">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Monitoring Real-time</h3>
+                <p className="text-primary-foreground/70 text-sm">
+                  Pantau progress penelitian dan kelola luaran
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute top-20 right-20 w-32 h-32 rounded-full bg-primary-foreground/5 blur-3xl" />
+        <div className="absolute bottom-20 right-32 w-24 h-24 rounded-full bg-primary-foreground/10 blur-2xl" />
+      </div>
+    </div>
+  );
+}
