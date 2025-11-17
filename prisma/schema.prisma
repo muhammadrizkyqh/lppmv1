@@ -29,10 +29,11 @@ enum UserStatus {
 enum ProposalStatus {
   DRAFT
   DIAJUKAN
-  REVIEW
+  DIREVIEW
   REVISI
-  DISETUJUI
+  DITERIMA
   DITOLAK
+  BERJALAN
   SELESAI
 }
 
@@ -81,7 +82,6 @@ model User {
   mahasiswa         Mahasiswa?
   reviewer          Reviewer?
   proposals         Proposal[]     @relation("ProposalCreator")
-  reviews           Review[]
   notifications     Notification[]
 
   @@index([email])
@@ -149,7 +149,8 @@ model Reviewer {
   // Relations
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
-  reviews         Review[]
+  assignedReviews ProposalReviewer[] @relation("ReviewerAssignments")
+  submittedReviews Review[]          @relation("ReviewSubmissions")
 
   @@index([email])
 }
@@ -241,7 +242,7 @@ model Proposal {
   bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
   
   members         ProposalMember[]
-  reviews         Review[]
+  reviewers       ProposalReviewer[]
   revisions       ProposalRevision[]
   monitorings     Monitoring[]
 
@@ -289,36 +290,49 @@ model ProposalRevision {
 // REVIEW & PENILAIAN
 // ==========================================
 
-model Review {
-  id              String                @id @default(cuid())
-  proposalId      String
-  reviewerId      String
-  userId          String
+model ProposalReviewer {
+  id          String   @id @default(cuid())
+  proposalId  String
+  reviewerId  String
+  status      String   @default("PENDING") // PENDING, SELESAI
+  deadline    DateTime
+  assignedAt  DateTime @default(now())
   
-  // Kriteria Penilaian (25% each)
-  nilaiKesesuaian Int?                 // 1-100
-  nilaiMetode     Int?                 // 1-100
-  nilaiTimeline   Int?                 // 1-100
-  nilaiManfaat    Int?                 // 1-100
-  
-  nilaiTotal      Decimal?             @db.Decimal(5, 2)
-  rekomendasi     ReviewRecommendation?
-  catatan         String?              @db.Text
-  
-  status          String               @default("PENDING") // PENDING | COMPLETED
-  deadline        DateTime
-  completedAt     DateTime?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-
   // Relations
-  proposal        Proposal             @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  reviewer        Reviewer             @relation(fields: [reviewerId], references: [id])
-  user            User                 @relation(fields: [userId], references: [id])
-
+  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  reviewer    Reviewer @relation("ReviewerAssignments", fields: [reviewerId], references: [id])
+  review      Review?  // One-to-one with Review
+  
   @@unique([proposalId, reviewerId])
   @@index([proposalId])
   @@index([reviewerId])
+  @@map("proposal_reviewer")
+}
+
+model Review {
+  id                  String            @id @default(cuid())
+  proposalReviewerId  String            @unique
+  reviewerId          String
+  
+  // 4 Kriteria @ 25% (sesuai aturan.md)
+  nilaiKriteria1      Int               // Kesesuaian judul & latar belakang (1-100)
+  nilaiKriteria2      Int               // Kejelasan metode (1-100)
+  nilaiKriteria3      Int               // Kelayakan timeline (1-100)
+  nilaiKriteria4      Int               // Manfaat penelitian (1-100)
+  
+  nilaiTotal          Decimal           @db.Decimal(5, 2) // Auto calculated: (K1+K2+K3+K4)/4
+  rekomendasi         ReviewRecommendation // DITERIMA, REVISI, DITOLAK
+  catatan             String?           @db.Text
+  
+  submittedAt         DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  // Relations
+  proposalReviewer    ProposalReviewer  @relation(fields: [proposalReviewerId], references: [id], onDelete: Cascade)
+  reviewer            Reviewer          @relation("ReviewSubmissions", fields: [reviewerId], references: [id])
+
+  @@index([reviewerId])
+  @@map("review")
 }
 
 // ==========================================

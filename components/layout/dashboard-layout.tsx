@@ -51,87 +51,216 @@ interface SessionUser {
   nim?: string;
 }
 
-const sidebarNavigation = [
-  {
-    title: "Dashboard",
-    items: [
+// Navigation items by role
+const getNavigationByRole = (role: string) => {
+  const baseItems = [
+    {
+      title: "Dashboard",
+      items: [
+        {
+          title: "Beranda",
+          icon: Home,
+          href: "/dashboard",
+          badge: null,
+          roles: ["ADMIN", "DOSEN", "MAHASISWA", "REVIEWER"]
+        },
+      ],
+    },
+  ];
+
+  // ADMIN - Full access
+  if (role === "ADMIN") {
+    return [
+      ...baseItems,
       {
-        title: "Beranda",
-        icon: Home,
-        href: "/dashboard",
-        badge: null,
+        title: "Penelitian & PKM",
+        items: [
+          {
+            title: "Semua Proposal",
+            icon: FileText,
+            href: "/dashboard/proposals",
+            badge: null,
+          },
+          {
+            title: "Review & Approval",
+            icon: ClipboardList,
+            href: "/dashboard/review",
+            badge: null,
+          },
+          {
+            title: "Monitoring",
+            icon: BarChart3,
+            href: "/dashboard/monitoring",
+            badge: null,
+          },
+        ],
       },
       {
-        title: "Notifikasi",
-        icon: Bell,
-        href: "/dashboard/notifications",
-        badge: "5",
-      },
-    ],
-  },
-  {
-    title: "Penelitian & PKM",
-    items: [
-      {
-        title: "Proposal Saya",
-        icon: FileText,
-        href: "/dashboard/proposals",
-        badge: null,
+        title: "Data Master",
+        items: [
+          {
+            title: "Kelola Data Master",
+            icon: Users,
+            href: "/dashboard/data-master",
+            badge: null,
+          },
+        ],
       },
       {
-        title: "Ajukan Proposal",
-        icon: BookOpen,
-        href: "/dashboard/proposals/create",
-        badge: null,
+        title: "Pengaturan",
+        items: [
+          {
+            title: "Pengaturan Sistem",
+            icon: Settings,
+            href: "/dashboard/settings",
+            badge: null,
+          },
+        ],
+      },
+      {
+        title: "Laporan",
+        items: [
+          {
+            title: "Dashboard Analytics",
+            icon: BarChart3,
+            href: "/dashboard/reports",
+            badge: null,
+          },
+        ],
+      },
+    ];
+  }
+
+  // DOSEN - Can submit proposals, see own proposals, monitoring
+  if (role === "DOSEN") {
+    return [
+      ...baseItems,
+      {
+        title: "Penelitian & PKM",
+        items: [
+          {
+            title: "Proposal Saya",
+            icon: FileText,
+            href: "/dashboard/proposals",
+            badge: null,
+          },
+          {
+            title: "Ajukan Proposal",
+            icon: BookOpen,
+            href: "/dashboard/proposals/create",
+            badge: null,
+          },
+          {
+            title: "Monitoring",
+            icon: BarChart3,
+            href: "/dashboard/monitoring",
+            badge: null,
+          },
+        ],
       },
       {
         title: "Review",
-        icon: ClipboardList,
-        href: "/dashboard/review",
-        badge: "2",
+        items: [
+          {
+            title: "Tugas Review",
+            icon: ClipboardList,
+            href: "/dashboard/reviews",
+            badge: null,
+          },
+        ],
       },
       {
-        title: "Monitoring",
-        icon: BarChart3,
-        href: "/dashboard/monitoring",
-        badge: null,
+        title: "Laporan",
+        items: [
+          {
+            title: "Laporan Saya",
+            icon: ClipboardList,
+            href: "/dashboard/reports",
+            badge: null,
+          },
+        ],
       },
-    ],
-  },
-  {
-    title: "Data Master",
-    items: [
       {
-        title: "Kelola Data",
-        icon: Users,
-        href: "/dashboard/data-master",
-        badge: null,
+        title: "Pengaturan",
+        items: [
+          {
+            title: "Profile",
+            icon: User,
+            href: "/dashboard/settings",
+            badge: null,
+          },
+        ],
       },
-    ],
-  },
-  {
-    title: "Laporan & Analytics",
-    items: [
+    ];
+  }
+
+  // REVIEWER - Can review assigned proposals
+  if (role === "REVIEWER") {
+    return [
+      ...baseItems,
       {
-        title: "Dashboard Analytics",
-        icon: BarChart3,
-        href: "/dashboard/reports",
-        badge: null,
+        title: "Review",
+        items: [
+          {
+            title: "Proposal Ditugaskan",
+            icon: ClipboardList,
+            href: "/dashboard/review",
+            badge: "2",
+          },
+          {
+            title: "Riwayat Review",
+            icon: FileText,
+            href: "/dashboard/review/history",
+            badge: null,
+          },
+        ],
       },
-    ],
-  },
-  {
-    title: "Pengaturan",
-    items: [
       {
-        title: "Settings",
-        icon: Settings,
-        href: "/dashboard/settings",
-        badge: null,
+        title: "Pengaturan",
+        items: [
+          {
+            title: "Profile",
+            icon: User,
+            href: "/dashboard/settings",
+            badge: null,
+          },
+        ],
       },
-    ],
-  },
-];
+    ];
+  }
+
+  // MAHASISWA - Read-only, can see proposals they're part of
+  if (role === "MAHASISWA") {
+    return [
+      ...baseItems,
+      {
+        title: "Penelitian & PKM",
+        items: [
+          {
+            title: "Penelitian Saya",
+            icon: FileText,
+            href: "/dashboard/proposals",
+            badge: null,
+          },
+        ],
+      },
+      {
+        title: "Pengaturan",
+        items: [
+          {
+            title: "Profile",
+            icon: User,
+            href: "/dashboard/settings",
+            badge: null,
+          },
+        ],
+      },
+    ];
+  }
+
+  // Default fallback
+  return baseItems;
+};
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
@@ -172,6 +301,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       const data = await response.json();
 
       if (data.success) {
+        // Clear localStorage
+        localStorage.removeItem("userRole");
+        localStorage.removeItem("userId");
+        localStorage.removeItem("userName");
+        console.log("🗑️ Cleared localStorage");
+        
         toast.success('Logout berhasil');
         router.push('/login');
         router.refresh();
@@ -263,7 +398,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           
           <SidebarContent className="p-4">
             <nav className="space-y-6">
-              {sidebarNavigation.map((section, index) => (
+              {getNavigationByRole(user?.role || "MAHASISWA").map((section, index) => (
                 <div key={index}>
                   <h3 className="mb-3 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {section.title}

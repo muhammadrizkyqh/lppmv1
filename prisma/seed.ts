@@ -11,6 +11,7 @@ async function main() {
   await prisma.notification.deleteMany()
   await prisma.monitoring.deleteMany()
   await prisma.review.deleteMany()
+  await prisma.proposalReviewer.deleteMany()
   await prisma.proposalRevision.deleteMany()
   await prisma.proposalMember.deleteMany()
   await prisma.proposal.deleteMany()
@@ -275,7 +276,7 @@ async function main() {
   const skemaTerapan = await prisma.skema.findFirst({ where: { tipe: 'TERAPAN' } })
 
   if (skemaDasar && skemaTerapan) {
-    // Proposal 1 - Disetujui
+    // Proposal 1 - Diterima
     const proposal1 = await prisma.proposal.create({
       data: {
         periodeId: periode2025.id,
@@ -285,7 +286,7 @@ async function main() {
         bidangKeahlianId: bidangPBA.id,
         judul: 'Pengembangan Media Pembelajaran Bahasa Arab Berbasis Teknologi Digital',
         abstrak: 'Penelitian ini bertujuan untuk mengembangkan media pembelajaran bahasa Arab berbasis teknologi digital yang interaktif dan menarik untuk meningkatkan motivasi dan hasil belajar siswa.',
-        status: 'DISETUJUI',
+        status: 'DITERIMA',
         submittedAt: new Date('2025-02-01'),
         approvedAt: new Date('2025-02-15'),
         nilaiTotal: 85.5,
@@ -299,7 +300,7 @@ async function main() {
       ],
     })
 
-    // Proposal 2 - Review
+    // Proposal 2 - Direview
     const proposal2 = await prisma.proposal.create({
       data: {
         periodeId: periode2025.id,
@@ -309,7 +310,7 @@ async function main() {
         bidangKeahlianId: bidangPI.id,
         judul: 'Implementasi Pembelajaran Berbasis Karakter di Madrasah Ibtidaiyah',
         abstrak: 'Penelitian ini mengkaji implementasi pembelajaran berbasis karakter di Madrasah Ibtidaiyah untuk membentuk generasi yang berakhlak mulia.',
-        status: 'REVIEW',
+        status: 'DIREVIEW',
         submittedAt: new Date('2025-02-10'),
       },
     })
@@ -335,6 +336,22 @@ async function main() {
         status: 'DRAFT',
       },
     })
+
+    // Proposal 4 - DIAJUKAN (untuk testing assign reviewer)
+    await prisma.proposal.create({
+      data: {
+        periodeId: periode2025.id,
+        skemaId: skemaTerapan.id,
+        ketuaId: dosen1.id,
+        creatorId: dosen1User.id,
+        bidangKeahlianId: bidangPI.id,
+        judul: 'Pengembangan Sistem Informasi Manajemen Proposal Berbasis Web',
+        abstrak: 'Penelitian ini bertujuan mengembangkan sistem informasi untuk mengelola proposal penelitian secara digital dengan fitur lengkap untuk admin, dosen, dan reviewer.',
+        status: 'DIAJUKAN',
+        filePath: '/uploads/proposal-4.pdf',
+        submittedAt: new Date(),
+      },
+    })
   }
 
   console.log('✅ Seeding completed successfully!')
@@ -343,7 +360,7 @@ async function main() {
   console.log(`- Skema: 4`)
   console.log(`- Periode: 2`)
   console.log(`- Users: 9 (1 Admin, 3 Dosen, 2 Mahasiswa, 2 Reviewer, 1 Super Admin)`)
-  console.log(`- Proposals: 3`)
+  console.log(`- Proposals: 4`)
   console.log('\n🔑 Login Credentials (username/password):')
   console.log('- Admin: admin / password123')
   console.log('- Dosen 1: dosen1 / password123')

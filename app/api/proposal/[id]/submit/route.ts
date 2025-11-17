@@ -78,9 +78,14 @@ export async function POST(
 
     // Validate submission deadline
     const now = new Date()
-    if (now > proposal.periode.tanggalTutup) {
+    const tglTutup = new Date(proposal.periode.tanggalTutup)
+    
+    if (now > tglTutup) {
       return NextResponse.json(
-        { success: false, error: 'Periode pengajuan sudah ditutup' },
+        { 
+          success: false, 
+          error: `Periode pengajuan sudah ditutup pada ${tglTutup.toLocaleDateString('id-ID')}` 
+        },
         { status: 400 }
       )
     }

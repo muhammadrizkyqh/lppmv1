@@ -57,12 +57,6 @@ export async function GET(request: NextRequest) {
             lastLogin: true,
           },
         },
-        reviews: {
-          select: {
-            id: true,
-            status: true,
-          },
-        },
       },
       orderBy: { nama: 'asc' },
       skip,

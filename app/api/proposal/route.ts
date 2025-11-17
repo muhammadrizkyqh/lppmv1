@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         _count: {
           select: {
             members: true,
-            reviews: true,
+            reviewers: true,
           },
         },
       },
@@ -167,6 +167,31 @@ export async function POST(request: NextRequest) {
     if (periode.status !== 'AKTIF') {
       return NextResponse.json(
         { success: false, error: 'Hanya periode aktif yang dapat diajukan' },
+        { status: 400 }
+      )
+    }
+
+    // Check periode date range
+    const now = new Date()
+    const tglBuka = new Date(periode.tanggalBuka)
+    const tglTutup = new Date(periode.tanggalTutup)
+
+    if (now < tglBuka) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Periode belum dibuka. Periode dibuka pada ${tglBuka.toLocaleDateString('id-ID')}` 
+        },
+        { status: 400 }
+      )
+    }
+
+    if (now > tglTutup) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Periode sudah ditutup. Periode ditutup pada ${tglTutup.toLocaleDateString('id-ID')}` 
+        },
         { status: 400 }
       )
     }

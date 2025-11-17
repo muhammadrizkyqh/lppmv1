@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   FileText,
   Upload,
@@ -20,11 +21,20 @@ import {
   AlertCircle,
   Check,
   X,
-  Plus
+  Plus,
+  Clock,
+  AlertTriangle,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePeriode, useSkema, useBidangKeahlian } from "@/hooks/use-data";
 import { proposalApi, uploadApi } from "@/lib/api-client";
+import { 
+  isPeriodeOpen, 
+  getRemainingDays, 
+  getPeriodeStatusBadge,
+  formatPeriodeDateRange 
+} from "@/lib/proposal-validation";
 
 export default function CreateProposalPage() {
   const router = useRouter();
@@ -47,6 +57,22 @@ export default function CreateProposalPage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Get selected periode details
+  const selectedPeriode = useMemo(() => {
+    return periode?.find(p => p.id === formData.periodeId);
+  }, [periode, formData.periodeId]);
+
+  // Check periode status
+  const periodeCheck = useMemo(() => {
+    if (!selectedPeriode) return null;
+    return {
+      ...isPeriodeOpen(selectedPeriode),
+      remainingDays: getRemainingDays(selectedPeriode),
+      badge: getPeriodeStatusBadge(selectedPeriode),
+      dateRange: formatPeriodeDateRange(selectedPeriode),
+    };
+  }, [selectedPeriode]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -75,6 +101,13 @@ export default function CreateProposalPage() {
       toast.error("Pilih periode terlebih dahulu");
       return false;
     }
+    
+    // Check periode status
+    if (selectedPeriode && periodeCheck && !periodeCheck.isOpen) {
+      toast.error(periodeCheck.message || "Periode tidak aktif");
+      return false;
+    }
+    
     if (!formData.skemaId) {
       toast.error("Pilih skema penelitian");
       return false;
@@ -107,19 +140,33 @@ export default function CreateProposalPage() {
 
     setSaving(true);
     try {
+      let fileData: any = {};
+
+      // Upload file first if exists
+      if (file) {
+        const uploadResult = await uploadApi.uploadFile(file, formData.periodeId);
+        if (!uploadResult.success) {
+          toast.error("Gagal upload file");
+          return;
+        }
+        fileData = {
+          filePath: uploadResult.data.filePath,
+          fileName: uploadResult.data.fileName,
+          fileSize: uploadResult.data.fileSize
+        };
+      }
+
+      // Create proposal with file info
       const result = await proposalApi.create({
         periodeId: formData.periodeId,
         skemaId: formData.skemaId,
         bidangKeahlianId: formData.bidangKeahlianId,
         judul: formData.judul,
-        abstrak: formData.abstrak
+        abstrak: formData.abstrak,
+        ...fileData
       });
 
       if (result.success && result.data) {
-        // Upload file if exists
-        if (file) {
-          await uploadApi.uploadFile(file, formData.periodeId, result.data.id);
-        }
         toast.success("Draft proposal berhasil disimpan!");
         router.push("/dashboard/proposals");
       } else {
@@ -142,13 +189,23 @@ export default function CreateProposalPage() {
 
     setSubmitting(true);
     try {
-      // 1. Create proposal
+      // 1. Upload file first
+      const uploadResult = await uploadApi.uploadFile(file, formData.periodeId);
+      if (!uploadResult.success) {
+        toast.error("Gagal upload file");
+        return;
+      }
+
+      // 2. Create proposal with file info
       const createResult = await proposalApi.create({
         periodeId: formData.periodeId,
         skemaId: formData.skemaId,
         bidangKeahlianId: formData.bidangKeahlianId,
         judul: formData.judul,
-        abstrak: formData.abstrak
+        abstrak: formData.abstrak,
+        filePath: uploadResult.data.filePath,
+        fileName: uploadResult.data.fileName,
+        fileSize: uploadResult.data.fileSize
       });
 
       if (!createResult.success || !createResult.data) {
@@ -157,13 +214,6 @@ export default function CreateProposalPage() {
       }
 
       const proposalId = createResult.data.id;
-
-      // 2. Upload file
-      const uploadResult = await uploadApi.uploadFile(file, formData.periodeId, proposalId);
-      if (!uploadResult.success) {
-        toast.error("Gagal upload file");
-        return;
-      }
 
       // 3. Submit proposal
       const submitResult = await proposalApi.submit(proposalId);
@@ -195,20 +245,41 @@ export default function CreateProposalPage() {
             <Button 
               variant="outline"
               onClick={handleSaveDraft}
-              disabled={saving || submitting}
+              disabled={saving || submitting || !!(periodeCheck && !periodeCheck.isOpen)}
             >
+              <Save className="w-4 h-4 mr-2" />
               {saving ? "Menyimpan..." : "Simpan Draft"}
             </Button>
             <Button 
               className="bg-gradient-to-r from-primary to-primary/90"
               onClick={handleSubmit}
-              disabled={saving || submitting}
+              disabled={saving || submitting || !!(periodeCheck && !periodeCheck.isOpen)}
             >
               <Check className="w-4 h-4 mr-2" />
               {submitting ? "Mengajukan..." : "Submit Proposal"}
             </Button>
           </div>
         </div>
+
+        {/* Periode Warning */}
+        {selectedPeriode && periodeCheck && !periodeCheck.isOpen && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {periodeCheck.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {selectedPeriode && periodeCheck && periodeCheck.isOpen && periodeCheck.remainingDays <= 7 && (
+          <Alert className="border-amber-200 bg-amber-50">
+            <Clock className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              <strong>Perhatian:</strong> Periode akan ditutup dalam {periodeCheck.remainingDays} hari 
+              ({periodeCheck.dateRange}). Segera lengkapi dan submit proposal Anda.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Form */}

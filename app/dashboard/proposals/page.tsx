@@ -61,6 +61,16 @@ export default function ProposalsPage() {
     title: null,
   });
   const [deleting, setDeleting] = useState(false);
+  const [submitDialog, setSubmitDialog] = useState<{
+    open: boolean;
+    id: string | null;
+    title: string | null;
+  }>({
+    open: false,
+    id: null,
+    title: null,
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   // Fetch proposals from backend
   const { data: proposalsData, loading, refetch } = useProposals();
@@ -108,6 +118,26 @@ export default function ProposalsPage() {
       return;
     }
     window.open(filePath, '_blank');
+  };
+
+  const handleSubmitProposal = async () => {
+    if (!submitDialog.id) return;
+    
+    setSubmitting(true);
+    try {
+      const result = await proposalApi.submit(submitDialog.id);
+      if (result.success) {
+        toast.success("Proposal berhasil diajukan!");
+        refetch();
+        setSubmitDialog({ open: false, id: null, title: null });
+      } else {
+        toast.error(result.error || "Gagal submit proposal");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Gagal submit proposal");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Convert backend data to UI format
@@ -387,6 +417,71 @@ export default function ProposalsPage() {
                     </div>
                   </div>
 
+                  {/* Action Buttons Row */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewProposal(proposal.id)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Lihat Detail
+                    </Button>
+                    {proposal._original?.filePath ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadProposal(proposal._original.filePath)}
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download PDF
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        className="text-gray-400"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        File Belum Ada
+                      </Button>
+                    )}
+                    {proposal.status === "draft" && (
+                      <>
+                        {proposal._original?.filePath && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSubmitDialog({ open: true, id: proposal.id, title: proposal.title })}
+                            className="text-green-600 border-green-300 hover:bg-green-50"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Submit Proposal
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditProposal(proposal.id)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteDialog({ open: true, id: proposal.id, title: proposal.title })}
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Hapus
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
                   {proposal.status === "review" && (
                     <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
                       <div className="flex items-center space-x-2">
@@ -483,6 +578,29 @@ export default function ProposalsPage() {
               className="bg-red-600 hover:bg-red-700"
             >
               {deleting ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Submit Confirmation Dialog */}
+      <AlertDialog open={submitDialog.open} onOpenChange={(open) => setSubmitDialog({ ...submitDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Submit Proposal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin mengajukan proposal <strong>{submitDialog.title}</strong>?
+              Setelah diajukan, proposal tidak dapat diedit lagi dan akan masuk proses review.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSubmitProposal}
+              disabled={submitting}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {submitting ? "Mengajukan..." : "Ya, Submit Proposal"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

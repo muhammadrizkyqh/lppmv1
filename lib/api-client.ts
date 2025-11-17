@@ -762,6 +762,14 @@ export const proposalApi = {
       method: 'DELETE',
     })
   },
+
+  // Assign reviewers to proposal (Admin only)
+  assignReviewers: (proposalId: string, reviewerIds: string[]) => {
+    return fetchApi(`/api/proposal/${proposalId}/assign-reviewers`, {
+      method: 'POST',
+      body: JSON.stringify({ reviewerIds }),
+    })
+  },
 }
 
 

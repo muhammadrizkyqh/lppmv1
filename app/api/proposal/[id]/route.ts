@@ -43,21 +43,23 @@ export async function GET(
             },
           },
         },
-        reviews: {
+        reviewers: {
           include: {
             reviewer: {
               select: {
                 id: true,
                 nama: true,
                 email: true,
+                bidangKeahlianId: true,
               },
             },
+            review: true,
           },
         },
         _count: {
           select: {
             members: true,
-            reviews: true,
+            reviewers: true,
           },
         },
       },
@@ -224,7 +226,7 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            reviews: true,
+            reviewers: true,
           },
         },
       },
@@ -245,12 +247,12 @@ export async function DELETE(
       )
     }
 
-    // Cannot delete if has reviews
-    if (proposal._count.reviews > 0) {
+    // Cannot delete if has reviewers assigned
+    if (proposal._count.reviewers > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Proposal yang sudah direview tidak dapat dihapus',
+          error: 'Proposal yang sudah memiliki reviewer tidak dapat dihapus',
         },
         { status: 400 }
       )

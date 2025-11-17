@@ -36,11 +36,6 @@ export async function GET(
             deskripsi: true,
           },
         },
-        _count: {
-          select: {
-            reviews: true,
-          },
-        },
       },
     })
 
@@ -158,11 +153,6 @@ export async function PUT(
               deskripsi: true,
             },
           },
-          _count: {
-            select: {
-              reviews: true,
-            },
-          },
         },
       })
     })
@@ -206,30 +196,12 @@ export async function DELETE(
     // Check if reviewer exists
     const reviewer = await prisma.reviewer.findUnique({
       where: { id: params.id },
-      include: {
-        _count: {
-          select: {
-            reviews: true,
-          },
-        },
-      },
     })
 
     if (!reviewer) {
       return NextResponse.json(
         { success: false, error: 'Reviewer tidak ditemukan' },
         { status: 404 }
-      )
-    }
-
-    // Check if reviewer has reviews
-    if (reviewer._count.reviews > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Reviewer memiliki ${reviewer._count.reviews} review. Hapus review terlebih dahulu.`,
-        },
-        { status: 400 }
       )
     }
 
