@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 // GET /api/proposal/:id/members - Get proposal members
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -16,8 +16,10 @@ export async function GET(
       )
     }
 
+    const { id } = await params
+
     const members = await prisma.proposalMember.findMany({
-      where: { proposalId: params.id },
+      where: { proposalId: id },
       include: {
         dosen: {
           select: {
@@ -72,7 +74,7 @@ export async function GET(
 // POST /api/proposal/:id/members - Add member to proposal
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -82,6 +84,8 @@ export async function POST(
         { status: 401 }
       )
     }
+
+    const { id } = await params
 
     const body = await request.json()
     const { dosenId, mahasiswaId, role } = body
@@ -96,7 +100,7 @@ export async function POST(
 
     // Check if proposal exists
     const proposal = await prisma.proposal.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -140,7 +144,7 @@ export async function POST(
     // Check if member already exists in this proposal
     const existingMember = await prisma.proposalMember.findFirst({
       where: {
-        proposalId: params.id,
+        proposalId: id,
         OR: [
           { dosenId: dosenId || undefined },
           { mahasiswaId: mahasiswaId || undefined },
@@ -158,7 +162,7 @@ export async function POST(
     // Create member
     const member = await prisma.proposalMember.create({
       data: {
-        proposalId: params.id,
+        proposalId: id,
         dosenId,
         mahasiswaId,
         role: role || 'Anggota',

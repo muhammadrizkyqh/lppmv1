@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 // POST /api/proposal/:id/assign-reviewers - Assign reviewers to proposal (Admin only)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -24,6 +24,8 @@ export async function POST(
       )
     }
 
+    const { id } = await params
+
     const body = await request.json()
     const { reviewerIds } = body
 
@@ -37,7 +39,7 @@ export async function POST(
 
     // Check if proposal exists
     const proposal = await prisma.proposal.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         ketua: true,
       },
@@ -90,7 +92,7 @@ export async function POST(
     await prisma.$transaction([
       // Update proposal status
       prisma.proposal.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           status: 'DIREVIEW',
         },
@@ -99,7 +101,7 @@ export async function POST(
       ...reviewerIds.map((reviewerId: string) =>
         prisma.proposalReviewer.create({
           data: {
-            proposalId: params.id,
+            proposalId: id,
             reviewerId,
             deadline,
           },

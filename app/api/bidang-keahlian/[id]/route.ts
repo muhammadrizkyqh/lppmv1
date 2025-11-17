@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/auth'
 // GET /api/bidang-keahlian/:id - Get bidang keahlian by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -16,8 +16,9 @@ export async function GET(
       )
     }
 
+    const { id } = await params
     const bidangKeahlian = await prisma.bidangKeahlian.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -52,7 +53,7 @@ export async function GET(
 // PUT /api/bidang-keahlian/:id - Update bidang keahlian
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -74,9 +75,10 @@ export async function PUT(
     const body = await request.json()
     const { nama, deskripsi, status } = body
 
+    const { id } = await params
     // Check if bidang keahlian exists
     const existingBidang = await prisma.bidangKeahlian.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingBidang) {
@@ -100,7 +102,7 @@ export async function PUT(
     }
 
     const updatedBidang = await prisma.bidangKeahlian.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(nama && { nama }),
         ...(deskripsi !== undefined && { deskripsi }),
@@ -134,7 +136,7 @@ export async function PUT(
 // DELETE /api/bidang-keahlian/:id - Delete bidang keahlian
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -145,6 +147,7 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
     // Only ADMIN can delete bidang keahlian
     if (session.role !== 'ADMIN') {
       return NextResponse.json(
@@ -155,7 +158,7 @@ export async function DELETE(
 
     // Check if bidang keahlian exists
     const bidangKeahlian = await prisma.bidangKeahlian.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -188,7 +191,7 @@ export async function DELETE(
 
     // Delete bidang keahlian
     await prisma.bidangKeahlian.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({

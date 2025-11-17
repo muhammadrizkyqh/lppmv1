@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client'
 // GET /api/periode/:id - Get periode by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -17,8 +17,9 @@ export async function GET(
       )
     }
 
+    const { id } = await params
     const periode = await prisma.periode.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -51,7 +52,7 @@ export async function GET(
 // PUT /api/periode/:id - Update periode
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -62,6 +63,7 @@ export async function PUT(
       )
     }
 
+    const { id } = await params
     // Only ADMIN can update periode
     if (session.role !== 'ADMIN') {
       return NextResponse.json(
@@ -75,7 +77,7 @@ export async function PUT(
 
     // Check if periode exists
     const existingPeriode = await prisma.periode.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingPeriode) {
@@ -102,14 +104,14 @@ export async function PUT(
       await prisma.periode.updateMany({
         where: { 
           status: 'AKTIF',
-          NOT: { id: params.id }
+          NOT: { id }
         },
         data: { status: 'NONAKTIF' },
       })
     }
 
     const updatedPeriode = await prisma.periode.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(tahun && { tahun }),
         ...(nama && { nama }),
@@ -144,7 +146,7 @@ export async function PUT(
 // DELETE /api/periode/:id - Delete periode
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -155,6 +157,7 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
     // Only ADMIN can delete periode
     if (session.role !== 'ADMIN') {
       return NextResponse.json(
@@ -165,7 +168,7 @@ export async function DELETE(
 
     // Check if periode exists
     const periode = await prisma.periode.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -195,7 +198,7 @@ export async function DELETE(
 
     // Delete periode
     await prisma.periode.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({

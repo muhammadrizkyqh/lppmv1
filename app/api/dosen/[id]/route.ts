@@ -6,13 +6,14 @@ import type { Prisma } from '@prisma/client'
 // GET - Get single dosen by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAuth()
 
+    const { id } = await params
     const dosen = await prisma.dosen.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         bidangKeahlian: true,
         user: {
@@ -65,7 +66,7 @@ export async function GET(
 // PUT - Update dosen
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireRole(['ADMIN'])
@@ -73,9 +74,10 @@ export async function PUT(
     const body = await request.json()
     const { nama, email, noHp, bidangKeahlianId, status } = body
 
+    const { id } = await params
     // Check if dosen exists
     const existingDosen = await prisma.dosen.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { user: true },
     })
 
@@ -106,7 +108,7 @@ export async function PUT(
 
       // Update dosen
       const dosen = await tx.dosen.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           nama,
           email,
@@ -155,14 +157,15 @@ export async function PUT(
 // DELETE - Delete dosen
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireRole(['ADMIN'])
 
+    const { id } = await params
     // Check if dosen exists
     const existingDosen = await prisma.dosen.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         proposals: true,
       },
@@ -190,7 +193,7 @@ export async function DELETE(
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Delete dosen first
       await tx.dosen.delete({
-        where: { id: params.id },
+        where: { id },
       })
 
       // Then delete the associated user

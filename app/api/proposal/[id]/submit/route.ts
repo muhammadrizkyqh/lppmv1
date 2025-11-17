@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 // POST /api/proposal/:id/submit - Submit proposal (change status from DRAFT to DIAJUKAN)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -16,9 +16,11 @@ export async function POST(
       )
     }
 
+    const { id } = await params
+
     // Check if proposal exists
     const proposal = await prisma.proposal.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         periode: true,
         _count: {
@@ -100,7 +102,7 @@ export async function POST(
 
     // Update proposal status to DIAJUKAN
     const updatedProposal = await prisma.proposal.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: 'DIAJUKAN',
         submittedAt: new Date(),

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 // GET /api/proposal/:id - Get proposal by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -16,8 +16,10 @@ export async function GET(
       )
     }
 
+    const { id } = await params
+
     const proposal = await prisma.proposal.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         periode: true,
         skema: true,
@@ -104,7 +106,7 @@ export async function GET(
 // PUT /api/proposal/:id - Update proposal
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -114,6 +116,8 @@ export async function PUT(
         { status: 401 }
       )
     }
+
+    const { id } = await params
 
     const body = await request.json()
     const {
@@ -129,7 +133,7 @@ export async function PUT(
 
     // Check if proposal exists
     const existingProposal = await prisma.proposal.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingProposal) {
@@ -165,7 +169,7 @@ export async function PUT(
 
     // Update proposal
     const updatedProposal = await prisma.proposal.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(periodeId && { periodeId }),
         ...(skemaId && { skemaId }),
@@ -209,7 +213,7 @@ export async function PUT(
 // DELETE /api/proposal/:id - Delete proposal
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -220,9 +224,11 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
+
     // Check if proposal exists
     const proposal = await prisma.proposal.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -268,7 +274,7 @@ export async function DELETE(
 
     // Delete proposal (members will be deleted automatically due to Cascade)
     await prisma.proposal.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({

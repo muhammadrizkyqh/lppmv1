@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/auth'
 // GET /api/skema/:id - Get skema by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -16,8 +16,10 @@ export async function GET(
       )
     }
 
+    const { id } = await params
+
     const skema = await prisma.skema.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -50,7 +52,7 @@ export async function GET(
 // PUT /api/skema/:id - Update skema
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -69,12 +71,14 @@ export async function PUT(
       )
     }
 
+    const { id } = await params
+
     const body = await request.json()
     const { nama, tipe, dana, deskripsi, status } = body
 
     // Check if skema exists
     const existingSkema = await prisma.skema.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingSkema) {
@@ -98,7 +102,7 @@ export async function PUT(
     }
 
     const updatedSkema = await prisma.skema.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(nama && { nama }),
         ...(tipe && { tipe }),
@@ -132,7 +136,7 @@ export async function PUT(
 // DELETE /api/skema/:id - Delete skema
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -151,9 +155,11 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
+
     // Check if skema exists
     const skema = await prisma.skema.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -183,7 +189,7 @@ export async function DELETE(
 
     // Delete skema
     await prisma.skema.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({

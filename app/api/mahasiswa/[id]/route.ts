@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client'
 // GET /api/mahasiswa/:id - Get mahasiswa by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -17,8 +17,9 @@ export async function GET(
       )
     }
 
+    const { id } = await params
     const mahasiswa = await prisma.mahasiswa.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: {
           select: {
@@ -55,7 +56,7 @@ export async function GET(
 // PUT /api/mahasiswa/:id - Update mahasiswa
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -66,6 +67,7 @@ export async function PUT(
       )
     }
 
+    const { id } = await params
     // Only ADMIN can update mahasiswa data
     if (session.role !== 'ADMIN') {
       return NextResponse.json(
@@ -79,7 +81,7 @@ export async function PUT(
 
     // Check if mahasiswa exists
     const existingMahasiswa = await prisma.mahasiswa.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { user: true },
     })
 
@@ -110,7 +112,7 @@ export async function PUT(
         where: { nim },
       })
 
-      if (nimExists && nimExists.id !== params.id) {
+      if (nimExists && nimExists.id !== id) {
         return NextResponse.json(
           { success: false, error: 'NIM sudah digunakan' },
           { status: 400 }
@@ -133,7 +135,7 @@ export async function PUT(
 
       // Update mahasiswa data
       return await tx.mahasiswa.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           ...(nim && { nim }),
           ...(nama && { nama }),
@@ -173,7 +175,7 @@ export async function PUT(
 // DELETE /api/mahasiswa/:id - Delete mahasiswa
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -184,6 +186,7 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
     // Only ADMIN can delete mahasiswa
     if (session.role !== 'ADMIN') {
       return NextResponse.json(
@@ -194,7 +197,7 @@ export async function DELETE(
 
     // Check if mahasiswa exists
     const mahasiswa = await prisma.mahasiswa.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -226,7 +229,7 @@ export async function DELETE(
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Delete mahasiswa first
       await tx.mahasiswa.delete({
-        where: { id: params.id },
+        where: { id },
       })
 
       // Then delete the associated user

@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client'
 // GET /api/reviewer/:id - Get reviewer by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -17,8 +17,10 @@ export async function GET(
       )
     }
 
+    const { id } = await params
+
     const reviewer = await prisma.reviewer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: {
           select: {
@@ -62,7 +64,7 @@ export async function GET(
 // PUT /api/reviewer/:id - Update reviewer
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -81,12 +83,14 @@ export async function PUT(
       )
     }
 
+    const { id } = await params
+
     const body = await request.json()
     const { nama, email, institusi, tipe, bidangKeahlianId, noHp, status } = body
 
     // Check if reviewer exists
     const existingReviewer = await prisma.reviewer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { user: true },
     })
 
@@ -126,7 +130,7 @@ export async function PUT(
 
       // Update reviewer data
       return await tx.reviewer.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           ...(nama && { nama }),
           ...(email && { email }),
@@ -174,7 +178,7 @@ export async function PUT(
 // DELETE /api/reviewer/:id - Delete reviewer
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -193,9 +197,11 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
+
     // Check if reviewer exists
     const reviewer = await prisma.reviewer.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!reviewer) {
@@ -209,7 +215,7 @@ export async function DELETE(
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Delete reviewer first
       await tx.reviewer.delete({
-        where: { id: params.id },
+        where: { id },
       })
 
       // Then delete the associated user

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, GraduationCap, BookOpen, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
@@ -245,5 +245,13 @@ export default function LoginPage() {
         <div className="absolute bottom-20 right-32 w-24 h-24 rounded-full bg-primary-foreground/10 blur-2xl" />
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

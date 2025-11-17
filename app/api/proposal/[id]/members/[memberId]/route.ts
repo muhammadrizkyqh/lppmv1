@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 // DELETE /api/proposal/:id/members/:memberId - Remove member from proposal
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; memberId: string } }
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -16,9 +16,11 @@ export async function DELETE(
       )
     }
 
+    const { memberId } = await params
+
     // Check if member exists
     const member = await prisma.proposalMember.findUnique({
-      where: { id: params.memberId },
+      where: { id: memberId },
       include: {
         proposal: true,
       },
@@ -57,7 +59,7 @@ export async function DELETE(
 
     // Delete member
     await prisma.proposalMember.delete({
-      where: { id: params.memberId },
+      where: { id: memberId },
     })
 
     return NextResponse.json({
