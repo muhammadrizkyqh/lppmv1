@@ -92,7 +92,7 @@ function LoginForm() {
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                LPPM STAI Ali
+                LPPM STAI Ali Bin Abi Thalib
               </h1>
               <p className="text-muted-foreground mt-2">
                 Sistem Informasi Penelitian & Pengabdian Masyarakat
