@@ -24,7 +24,7 @@ export interface SessionData {
 
 // Configuration
 const secret = new TextEncoder().encode(
-  process.env.NEXTAUTH_SECRET || 'your-secret-key-change-in-production'
+  process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'your-secret-key-change-in-production'
 )
 const SESSION_DURATION = 2 * 60 * 60 * 1000 // 2 hours in milliseconds
 
@@ -69,7 +69,7 @@ export async function createSession(user: SessionUser): Promise<string> {
   const cookieStore = await cookies()
   cookieStore.set('session', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Set to false for HTTP, true only for HTTPS
     expires,
     sameSite: 'lax',
     path: '/',
