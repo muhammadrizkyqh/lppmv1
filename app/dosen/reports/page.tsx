@@ -182,11 +182,11 @@ export default function ReportsPage() {
         <Tabs defaultValue="overview" className="space-y-6">
           <ResponsiveTabs
             tabs={[
-              { value: "overview", label: "Overview", icon: BarChart3 },
-              { value: "skema", label: "Per Skema", icon: PieChart },
-              { value: "fakultas", label: "Per Fakultas", icon: Users },
-              { value: "performance", label: "Performance", icon: TrendingUp },
-              { value: "timeline", label: "Timeline", icon: Calendar },
+              { value: "overview", label: "Overview", icon: <BarChart3 className="w-4 h-4" /> },
+              { value: "skema", label: "Per Skema", icon: <PieChart className="w-4 h-4" /> },
+              { value: "fakultas", label: "Per Fakultas", icon: <Users className="w-4 h-4" /> },
+              { value: "performance", label: "Performance", icon: <TrendingUp className="w-4 h-4" /> },
+              { value: "timeline", label: "Timeline", icon: <Calendar className="w-4 h-4" /> },
             ]}
             defaultValue="overview"
           >
