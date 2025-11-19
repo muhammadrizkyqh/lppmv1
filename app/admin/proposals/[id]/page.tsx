@@ -369,7 +369,7 @@ export default function ProposalDetailPage() {
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
               </Button>
-            )
+            )}
             {canEdit && (
               <Button variant="outline" asChild>
                 <Link href={`/admin/proposals/${id}/edit`}>
