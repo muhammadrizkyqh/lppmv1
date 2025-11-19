@@ -53,44 +53,39 @@ interface SessionUser {
 
 // Navigation items by role
 const getNavigationByRole = (role: string) => {
-  const baseItems = [
-    {
-      title: "Dashboard",
-      items: [
-        {
-          title: "Beranda",
-          icon: Home,
-          href: "/dashboard",
-          badge: null,
-          roles: ["ADMIN", "DOSEN", "MAHASISWA", "REVIEWER"]
-        },
-      ],
-    },
-  ];
-
   // ADMIN - Full access
   if (role === "ADMIN") {
     return [
-      ...baseItems,
+      {
+        title: "Dashboard",
+        items: [
+          {
+            title: "Overview",
+            icon: Home,
+            href: "/admin/dashboard",
+            badge: null,
+          },
+        ],
+      },
       {
         title: "Penelitian & PKM",
         items: [
           {
             title: "Semua Proposal",
             icon: FileText,
-            href: "/dashboard/proposals",
+            href: "/admin/proposals",
             badge: null,
           },
           {
             title: "Review & Approval",
             icon: ClipboardList,
-            href: "/dashboard/review",
+            href: "/admin/reviews",
             badge: null,
           },
           {
             title: "Monitoring",
             icon: BarChart3,
-            href: "/dashboard/monitoring",
+            href: "/admin/monitoring",
             badge: null,
           },
         ],
@@ -101,7 +96,7 @@ const getNavigationByRole = (role: string) => {
           {
             title: "Kelola Data Master",
             icon: Users,
-            href: "/dashboard/data-master",
+            href: "/admin/data-master",
             badge: null,
           },
         ],
@@ -112,18 +107,7 @@ const getNavigationByRole = (role: string) => {
           {
             title: "Pengaturan Sistem",
             icon: Settings,
-            href: "/dashboard/settings",
-            badge: null,
-          },
-        ],
-      },
-      {
-        title: "Laporan",
-        items: [
-          {
-            title: "Dashboard Analytics",
-            icon: BarChart3,
-            href: "/dashboard/reports",
+            href: "/admin/settings",
             badge: null,
           },
         ],
@@ -134,37 +118,30 @@ const getNavigationByRole = (role: string) => {
   // DOSEN - Can submit proposals, see own proposals, monitoring
   if (role === "DOSEN") {
     return [
-      ...baseItems,
+      {
+        title: "Dashboard",
+        items: [
+          {
+            title: "Overview",
+            icon: Home,
+            href: "/dosen/dashboard",
+            badge: null,
+          },
+        ],
+      },
       {
         title: "Penelitian & PKM",
         items: [
           {
             title: "Proposal Saya",
             icon: FileText,
-            href: "/dashboard/proposals",
+            href: "/dosen/proposals",
             badge: null,
           },
           {
             title: "Ajukan Proposal",
             icon: BookOpen,
-            href: "/dashboard/proposals/create",
-            badge: null,
-          },
-          {
-            title: "Monitoring",
-            icon: BarChart3,
-            href: "/dashboard/monitoring",
-            badge: null,
-          },
-        ],
-      },
-      {
-        title: "Review",
-        items: [
-          {
-            title: "Tugas Review",
-            icon: ClipboardList,
-            href: "/dashboard/reviews",
+            href: "/dosen/proposals/create",
             badge: null,
           },
         ],
@@ -175,18 +152,7 @@ const getNavigationByRole = (role: string) => {
           {
             title: "Laporan Saya",
             icon: ClipboardList,
-            href: "/dashboard/reports",
-            badge: null,
-          },
-        ],
-      },
-      {
-        title: "Pengaturan",
-        items: [
-          {
-            title: "Profile",
-            icon: User,
-            href: "/dashboard/settings",
+            href: "/dosen/reports",
             badge: null,
           },
         ],
@@ -197,31 +163,24 @@ const getNavigationByRole = (role: string) => {
   // REVIEWER - Can review assigned proposals
   if (role === "REVIEWER") {
     return [
-      ...baseItems,
       {
-        title: "Review",
+        title: "Dashboard",
         items: [
           {
-            title: "Proposal Ditugaskan",
-            icon: ClipboardList,
-            href: "/dashboard/review",
-            badge: "2",
-          },
-          {
-            title: "Riwayat Review",
-            icon: FileText,
-            href: "/dashboard/review/history",
+            title: "Overview",
+            icon: Home,
+            href: "/reviewer/dashboard",
             badge: null,
           },
         ],
       },
       {
-        title: "Pengaturan",
+        title: "Review",
         items: [
           {
-            title: "Profile",
-            icon: User,
-            href: "/dashboard/settings",
+            title: "Tugas Review",
+            icon: ClipboardList,
+            href: "/reviewer/assignments",
             badge: null,
           },
         ],
@@ -232,25 +191,13 @@ const getNavigationByRole = (role: string) => {
   // MAHASISWA - Read-only, can see proposals they're part of
   if (role === "MAHASISWA") {
     return [
-      ...baseItems,
       {
         title: "Penelitian & PKM",
         items: [
           {
             title: "Penelitian Saya",
             icon: FileText,
-            href: "/dashboard/proposals",
-            badge: null,
-          },
-        ],
-      },
-      {
-        title: "Pengaturan",
-        items: [
-          {
-            title: "Profile",
-            icon: User,
-            href: "/dashboard/settings",
+            href: "/mahasiswa/proposals",
             badge: null,
           },
         ],
@@ -259,7 +206,7 @@ const getNavigationByRole = (role: string) => {
   }
 
   // Default fallback
-  return baseItems;
+  return [];
 };
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -348,12 +295,71 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          {/* Sidebar Skeleton */}
+          <div className="w-64 border-r border-border/50 bg-background flex flex-col">
+            <div className="p-4 border-b border-border/50 animate-pulse">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg bg-muted"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-32 bg-muted rounded"></div>
+                  <div className="h-3 w-24 bg-muted rounded"></div>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 p-4 space-y-6 animate-pulse overflow-y-auto">
+              {[1, 2, 3].map((section) => (
+                <div key={section} className="space-y-2">
+                  <div className="h-3 w-24 bg-muted rounded mb-3"></div>
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="flex items-center space-x-3 py-2">
+                      <div className="w-5 h-5 bg-muted rounded"></div>
+                      <div className="h-4 w-32 bg-muted rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-t border-border/50 animate-pulse">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-muted"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-muted rounded"></div>
+                  <div className="h-3 w-24 bg-muted rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Main Content Skeleton */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <header className="border-b border-border/50 bg-background animate-pulse">
+              <div className="flex h-16 items-center px-6 gap-4">
+                <div className="h-5 w-5 bg-muted rounded"></div>
+                <div className="flex-1">
+                  <div className="h-4 w-48 bg-muted rounded"></div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="h-9 w-9 bg-muted rounded"></div>
+                  <div className="h-9 w-9 bg-muted rounded"></div>
+                </div>
+              </div>
+            </header>
+            <main className="flex-1 p-6 overflow-y-auto">
+              <div className="animate-pulse space-y-4">
+                <div className="h-8 w-64 bg-muted rounded"></div>
+                <div className="h-4 w-48 bg-muted rounded"></div>
+                <div className="grid gap-6 md:grid-cols-4 mt-8">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-32 bg-muted rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
+      </SidebarProvider>
     );
   }
 
@@ -362,7 +368,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (user?.name) {
       return user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
-    return user?.username.slice(0, 2).toUpperCase() || 'U';
+    return user?.username?.slice(0, 2).toUpperCase() || 'U';
   };
 
   // Get role badge color
@@ -465,18 +471,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
+                {user?.role === 'ADMIN' && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />

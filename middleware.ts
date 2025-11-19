@@ -3,10 +3,18 @@ import type { NextRequest } from 'next/server'
 import { decrypt } from '@/lib/auth'
 
 // Routes yang butuh authentication
-const protectedRoutes = ['/dashboard']
+const protectedRoutes = ['/dashboard', '/admin', '/dosen', '/reviewer', '/mahasiswa']
 
 // Routes yang hanya boleh diakses kalau belum login
 const authRoutes = ['/login']
+
+// Role-based route access
+const roleRoutes = {
+  '/admin': ['ADMIN'],
+  '/dosen': ['DOSEN'],
+  '/reviewer': ['REVIEWER'],
+  '/mahasiswa': ['MAHASISWA'],
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -28,6 +36,32 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  // Check role-based access
+  if (session && session.user) {
+    const userRole = session.user.role as string
+    
+    // Check if user is accessing a role-specific route
+    for (const [route, allowedRoles] of Object.entries(roleRoutes)) {
+      if (pathname.startsWith(route)) {
+        if (!allowedRoles.includes(userRole)) {
+          // Redirect to appropriate dashboard for their role
+          switch (userRole) {
+            case 'ADMIN':
+              return NextResponse.redirect(new URL('/admin/proposals', request.url))
+            case 'DOSEN':
+              return NextResponse.redirect(new URL('/dosen/proposals', request.url))
+            case 'REVIEWER':
+              return NextResponse.redirect(new URL('/reviewer/assignments', request.url))
+            case 'MAHASISWA':
+              return NextResponse.redirect(new URL('/mahasiswa/proposals', request.url))
+            default:
+              return NextResponse.redirect(new URL('/login', request.url))
+          }
+        }
+      }
+    }
   }
 
   // Redirect to dashboard if accessing auth route with active session

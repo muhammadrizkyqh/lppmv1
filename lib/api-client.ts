@@ -772,4 +772,231 @@ export const proposalApi = {
   },
 }
 
+// ==========================================
+// REVIEW API
+// ==========================================
+
+export interface ReviewAssignment {
+  id: string
+  proposalId: string
+  reviewerId: string
+  status: string
+  deadline: string
+  assignedAt: string
+  proposal: {
+    id: string
+    judul: string
+    abstrak: string
+    status: string
+    filePath?: string
+    fileName?: string
+    submittedAt?: string
+    ketua: {
+      id: string
+      nama: string
+      email: string
+      nidn?: string
+    }
+    skema: {
+      id: string
+      nama: string
+      tipe: string
+      dana?: number
+    }
+    periode: {
+      id: string
+      tahun: string
+      nama: string
+      tanggalBuka?: string
+      tanggalTutup?: string
+    }
+    bidangKeahlian?: {
+      id: string
+      nama: string
+    }
+    members?: Array<{
+      id: string
+      role: string
+      dosen?: {
+        id: string
+        nama: string
+        email: string
+      }
+      mahasiswa?: {
+        id: string
+        nama: string
+        email: string
+        nim: string
+      }
+    }>
+  }
+  review?: {
+    id: string
+    nilaiTotal: number
+    rekomendasi: string
+    submittedAt: string
+  }
+  reviewer?: {
+    id: string
+    nama: string
+    email: string
+  }
+}
+
+export interface Review {
+  id: string
+  proposalReviewerId: string
+  reviewerId: string
+  nilaiKriteria1: number
+  nilaiKriteria2: number
+  nilaiKriteria3: number
+  nilaiKriteria4: number
+  nilaiTotal: number
+  rekomendasi: 'DITERIMA' | 'REVISI' | 'DITOLAK'
+  catatan?: string
+  submittedAt: string
+}
+
+export const reviewApi = {
+  // Get my review assignments
+  getMyAssignments: () => {
+    return fetchApi<{
+      pending: ReviewAssignment[]
+      completed: ReviewAssignment[]
+      total: number
+      pendingCount: number
+      completedCount: number
+    }>('/api/reviews/my-assignments')
+  },
+
+  // Get single assignment detail
+  getAssignment: (proposalReviewerId: string) => {
+    return fetchApi<ReviewAssignment>(`/api/reviews/${proposalReviewerId}`)
+  },
+
+  // Submit review
+  submit: (proposalReviewerId: string, data: {
+    nilaiKriteria1: number
+    nilaiKriteria2: number
+    nilaiKriteria3: number
+    nilaiKriteria4: number
+    rekomendasi: 'DITERIMA' | 'REVISI' | 'DITOLAK'
+    catatan?: string
+  }) => {
+    return fetchApi<Review>(`/api/reviews/${proposalReviewerId}/submit`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+}
+
+// ==========================================
+// ADMIN REVIEW MANAGEMENT API
+// ==========================================
+
+interface ProposalReviewed {
+  id: string
+  judul: string
+  jenis: string
+  status: string
+  submittedAt: string | null
+  periode: {
+    id: string
+    tahun: number
+    nama: string
+  }
+  skema: {
+    id: string
+    nama: string
+    tipe: string
+    dana: number
+  }
+  ketua: {
+    id: string
+    nidn: string
+    nama: string
+    email: string
+  }
+  bidangKeahlian: {
+    id: string
+    nama: string
+  } | null
+  reviewStatus: {
+    total: number
+    completed: number
+    allComplete: boolean
+    label: string
+  }
+}
+
+interface ReviewComparison {
+  proposal: any
+  reviewStatus: {
+    total: number
+    completed: number
+    allComplete: boolean
+  }
+  averageScores: {
+    kriteria1: number
+    kriteria2: number
+    kriteria3: number
+    kriteria4: number
+    total: number
+  } | null
+}
+
+export const adminReviewApi = {
+  // Get all proposals with review status
+  getProposalsReviewed: () => {
+    return fetchApi<ProposalReviewed[]>('/api/admin/proposals-reviewed')
+  },
+
+  // Get proposal review comparison
+  getReviewComparison: (proposalId: string) => {
+    return fetchApi<ReviewComparison>(`/api/admin/reviews/${proposalId}`)
+  },
+
+  // Approve proposal
+  approve: async (proposalId: string, catatan?: string) => {
+    const response = await fetch(`/api/proposal/${proposalId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ catatan })
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to approve proposal')
+    }
+    return response.json()
+  },
+
+  // Request revision
+  requestRevision: async (proposalId: string, catatan: string) => {
+    const response = await fetch(`/api/proposal/${proposalId}/request-revision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ catatan })
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to request revision')
+    }
+    return response.json()
+  },
+
+  // Reject proposal
+  reject: async (proposalId: string, catatan: string) => {
+    const response = await fetch(`/api/proposal/${proposalId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ catatan })
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to reject proposal')
+    }
+    return response.json()
+  },
+}
+
 
