@@ -148,7 +148,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
         nilaiKriteria2: scores.kriteria2,
         nilaiKriteria3: scores.kriteria3,
         nilaiKriteria4: scores.kriteria4,
-        rekomendasi,
+        rekomendasi: rekomendasi as 'DITERIMA' | 'REVISI' | 'DITOLAK',
         catatan: catatan || undefined,
       });
 
