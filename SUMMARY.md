@@ -37,25 +37,35 @@ VPS: Otomatis execute:
 
 ## 📝 Yang Perlu Anda Lakukan
 
-### Sekarang:
+### ✅ Already Done:
 
-1. **Commit & Push perubahan ini:**
-   ```bash
-   git add .
-   git commit -m "fix: add prisma generate to CI/CD workflow"
-   git push origin master
+1. **Code changes sudah di-push!** 🎉
+   - TypeScript error fixed
+   - Dokumentasi lengkap sudah di GitHub
+
+### 🔧 Next Step: Update Workflow (5 menit)
+
+**Karena GitHub PAT tidak punya scope `workflow`, update harus manual via web:**
+
+1. **Buka workflow file di GitHub:**
+   https://github.com/muhammadrizkyqh/lppmv1/blob/master/.github/workflows/deploy.yml
+
+2. **Click icon Edit (✏️)**
+
+3. **Tambahkan 2 baris ini setelah `npm install`:**
+   ```yaml
+   npx prisma generate
+   npx prisma db push --skip-generate --accept-data-loss
    ```
 
-2. **Monitor deployment di GitHub:**
-   - Buka: https://github.com/muhammadrizkyqh/lppmv1/actions
-   - Lihat workflow "Deploy to VPS" berjalan
-   - Pastikan semua step hijau ✅
+4. **Commit changes**
 
-3. **Cek hasil di VPS (opsional):**
-   ```bash
-   ssh deploy@your-vps-ip
-   pm2 logs lppmv1
-   ```
+📖 **Panduan lengkap:** [WORKFLOW_UPDATE.md](./WORKFLOW_UPDATE.md)
+
+### Setelah Update Workflow:
+
+Test dengan push perubahan kecil dan monitor di:
+- https://github.com/muhammadrizkyqh/lppmv1/actions
 
 ### Untuk Perubahan Prisma Selanjutnya:
 
