@@ -1,36 +1,158 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LPPM Management System
 
-## Getting Started
+Sistem Manajemen Lembaga Penelitian dan Pengabdian Masyarakat (LPPM) untuk pengelolaan proposal penelitian dan monitoring.
 
-First, run the development server:
+## 🚀 Quick Start
+
+### Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Setup database
+npx prisma generate
+npx prisma db push
+npx prisma db seed
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Production Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Aplikasi ini menggunakan **GitHub Actions** untuk automatic deployment ke VPS.
 
-## Learn More
+```bash
+# Push ke master untuk deploy otomatis
+git add .
+git commit -m "Your commit message"
+git push origin master
 
-To learn more about Next.js, take a look at the following resources:
+# GitHub Actions akan otomatis:
+# 1. Pull latest code
+# 2. Generate Prisma Client
+# 3. Update database schema
+# 4. Build Next.js
+# 5. Restart PM2
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+📖 **Dokumentasi lengkap:** [CICD.md](./CICD.md)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📚 Documentation
 
-## Deploy on Vercel
+- **[CICD.md](./CICD.md)** - CI/CD setup dengan GitHub Actions
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Manual deployment guide
+- **[QUICK_DEPLOY.md](./QUICK_DEPLOY.md)** - Quick reference commands
+- **[DATABASE_SETUP.md](./DATABASE_SETUP.md)** - Database setup guide
+- **[AUTHENTICATION.md](./AUTHENTICATION.md)** - Authentication system
+- **[DATA_MASTER_COMPLETE.md](./DATA_MASTER_COMPLETE.md)** - Data master documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🛠️ Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Framework:** Next.js 15 (App Router)
+- **Database:** PostgreSQL with Prisma ORM
+- **UI:** Tailwind CSS + shadcn/ui
+- **Authentication:** Custom session-based auth
+- **Deployment:** PM2 on VPS with GitHub Actions
+- **Language:** TypeScript
+
+## 📦 Available Scripts
+
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build            # Build for production
+npm run start            # Start production server
+
+# Database
+npm run db:generate      # Generate Prisma Client
+npm run db:push          # Push schema to database
+npm run db:migrate       # Run migrations
+npm run db:seed          # Seed database
+npm run db:studio        # Open Prisma Studio
+npm run db:reset         # Reset database
+
+# Deployment
+npm run deploy           # Generate + Push + Build
+npm run pm2:restart      # Restart PM2
+npm run deploy:full      # Full deploy (deploy + PM2 restart)
+```
+
+## 🔐 Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/lppmv1"
+SESSION_SECRET="your-secret-key-here"
+```
+
+## 🏗️ Project Structure
+
+```
+lppmv1/
+├── app/                    # Next.js App Router
+│   ├── admin/             # Admin dashboard
+│   ├── dosen/             # Dosen (lecturer) dashboard
+│   ├── reviewer/          # Reviewer dashboard
+│   └── api/               # API routes
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   └── layout/           # Layout components
+├── lib/                   # Utility functions
+├── prisma/               # Prisma schema & migrations
+└── .github/workflows/    # GitHub Actions workflows
+```
+
+## 👥 User Roles
+
+- **Admin** - Full system access
+- **Dosen** - Submit proposals, view monitoring
+- **Reviewer** - Review and evaluate proposals
+
+## 🚀 Deployment Flow
+
+```mermaid
+graph LR
+    A[Git Push] --> B[GitHub Actions]
+    B --> C[Pull Code]
+    C --> D[Install Dependencies]
+    D --> E[Prisma Generate]
+    E --> F[DB Push/Migrate]
+    F --> G[Build Next.js]
+    G --> H[Restart PM2]
+    H --> I[✅ Live]
+```
+
+## 🐛 Troubleshooting
+
+### Build Error after Prisma Changes
+
+```bash
+# SSH to VPS
+cd /home/deploy/lppmv1
+npx prisma generate
+npm run build
+pm2 restart lppmv1
+```
+
+### PM2 Not Starting
+
+```bash
+pm2 delete lppmv1
+npm run build
+pm2 start npm --name lppmv1 -- start
+pm2 save
+```
+
+📖 More troubleshooting: [CICD.md](./CICD.md#-troubleshooting)
+
+## 📝 Learn More
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Prisma Documentation](https://www.prisma.io/docs)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [PM2 Documentation](https://pm2.keymetrics.io/docs/usage/quick-start/)

@@ -571,6 +571,7 @@ export interface Proposal {
   nilaiTotal: number | null
   revisiCount: number
   catatan: string | null
+  catatanRevisi: string | null
   createdAt: string
   updatedAt: string
   periode?: {
@@ -768,6 +769,17 @@ export const proposalApi = {
     return fetchApi(`/api/proposal/${proposalId}/assign-reviewers`, {
       method: 'POST',
       body: JSON.stringify({ reviewerIds }),
+    })
+  },
+
+  // Upload revision (Dosen only, when status = REVISI)
+  uploadRevision: (proposalId: string, data: {
+    filePath: string
+    catatanRevisi?: string
+  }) => {
+    return fetchApi(`/api/proposals/${proposalId}/revisi`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     })
   },
 }

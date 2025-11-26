@@ -230,6 +230,7 @@ model Proposal {
   nilaiTotal      Decimal?        @db.Decimal(5, 2)
   revisiCount     Int             @default(0)
   catatan         String?         @db.Text
+  catatanRevisi   String?         @db.Text
   
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt

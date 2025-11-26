@@ -49,6 +49,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useProposals } from "@/hooks/use-data";
 import { proposalApi, ProposalStatus } from "@/lib/api-client";
 
@@ -72,6 +82,16 @@ export default function ProposalsPage() {
     title: null,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [revisionDialog, setRevisionDialog] = useState<{
+    open: boolean;
+    proposalId: string | null;
+    title: string | null;
+  }>({ open: false, proposalId: null, title: null });
+  const [revisionForm, setRevisionForm] = useState({
+    filePath: "",
+    catatanRevisi: "",
+  });
+  const [uploading, setUploading] = useState(false);
 
   // Fetch proposals from backend
   const { data: proposalsData, loading, refetch } = useProposals();
@@ -136,6 +156,69 @@ export default function ProposalsPage() {
       }
     } catch (error: any) {
       toast.error(error.message || "Gagal submit proposal");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ukuran file maksimal 10MB");
+      return;
+    }
+
+    if (file.type !== "application/pdf") {
+      toast.error("Hanya file PDF yang diperbolehkan");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const result = await response.json();
+      setRevisionForm(prev => ({ ...prev, filePath: result.data.filePath }));
+      toast.success("File berhasil diupload");
+    } catch (error) {
+      toast.error("Gagal upload file");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadRevision = async () => {
+    if (!revisionDialog.proposalId) return;
+
+    if (!revisionForm.filePath) {
+      toast.error("File revisi harus diupload");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const result = await proposalApi.uploadRevision(revisionDialog.proposalId, revisionForm);
+      
+      if (result.success) {
+        toast.success("Revisi berhasil diupload! Proposal akan direview kembali.");
+        refetch();
+        setRevisionDialog({ open: false, proposalId: null, title: null });
+        setRevisionForm({ filePath: "", catatanRevisi: "" });
+      } else {
+        toast.error(result.error || "Gagal upload revisi");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Gagal upload revisi");
     } finally {
       setSubmitting(false);
     }
@@ -520,9 +603,14 @@ export default function ProposalsPage() {
                       <Button 
                         size="sm" 
                         className="bg-yellow-600 hover:bg-yellow-700 shrink-0 w-full sm:w-auto"
-                        onClick={() => toast.info(`Upload revisi untuk ${proposal.id}`, {
-                          description: "Membuka form upload revisi..."
-                        })}
+                        onClick={() => {
+                          setRevisionDialog({ 
+                            open: true, 
+                            proposalId: proposal.id,
+                            title: proposal.title 
+                          });
+                          setRevisionForm({ filePath: "", catatanRevisi: "" });
+                        }}
                       >
                         Upload Revisi
                       </Button>
@@ -614,6 +702,89 @@ export default function ProposalsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upload Revision Dialog */}
+      <Dialog open={revisionDialog.open} onOpenChange={(open) => {
+        setRevisionDialog({ ...revisionDialog, open });
+        if (!open) setRevisionForm({ filePath: "", catatanRevisi: "" });
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Upload Revisi Proposal</DialogTitle>
+            <DialogDescription>
+              Upload file revisi proposal <strong>{revisionDialog.title}</strong> berdasarkan 
+              feedback dari reviewer. Setelah diupload, proposal akan direview kembali.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="revisionFile">File Proposal Revisi (PDF) *</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="revisionFile"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="flex-1"
+                />
+                {revisionForm.filePath && (
+                  <Button variant="outline" size="icon" asChild>
+                    <a href={revisionForm.filePath} target="_blank" rel="noopener noreferrer">
+                      <Eye className="w-4 h-4" />
+                    </a>
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Format: PDF, Maksimal 10MB. Upload file proposal yang sudah direvisi.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="catatanRevisi">Catatan Revisi (Opsional)</Label>
+              <Textarea
+                id="catatanRevisi"
+                placeholder="Tuliskan penjelasan perubahan yang telah dilakukan..."
+                value={revisionForm.catatanRevisi}
+                onChange={(e) => setRevisionForm(prev => ({ ...prev, catatanRevisi: e.target.value }))}
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">
+                Jelaskan perbaikan yang telah dilakukan berdasarkan feedback reviewer.
+              </p>
+            </div>
+
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium">Perhatian:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Pastikan semua feedback reviewer sudah diperbaiki</li>
+                    <li>Setelah upload, proposal akan kembali ke status <strong>DIREVIEW</strong></li>
+                    <li>Reviewer akan menilai ulang proposal revisi Anda</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevisionDialog({ open: false, proposalId: null, title: null })}>
+              Batal
+            </Button>
+            <Button 
+              onClick={handleUploadRevision} 
+              disabled={submitting || !revisionForm.filePath || uploading}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {submitting ? "Mengupload..." : "Upload Revisi"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
