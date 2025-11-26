@@ -19,9 +19,14 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
 
-    // Filter by status if provided
+    // Filter by status if provided (supports multiple comma-separated values)
     if (status) {
-      where.status = status
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean)
+      if (statuses.length > 1) {
+        where.status = { in: statuses }
+      } else if (statuses.length === 1) {
+        where.status = statuses[0]
+      }
     }
 
     // Filter by periode if provided
@@ -75,6 +80,10 @@ export async function GET(request: NextRequest) {
             members: true,
             reviewers: true,
           },
+        },
+        monitorings: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
         },
       },
     })

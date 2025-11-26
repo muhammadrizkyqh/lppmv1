@@ -351,6 +351,16 @@ model Monitoring {
   persentaseKemajuan Int    @default(0)
   status          String    @default("BERJALAN") // BERJALAN | SELESAI
   
+  // Verification fields for laporan kemajuan
+  verifikasiKemajuanStatus String?  // APPROVED | REJECTED
+  verifikasiKemajuanAt     DateTime?
+  catatanKemajuan          String?  @db.Text
+  
+  // Verification fields for laporan akhir
+  verifikasiAkhirStatus    String?  // APPROVED | REJECTED
+  verifikasiAkhirAt        DateTime?
+  catatanAkhir             String?  @db.Text
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

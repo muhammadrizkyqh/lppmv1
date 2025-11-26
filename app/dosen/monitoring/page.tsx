@@ -6,93 +6,62 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Search,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Calendar,
-  FileText,
-  Eye,
-  Filter,
-} from "lucide-react";
+import { Search, FileText, Calendar, Eye, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { monitoringApi, MonitoringList, MonitoringStats } from "@/lib/api-client";
-import { periodeApi } from "@/lib/api-client";
+import { proposalApi } from "@/lib/api-client";
 
-interface Periode {
+interface ProposalWithMonitoring {
   id: string;
-  nama: string;
-  tahun: string;
+  judul: string;
   status: string;
+  periode: {
+    id: string;
+    nama: string;
+    tahun: string;
+  };
+  skema: {
+    id: string;
+    nama: string;
+  };
+  monitorings: Array<{
+    id: string;
+    persentaseKemajuan: number;
+    status: string;
+    laporanKemajuan?: string;
+    laporanAkhir?: string;
+    updatedAt: string;
+  }>;
 }
 
-export default function AdminMonitoringPage() {
+export default function DosenMonitoringPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [proposals, setProposals] = useState<MonitoringList[]>([]);
-  const [stats, setStats] = useState<MonitoringStats>({
-    total: 0,
-    berjalan: 0,
-    selesai: 0,
-    belumMonitoring: 0,
-  });
-  const [periodeList, setPeriodeList] = useState<Periode[]>([]);
-  
-  // Filters
+  const [proposals, setProposals] = useState<ProposalWithMonitoring[]>([]);
   const [searchValue, setSearchValue] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [periodeFilter, setPeriodeFilter] = useState<string>("ALL");
 
   useEffect(() => {
-    loadPeriode();
-    loadMonitoring();
-  }, [statusFilter, periodeFilter]);
+    loadProposals();
+  }, []);
 
-  const loadPeriode = async () => {
-    try {
-      const response = await periodeApi.getAll();
-      if (response.success && response.data) {
-        setPeriodeList(response.data as any);
-      }
-    } catch (error) {
-      console.error('Error loading periode:', error);
-    }
-  };
-
-  const loadMonitoring = async () => {
+  const loadProposals = async () => {
     try {
       setLoading(true);
-      const response = await monitoringApi.listMonitoring({
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-        periodeId: periodeFilter !== 'ALL' ? periodeFilter : undefined,
-        search: searchValue || undefined,
+      // Fetch proposals yang berstatus DITERIMA, BERJALAN, atau SELESAI
+      const response = await proposalApi.getAll({
+        status: 'DITERIMA,BERJALAN,SELESAI'
       });
 
-      if (response.success) {
-        setProposals(response.data || []);
-        setStats(response.stats || {
-          total: 0,
-          berjalan: 0,
-          selesai: 0,
-          belumMonitoring: 0,
-        });
-      } else {
-        toast.error(response.error || "Gagal memuat data monitoring");
+      if (response.success && response.data) {
+        setProposals(response.data as any);
       }
     } catch (error) {
-      console.error('Error loading monitoring:', error);
-      toast.error("Terjadi kesalahan saat memuat data");
+      console.error('Error loading proposals:', error);
+      toast.error("Gagal memuat data proposal");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSearch = () => {
-    loadMonitoring();
   };
 
   const getStatusBadge = (status: string) => {
@@ -105,7 +74,7 @@ export default function AdminMonitoringPage() {
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
-  const getMonitoringStatus = (proposal: MonitoringList) => {
+  const getMonitoringStatus = (proposal: ProposalWithMonitoring) => {
     if (!proposal.monitorings || proposal.monitorings.length === 0) {
       return {
         icon: <AlertCircle className="w-5 h-5 text-yellow-500" />,
@@ -139,6 +108,19 @@ export default function AdminMonitoringPage() {
     };
   };
 
+  const filteredProposals = proposals.filter(proposal =>
+    proposal.judul.toLowerCase().includes(searchValue.toLowerCase()) ||
+    proposal.periode?.nama?.toLowerCase().includes(searchValue.toLowerCase()) ||
+    proposal.skema?.nama?.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  const stats = {
+    total: proposals.length,
+    belumMonitoring: proposals.filter(p => !p.monitorings || p.monitorings.length === 0).length,
+    berjalan: proposals.filter(p => p.status === 'BERJALAN').length,
+    selesai: proposals.filter(p => p.status === 'SELESAI').length,
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -156,7 +138,7 @@ export default function AdminMonitoringPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Monitoring & Laporan</h1>
           <p className="text-muted-foreground">
-            Pantau dan verifikasi laporan monitoring proposal
+            Kelola dan pantau progress proposal yang sudah diterima
           </p>
         </div>
 
@@ -170,7 +152,7 @@ export default function AdminMonitoringPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.total}</div>
               <p className="text-xs text-muted-foreground">
-                Proposal diterima
+                Proposal yang diterima
               </p>
             </CardContent>
           </Card>
@@ -183,7 +165,7 @@ export default function AdminMonitoringPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.belumMonitoring}</div>
               <p className="text-xs text-muted-foreground">
-                Belum ada laporan
+                Perlu submit laporan
               </p>
             </CardContent>
           </Card>
@@ -215,69 +197,37 @@ export default function AdminMonitoringPage() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Cari judul atau nama ketua..."
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="pl-9"
-                />
-              </div>
-
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full lg:w-[200px]">
-                  <SelectValue placeholder="Semua Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Semua Status</SelectItem>
-                  <SelectItem value="DITERIMA">Diterima</SelectItem>
-                  <SelectItem value="BERJALAN">Berjalan</SelectItem>
-                  <SelectItem value="SELESAI">Selesai</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={periodeFilter} onValueChange={setPeriodeFilter}>
-                <SelectTrigger className="w-full lg:w-[200px]">
-                  <SelectValue placeholder="Semua Periode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Semua Periode</SelectItem>
-                  {periodeList.map((periode) => (
-                    <SelectItem key={periode.id} value={periode.id}>
-                      {periode.nama} ({periode.tahun})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button onClick={handleSearch} variant="default">
-                <Filter className="w-4 h-4 mr-2" />
-                Filter
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Search */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Cari judul, periode, atau skema..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
 
         {/* Proposals List */}
-        {proposals.length === 0 ? (
+        {filteredProposals.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Tidak ada data</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {searchValue ? "Tidak ada hasil" : "Belum ada proposal"}
+              </h3>
               <p className="text-sm text-muted-foreground text-center max-w-sm">
-                Belum ada proposal yang perlu dimonitor
+                {searchValue
+                  ? "Coba gunakan kata kunci lain untuk pencarian"
+                  : "Proposal yang sudah diterima akan muncul di sini"}
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {proposals.map((proposal) => {
+            {filteredProposals.map((proposal) => {
               const monitoring = proposal.monitorings?.[0];
               const monitoringStatus = getMonitoringStatus(proposal);
               
@@ -290,8 +240,6 @@ export default function AdminMonitoringPage() {
                         <div>
                           <h3 className="text-lg font-semibold mb-1">{proposal.judul}</h3>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <span>{proposal.ketua?.nama}</span>
-                            <span>•</span>
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
                               {proposal.periode?.nama} ({proposal.periode?.tahun})
@@ -324,11 +272,11 @@ export default function AdminMonitoringPage() {
                       {/* Right: Actions */}
                       <div className="flex lg:flex-col gap-2">
                         <Button
-                          onClick={() => router.push(`/admin/monitoring/${proposal.id}`)}
+                          onClick={() => router.push(`/dosen/monitoring/${proposal.id}`)}
                           className="flex-1 lg:flex-none"
                         >
                           <Eye className="w-4 h-4 mr-2" />
-                          Detail & Verifikasi
+                          Kelola Monitoring
                         </Button>
                       </div>
                     </div>

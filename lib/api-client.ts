@@ -999,4 +999,168 @@ export const adminReviewApi = {
   },
 }
 
+// ==========================================
+// MONITORING API
+// ==========================================
+
+export interface Monitoring {
+  id: string
+  proposalId: string
+  laporanKemajuan?: string
+  fileKemajuan?: string
+  laporanAkhir?: string
+  fileAkhir?: string
+  persentaseKemajuan: number
+  status: string
+  verifikasiKemajuanStatus?: string
+  verifikasiKemajuanAt?: string
+  catatanKemajuan?: string
+  verifikasiAkhirStatus?: string
+  verifikasiAkhirAt?: string
+  catatanAkhir?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MonitoringDetail {
+  proposal: {
+    id: string
+    judul: string
+    status: string
+    periode: {
+      id: string
+      nama: string
+      tahun: string
+    }
+    skema: {
+      id: string
+      nama: string
+    }
+    ketua: {
+      id: string
+      nama: string
+      nidn: string
+    }
+    bidangKeahlian: {
+      id: string
+      nama: string
+    }
+  }
+  monitoring?: Monitoring
+}
+
+export interface MonitoringList {
+  id: string
+  judul: string
+  status: string
+  periode: {
+    id: string
+    nama: string
+    tahun: string
+  }
+  skema: {
+    id: string
+    nama: string
+  }
+  ketua: {
+    id: string
+    nama: string
+  }
+  monitorings: Monitoring[]
+}
+
+export interface MonitoringStats {
+  total: number
+  berjalan: number
+  selesai: number
+  belumMonitoring: number
+}
+
+export const monitoringApi = {
+  // Get monitoring data for specific proposal (Dosen & Admin)
+  getMonitoring: (proposalId: string) => {
+    return fetchApi<MonitoringDetail>(`/api/monitoring/${proposalId}`)
+  },
+
+  // Upload laporan kemajuan (Dosen only)
+  uploadKemajuan: async (proposalId: string, data: {
+    laporanKemajuan: string
+    fileKemajuan?: string
+    persentaseKemajuan: number
+  }) => {
+    const response = await fetch(`/api/monitoring/${proposalId}/upload-kemajuan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Gagal mengupload laporan kemajuan')
+    }
+    
+    return response.json()
+  },
+
+  // Upload laporan akhir (Dosen only)
+  uploadAkhir: async (proposalId: string, data: {
+    laporanAkhir: string
+    fileAkhir?: string
+  }) => {
+    const response = await fetch(`/api/monitoring/${proposalId}/upload-akhir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Gagal mengupload laporan akhir')
+    }
+    
+    return response.json()
+  },
+
+  // List all monitoring (Admin only)
+  listMonitoring: (params?: {
+    status?: string
+    periodeId?: string
+    search?: string
+  }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.periodeId) searchParams.set('periodeId', params.periodeId)
+    if (params?.search) searchParams.set('search', params.search)
+
+    return fetchApi<{
+      data: MonitoringList[]
+      stats: MonitoringStats
+    }>(`/api/monitoring?${searchParams}`)
+  },
+
+  // Verify monitoring report (Admin only)
+  verifyMonitoring: async (proposalId: string, data: {
+    type: 'kemajuan' | 'akhir'
+    approved: boolean
+    catatan?: string
+  }) => {
+    const response = await fetch(`/api/monitoring/${proposalId}/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Gagal memverifikasi laporan')
+    }
+    
+    return response.json()
+  },
+}
+
+
 

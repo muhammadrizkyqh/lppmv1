@@ -144,6 +144,12 @@ const getNavigationByRole = (role: string) => {
             href: "/dosen/proposals/create",
             badge: null,
           },
+          {
+            title: "Monitoring & Laporan",
+            icon: BarChart3,
+            href: "/dosen/monitoring",
+            badge: null,
+          },
         ],
       },
       {
