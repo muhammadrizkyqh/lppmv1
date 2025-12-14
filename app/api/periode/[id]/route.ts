@@ -172,7 +172,7 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            proposals: true,
+            proposal: true,
           },
         },
       },
@@ -186,11 +186,11 @@ export async function DELETE(
     }
 
     // Check if periode has proposals
-    if (periode._count.proposals > 0) {
+    if (periode._count.proposal > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: `Periode memiliki ${periode._count.proposals} proposal. Hapus proposal terlebih dahulu atau nonaktifkan periode ini.`,
+          error: `Periode memiliki ${periode._count.proposal} proposal. Hapus proposal terlebih dahulu atau nonaktifkan periode ini.`,
         },
         { status: 400 }
       )

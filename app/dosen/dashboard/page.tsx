@@ -15,32 +15,111 @@ import {
   ArrowRight,
   Calendar,
   Award,
+  RefreshCw,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { fetchApi } from "@/lib/api-client";
 
-interface DosenDashboardStats {
-  totalProposals: number;
-  inReview: number;
-  approved: number;
-  needsRevision: number;
-  publications: number;
+interface DosenDashboardData {
+  dosenName: string;
+  stats: {
+    totalProposals: number;
+    draft: number;
+    inReview: number;
+    approved: number;
+    needsRevision: number;
+    running: number;
+    completed: number;
+  };
+  changes: {
+    proposals: string;
+    running: string;
+    completed: string;
+  };
+  proposalsByStatus: Array<{
+    status: string;
+    count: number;
+    label: string;
+  }>;
+  myProposals: any[];
+  upcomingDeadlines: any[];
+  monitoringDeadlines: any[];
+  pendingVerifications: any[];
 }
 
+// Color scheme for chart
+const COLORS = {
+  DRAFT: "#64748b",
+  DIAJUKAN: "#3b82f6",
+  DITERIMA: "#22c55e",
+  REVISI: "#f97316",
+  BERJALAN: "#8b5cf6",
+  SELESAI: "#10b981",
+};
+
 export default function DosenDashboardPage() {
-  const [stats] = useState<DosenDashboardStats>({
-    totalProposals: 8,
-    inReview: 2,
-    approved: 5,
-    needsRevision: 1,
-    publications: 12,
-  });
+  const [data, setData] = useState<DosenDashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const result = await fetchApi("/api/dashboard/dosen");
+      
+      if (result.success && result.data) {
+        setData(result.data);
+      } else {
+        setError(result.error || "Failed to load dashboard");
+        toast.error("Gagal memuat data dashboard");
+      }
+    } catch (err) {
+      setError("Failed to fetch dashboard data");
+      toast.error("Gagal memuat data dashboard");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+          <AlertCircle className="w-12 h-12 text-destructive" />
+          <p className="text-muted-foreground">{error || "Gagal memuat data"}</p>
+          <Button onClick={fetchDashboardData}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Coba Lagi
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const statCards = [
     {
       title: "Total Proposal",
-      value: stats.totalProposals,
-      change: "+2",
+      value: data.stats.totalProposals,
+      change: data.changes.proposals,
       changeType: "positive" as const,
       icon: FileText,
       description: "Proposal Anda",
@@ -48,7 +127,7 @@ export default function DosenDashboardPage() {
     },
     {
       title: "Dalam Review",
-      value: stats.inReview,
+      value: data.stats.inReview,
       change: "0",
       changeType: "neutral" as const,
       icon: Clock,
@@ -57,7 +136,7 @@ export default function DosenDashboardPage() {
     },
     {
       title: "Disetujui",
-      value: stats.approved,
+      value: data.stats.approved,
       change: "+1",
       changeType: "positive" as const,
       icon: CheckCircle,
@@ -66,7 +145,7 @@ export default function DosenDashboardPage() {
     },
     {
       title: "Perlu Revisi",
-      value: stats.needsRevision,
+      value: data.stats.needsRevision,
       change: "+1",
       changeType: "warning" as const,
       icon: AlertCircle,
@@ -82,7 +161,7 @@ export default function DosenDashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Dashboard Dosen
+              Selamat Datang, {data.dosenName}
             </h1>
             <p className="text-muted-foreground mt-2">
               Kelola penelitian dan PKM Anda
@@ -131,55 +210,100 @@ export default function DosenDashboardPage() {
           ))}
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-full bg-primary/10">
-                  <TrendingUp className="w-6 h-6 text-primary" />
+        {/* Chart & Monitoring Stats */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Pie Chart - Proposals by Status */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Status Proposal Saya</CardTitle>
+              <CardDescription>Breakdown proposal berdasarkan status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.proposalsByStatus.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={data.proposalsByStatus}
+                      dataKey="count"
+                      nameKey="label"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={(entry) => `${entry.label}: ${entry.count}`}
+                    >
+                      {data.proposalsByStatus.map((entry) => (
+                        <Cell key={entry.status} fill={COLORS[entry.status as keyof typeof COLORS]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  <p>Belum ada proposal</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Tingkat Approval</p>
-                  <p className="text-2xl font-bold text-primary">85%</p>
-                  <p className="text-xs text-muted-foreground">Proposal Anda</p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-full bg-blue-100">
-                  <Award className="w-6 h-6 text-blue-600" />
+          {/* Running Proposals Stats */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Ringkasan Monitoring</CardTitle>
+              <CardDescription>Status proposal yang sedang berjalan</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-violet-50">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-full bg-violet-100">
+                    <BarChart3 className="w-5 h-5 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-violet-900">Proposal Berjalan</p>
+                    <p className="text-sm text-violet-600">Sedang dalam proses</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Luaran</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.publications}</p>
-                  <p className="text-xs text-muted-foreground">Publikasi & produk</p>
-                </div>
+                <p className="text-2xl font-bold text-violet-600">{data.stats.running}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-50 to-amber-100">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-full bg-amber-100">
-                  <Calendar className="w-6 h-6 text-amber-600" />
+              <div className="flex items-center justify-between p-4 rounded-lg bg-emerald-50">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-full bg-emerald-100">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-emerald-900">Proposal Selesai</p>
+                    <p className="text-sm text-emerald-600">Telah terverifikasi</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Deadline Terdekat</p>
-                  <p className="text-2xl font-bold text-amber-600">3</p>
-                  <p className="text-xs text-muted-foreground">Hari lagi</p>
-                </div>
+                <p className="text-2xl font-bold text-emerald-600">{data.stats.completed}</p>
               </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-amber-50">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-full bg-amber-100">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-amber-900">Pending Verifikasi</p>
+                    <p className="text-sm text-amber-600">Menunggu admin</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-amber-600">{data.pendingVerifications.length}</p>
+              </div>
+
+              <Link href="/dosen/monitoring">
+                <Button variant="outline" className="w-full">
+                  Lihat Detail Monitoring
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions & Deadlines */}
         <div className="grid gap-6 md:grid-cols-2">
           <Card className="border-0 shadow-sm">
             <CardHeader>
@@ -201,10 +325,10 @@ export default function DosenDashboardPage() {
                   <ArrowRight className="w-4 h-4 ml-auto" />
                 </Button>
               </Link>
-              <Link href="/dosen/reports">
+              <Link href="/dosen/monitoring">
                 <Button variant="outline" className="w-full justify-start">
                   <Calendar className="w-4 h-4 mr-2" />
-                  Upload Laporan
+                  Upload Laporan Monitoring
                   <ArrowRight className="w-4 h-4 ml-auto" />
                 </Button>
               </Link>
@@ -213,37 +337,44 @@ export default function DosenDashboardPage() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle>Tugas Mendatang</CardTitle>
-              <CardDescription>Jangan lewatkan deadline</CardDescription>
+              <CardTitle>Deadline Monitoring</CardTitle>
+              <CardDescription>Jangan lewatkan batas waktu</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-orange-100">
-                  <AlertCircle className="w-4 h-4 text-orange-600" />
+              {data.monitoringDeadlines.length > 0 ? (
+                data.monitoringDeadlines.slice(0, 3).map((deadline, idx) => {
+                  const isUrgent = deadline.daysLeft <= 7;
+                  const isPast = deadline.daysLeft < 0;
+                  return (
+                    <div key={idx} className="flex items-start space-x-3 text-sm">
+                      <div className={`p-2 rounded-lg ${isUrgent || isPast ? 'bg-red-100' : 'bg-orange-100'}`}>
+                        <AlertCircle className={`w-4 h-4 ${isUrgent || isPast ? 'text-red-600' : 'text-orange-600'}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          Upload Laporan {deadline.type === "kemajuan" ? "Kemajuan" : "Akhir"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {deadline.judul} • {Math.abs(deadline.daysLeft)} hari {isPast ? 'terlambat' : 'lagi'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
+                  <p className="text-sm">Tidak ada deadline mendesak</p>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">Upload laporan monitoring 1</p>
-                  <p className="text-xs text-muted-foreground">P-2025-001 - Deadline: 3 hari lagi</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Revisi proposal berdasarkan feedback</p>
-                  <p className="text-xs text-muted-foreground">P-2025-004 - Deadline: 5 hari lagi</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <Award className="w-4 h-4 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Submit luaran penelitian</p>
-                  <p className="text-xs text-muted-foreground">P-2025-002 - Deadline: 7 hari lagi</p>
-                </div>
-              </div>
+              )}
+              
+              {data.monitoringDeadlines.length > 3 && (
+                <Link href="/dosen/monitoring">
+                  <Button variant="ghost" size="sm" className="w-full">
+                    Lihat Semua Deadline
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
         </div>

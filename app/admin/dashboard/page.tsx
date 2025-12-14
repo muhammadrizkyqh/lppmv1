@@ -16,9 +16,13 @@ import {
   ArrowRight,
   Calendar,
   ClipboardList,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { fetchApi } from "@/lib/api-client";
 
 interface DashboardStats {
   totalProposals: number;
@@ -29,39 +33,103 @@ interface DashboardStats {
   totalDosen: number;
 }
 
+interface DashboardData {
+  stats: DashboardStats;
+  changes: {
+    proposals: string;
+    reviews: string;
+    approved: string;
+  };
+  proposalsByStatus: Array<{
+    status: string;
+    count: number;
+    label: string;
+  }>;
+  monitoring: {
+    total: number;
+    berjalan: number;
+    selesai: number;
+    pendingKemajuanVerification: number;
+    pendingAkhirVerification: number;
+  };
+  recentProposals: any[];
+  recentReviews: any[];
+}
+
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalProposals: 0,
-    inReview: 0,
-    approved: 0,
-    needsAction: 0,
-    totalReviewers: 0,
-    totalDosen: 0,
-  });
+  const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/dashboard/admin');
+      const result = await response.json();
+
+      if (result.success) {
+        setData(result.data);
+      } else {
+        setError(result.error || 'Gagal memuat data');
+        toast.error(result.error || 'Gagal memuat data dashboard');
+      }
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      setError('Terjadi kesalahan koneksi');
+      toast.error('Terjadi kesalahan koneksi');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setStats({
-        totalProposals: 24,
-        inReview: 8,
-        approved: 15,
-        needsAction: 3,
-        totalReviewers: 12,
-        totalDosen: 45,
-      });
-      setIsLoading(false);
-    }, 100);
-
-    return () => clearTimeout(timer);
+    fetchDashboardData();
   }, []);
+
+  // Chart colors for proposals by status
+  const COLORS = {
+    DRAFT: '#94a3b8',      // slate
+    DIAJUKAN: '#60a5fa',   // blue
+    DIREVIEW: '#fbbf24',   // amber
+    REVISI: '#f97316',     // orange
+    DITERIMA: '#22c55e',   // green
+    DITOLAK: '#ef4444',    // red
+    BERJALAN: '#8b5cf6',   // violet
+    SELESAI: '#10b981',    // emerald
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-96 space-y-4">
+          <AlertCircle className="w-12 h-12 text-destructive" />
+          <p className="text-muted-foreground">{error || 'Gagal memuat data'}</p>
+          <Button onClick={fetchDashboardData}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Coba Lagi
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const statCards = [
     {
       title: "Total Proposal",
-      value: stats.totalProposals,
-      change: "+12%",
+      value: data.stats.totalProposals,
+      change: data.changes.proposals,
       changeType: "positive" as const,
       icon: FileText,
       description: "Dari bulan lalu",
@@ -69,8 +137,8 @@ export default function AdminDashboardPage() {
     },
     {
       title: "Dalam Review",
-      value: stats.inReview,
-      change: "+3",
+      value: data.stats.inReview,
+      change: data.changes.reviews,
       changeType: "positive" as const,
       icon: Clock,
       description: "Menunggu keputusan",
@@ -78,8 +146,8 @@ export default function AdminDashboardPage() {
     },
     {
       title: "Disetujui",
-      value: stats.approved,
-      change: "+5",
+      value: data.stats.approved,
+      change: data.changes.approved,
       changeType: "positive" as const,
       icon: CheckCircle,
       description: "Proposal approved",
@@ -87,7 +155,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: "Perlu Tindakan",
-      value: stats.needsAction,
+      value: data.stats.needsAction,
       change: "-2",
       changeType: "negative" as const,
       icon: AlertCircle,
@@ -164,7 +232,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Total Dosen</p>
-                  <p className="text-2xl font-bold text-primary">{stats.totalDosen}</p>
+                  <p className="text-2xl font-bold text-primary">{data.stats.totalDosen}</p>
                   <p className="text-xs text-muted-foreground">Peneliti aktif</p>
                 </div>
                 <Link href="/admin/data-master">
@@ -184,7 +252,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Reviewer</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.totalReviewers}</p>
+                  <p className="text-2xl font-bold text-blue-600">{data.stats.totalReviewers}</p>
                   <p className="text-xs text-muted-foreground">Total reviewer</p>
                 </div>
                 <Link href="/admin/data-master">
@@ -217,7 +285,102 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
+        {/* Chart & Monitoring Stats */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Pie Chart - Proposals by Status */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Distribusi Status Proposal</CardTitle>
+              <CardDescription>Breakdown proposal berdasarkan status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.proposalsByStatus.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={data.proposalsByStatus}
+                      dataKey="count"
+                      nameKey="label"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={(entry) => `${entry.label}: ${entry.count}`}
+                    >
+                      {data.proposalsByStatus.map((entry) => (
+                        <Cell key={entry.status} fill={COLORS[entry.status as keyof typeof COLORS]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  <p>Belum ada data proposal</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Monitoring Stats */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Status Monitoring</CardTitle>
+              <CardDescription>Progress monitoring proposal yang sedang berjalan</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-violet-50">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-full bg-violet-100">
+                    <BarChart3 className="w-5 h-5 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-violet-900">Proposal Berjalan</p>
+                    <p className="text-sm text-violet-600">Sedang dalam proses</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-violet-600">{data.monitoring.berjalan}</p>
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-emerald-50">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-full bg-emerald-100">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-emerald-900">Proposal Selesai</p>
+                    <p className="text-sm text-emerald-600">Telah terverifikasi</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-emerald-600">{data.monitoring.selesai}</p>
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-amber-50">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-full bg-amber-100">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-amber-900">Pending Verifikasi</p>
+                    <p className="text-sm text-amber-600">Perlu ditinjau</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-amber-600">
+                  {data.monitoring.pendingKemajuanVerification + data.monitoring.pendingAkhirVerification}
+                </p>
+              </div>
+
+              <Link href="/admin/monitoring">
+                <Button variant="outline" className="w-full">
+                  Lihat Detail Monitoring
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions & Recent Activities */}
         <div className="grid gap-6 md:grid-cols-2">
           <Card className="border-0 shadow-sm">
             <CardHeader>
@@ -262,33 +425,49 @@ export default function AdminDashboardPage() {
               <CardDescription>Update sistem terkini</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
+              {data.recentProposals.length > 0 ? (
+                data.recentProposals.slice(0, 5).map((proposal) => {
+                  const statusConfig = {
+                    DRAFT: { icon: FileText, color: "slate", label: "Draft" },
+                    DIAJUKAN: { icon: Clock, color: "blue", label: "Diajukan" },
+                    DIREVIEW: { icon: ClipboardList, color: "amber", label: "Direview" },
+                    REVISI: { icon: AlertCircle, color: "orange", label: "Revisi" },
+                    DITERIMA: { icon: CheckCircle, color: "green", label: "Diterima" },
+                    DITOLAK: { icon: AlertCircle, color: "red", label: "Ditolak" },
+                    BERJALAN: { icon: BarChart3, color: "violet", label: "Berjalan" },
+                    SELESAI: { icon: CheckCircle, color: "emerald", label: "Selesai" }
+                  }[proposal.status] || { icon: FileText, color: "slate", label: proposal.status };
+
+                  const StatusIcon = statusConfig.icon;
+
+                  return (
+                    <div key={proposal.id} className="flex items-start space-x-3 text-sm">
+                      <div className={`p-2 rounded-lg bg-${statusConfig.color}-100`}>
+                        <StatusIcon className={`w-4 h-4 text-${statusConfig.color}-600`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{proposal.judul}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {proposal.dosen.nama} • {statusConfig.label} • {proposal.skema.nama}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
+                  <p className="text-sm">Belum ada aktivitas</p>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">Proposal disetujui</p>
-                  <p className="text-xs text-muted-foreground">P-2025-001 - 2 jam yang lalu</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Review selesai</p>
-                  <p className="text-xs text-muted-foreground">P-2025-002 - 3 jam yang lalu</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-orange-100">
-                  <AlertCircle className="w-4 h-4 text-orange-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Proposal baru masuk</p>
-                  <p className="text-xs text-muted-foreground">P-2025-003 - 5 jam yang lalu</p>
-                </div>
-              </div>
+              )}
+
+              {data.recentProposals.length > 5 && (
+                <Link href="/admin/proposals">
+                  <Button variant="ghost" size="sm" className="w-full">
+                    Lihat Semua
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -41,7 +41,12 @@ export async function POST(
     const proposal = await prisma.proposal.findUnique({
       where: { id },
       include: {
-        ketua: true,
+        dosen: true,
+        proposalmember: {
+          include: {
+            dosen: true,
+          },
+        },
       },
     })
 
@@ -56,14 +61,6 @@ export async function POST(
     if (proposal.status !== 'DIAJUKAN') {
       return NextResponse.json(
         { success: false, error: 'Hanya proposal dengan status DIAJUKAN yang dapat direview' },
-        { status: 400 }
-      )
-    }
-
-    // Validate reviewers are not the ketua
-    if (reviewerIds.includes(proposal.ketuaId)) {
-      return NextResponse.json(
-        { success: false, error: 'Ketua proposal tidak boleh menjadi reviewer' },
         { status: 400 }
       )
     }
@@ -84,6 +81,40 @@ export async function POST(
       )
     }
 
+    // Check for duplicate reviewers
+    if (reviewerIds[0] === reviewerIds[1]) {
+      return NextResponse.json(
+        { success: false, error: 'Tidak boleh memilih reviewer yang sama dua kali' },
+        { status: 400 }
+      )
+    }
+
+    // Get reviewer userIds for validation
+    const reviewerUserIds = reviewers.map(r => r.userId)
+
+    // Validate reviewers are not the ketua (compare userId, not dosenId!)
+    if (reviewerUserIds.includes(proposal.dosen.userId)) {
+      return NextResponse.json(
+        { success: false, error: 'Ketua proposal tidak boleh menjadi reviewer' },
+        { status: 400 }
+      )
+    }
+
+    // Validate reviewers are not team members
+    const teamMemberUserIds = proposal.proposalmember
+      .filter(member => member.dosen) // Only check dosen members
+      .map(member => member.dosen!.userId)
+    const hasTeamMemberAsReviewer = reviewerUserIds.some(userId => 
+      teamMemberUserIds.includes(userId)
+    )
+    
+    if (hasTeamMemberAsReviewer) {
+      return NextResponse.json(
+        { success: false, error: 'Anggota tim proposal tidak boleh menjadi reviewer' },
+        { status: 400 }
+      )
+    }
+
     // Calculate deadline (7 days from now)
     const deadline = new Date()
     deadline.setDate(deadline.getDate() + 7)
@@ -99,8 +130,9 @@ export async function POST(
       }),
       // Create reviewer assignments
       ...reviewerIds.map((reviewerId: string) =>
-        prisma.proposalReviewer.create({
+        prisma.proposal_reviewer.create({
           data: {
+            id: crypto.randomUUID(),
             proposalId: id,
             reviewerId,
             deadline,

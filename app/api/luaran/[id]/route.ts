@@ -1,0 +1,169 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth'
+
+// GET /api/luaran/[id] - Get luaran detail
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await requireAuth()
+
+    const luaran = await prisma.luaran.findUnique({
+      where: { id: params.id },
+      include: {
+        proposal: {
+          select: {
+            id: true,
+            judul: true,
+            status: true,
+            ketuaId: true,
+            periode: {
+              select: {
+                id: true,
+                nama: true,
+                tahun: true,
+              }
+            },
+            dosen: {
+              select: {
+                id: true,
+                nama: true,
+                nidn: true,
+              }
+            }
+          }
+        },
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        }
+      }
+    })
+
+    if (!luaran) {
+      return NextResponse.json(
+        { success: false, error: 'Luaran tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    // Check permission: Admin or ketua proposal
+    if (session.role !== 'ADMIN') {
+      const dosen = await prisma.dosen.findFirst({
+        where: { userId: session.id }
+      })
+      if (!dosen || luaran.proposal.ketuaId !== dosen.id) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 403 }
+        )
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: luaran,
+    })
+  } catch (error) {
+    console.error('Get luaran detail error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH /api/luaran/[id] - Update luaran (Dosen only)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await requireAuth()
+    if (session.role !== 'DOSEN') {
+      return NextResponse.json(
+        { success: false, error: 'Hanya dosen yang bisa update luaran' },
+        { status: 403 }
+      )
+    }
+
+    const body = await request.json()
+    const { jenis, judul, penerbit, tahunTerbit, url, keterangan } = body
+
+    // Get luaran
+    const luaran = await prisma.luaran.findUnique({
+      where: { id: params.id },
+      include: {
+        proposal: true
+      }
+    })
+
+    if (!luaran) {
+      return NextResponse.json(
+        { success: false, error: 'Luaran tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    // Check permission
+    const dosen = await prisma.dosen.findFirst({
+      where: { userId: session.id }
+    })
+    if (!dosen || luaran.proposal.ketuaId !== dosen.id) {
+      return NextResponse.json(
+        { success: false, error: 'Hanya ketua penelitian yang bisa update luaran' },
+        { status: 403 }
+      )
+    }
+
+    // Cannot update if already verified
+    if (luaran.statusVerifikasi === 'DIVERIFIKASI') {
+      return NextResponse.json(
+        { success: false, error: 'Luaran yang sudah diverifikasi tidak bisa diubah' },
+        { status: 400 }
+      )
+    }
+
+    // Update luaran
+    const updated = await prisma.luaran.update({
+      where: { id: params.id },
+      data: {
+        jenis,
+        judul,
+        penerbit,
+        tahunTerbit,
+        url,
+        keterangan,
+      },
+      include: {
+        proposal: {
+          select: {
+            judul: true,
+            dosen: {
+              select: {
+                nama: true,
+              }
+            }
+          }
+        }
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: updated,
+      message: 'Luaran berhasil diupdate'
+    })
+  } catch (error) {
+    console.error('Update luaran error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

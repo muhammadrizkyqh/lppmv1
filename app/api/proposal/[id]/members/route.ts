@@ -18,7 +18,7 @@ export async function GET(
 
     const { id } = await params
 
-    const members = await prisma.proposalMember.findMany({
+    const members = await prisma.proposalmember.findMany({
       where: { proposalId: id },
       include: {
         dosen: {
@@ -28,7 +28,7 @@ export async function GET(
             nama: true,
             email: true,
             bidangKeahlianId: true,
-            bidangKeahlian: {
+            bidangkeahlian: {
               select: {
                 id: true,
                 nama: true,
@@ -104,7 +104,7 @@ export async function POST(
       include: {
         _count: {
           select: {
-            members: true,
+            proposalmember: true,
           },
         },
       },
@@ -134,7 +134,7 @@ export async function POST(
     }
 
     // Validate maximum members (4 including ketua)
-    if (proposal._count.members >= 4) {
+    if (proposal._count.proposalmember >= 4) {
       return NextResponse.json(
         { success: false, error: 'Maksimal 4 anggota tim (termasuk ketua)' },
         { status: 400 }
@@ -142,7 +142,7 @@ export async function POST(
     }
 
     // Check if member already exists in this proposal
-    const existingMember = await prisma.proposalMember.findFirst({
+    const existingMember = await prisma.proposalmember.findFirst({
       where: {
         proposalId: id,
         OR: [
@@ -160,8 +160,9 @@ export async function POST(
     }
 
     // Create member
-    const member = await prisma.proposalMember.create({
+    const member = await prisma.proposalmember.create({
       data: {
+        id: crypto.randomUUID(),
         proposalId: id,
         dosenId,
         mahasiswaId,

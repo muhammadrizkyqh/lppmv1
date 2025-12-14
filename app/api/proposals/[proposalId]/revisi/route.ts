@@ -65,7 +65,24 @@ export async function POST(
     // Update proposal with revision file and change status back to DIREVIEW
     // Also reset reviewer assignments so they can review again
     const updatedProposal = await prisma.$transaction(async (tx) => {
-      // Reset all reviewer assignments for this proposal to PENDING
+      // Step 1: Get all ProposalReviewer IDs for this proposal
+      const proposalReviewers = await tx.proposalReviewer.findMany({
+        where: { proposalId },
+        select: { id: true },
+      })
+
+      // Step 2: Delete all reviews for these assignments
+      if (proposalReviewers.length > 0) {
+        await tx.review.deleteMany({
+          where: {
+            proposalReviewerId: {
+              in: proposalReviewers.map(pr => pr.id),
+            },
+          },
+        })
+      }
+
+      // Step 3: Reset all reviewer assignments to PENDING
       await tx.proposalReviewer.updateMany({
         where: { proposalId },
         data: {
@@ -73,16 +90,7 @@ export async function POST(
         },
       })
 
-      // Delete old reviews to allow fresh review (optional - comment out if you want to keep history)
-      await tx.review.deleteMany({
-        where: {
-          proposalReviewer: {
-            proposalId,
-          },
-        },
-      })
-
-      // Update proposal with new revision file
+      // Step 4: Update proposal with new revision file
       return await tx.proposal.update({
         where: { id: proposalId },
         data: {

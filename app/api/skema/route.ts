@@ -13,7 +13,7 @@ export async function GET() {
       include: {
         _count: {
           select: {
-            proposals: true,
+            proposal: true,
           },
         },
       },

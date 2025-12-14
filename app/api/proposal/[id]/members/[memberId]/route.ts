@@ -19,7 +19,7 @@ export async function DELETE(
     const { memberId } = await params
 
     // Check if member exists
-    const member = await prisma.proposalMember.findUnique({
+    const member = await prisma.proposalmember.findUnique({
       where: { id: memberId },
       include: {
         proposal: true,
@@ -58,7 +58,7 @@ export async function DELETE(
     }
 
     // Delete member
-    await prisma.proposalMember.delete({
+    await prisma.proposalmember.delete({
       where: { id: memberId },
     })
 

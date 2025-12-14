@@ -17,14 +17,14 @@ export async function GET(
     }
 
     const { id } = await params
-    const bidangKeahlian = await prisma.bidangKeahlian.findUnique({
+    const bidangKeahlian = await prisma.bidangkeahlian.findUnique({
       where: { id },
       include: {
         _count: {
           select: {
-            dosens: true,
-            reviewers: true,
-            proposals: true,
+            dosen: true,
+            reviewer: true,
+            proposal: true,
           },
         },
       },
@@ -77,7 +77,7 @@ export async function PUT(
 
     const { id } = await params
     // Check if bidang keahlian exists
-    const existingBidang = await prisma.bidangKeahlian.findUnique({
+    const existingBidang = await prisma.bidangkeahlian.findUnique({
       where: { id },
     })
 
@@ -90,7 +90,7 @@ export async function PUT(
 
     // Check if nama is unique (if changing)
     if (nama && nama !== existingBidang.nama) {
-      const duplicate = await prisma.bidangKeahlian.findUnique({
+      const duplicate = await prisma.bidangkeahlian.findUnique({
         where: { nama },
       })
       if (duplicate) {
@@ -101,19 +101,20 @@ export async function PUT(
       }
     }
 
-    const updatedBidang = await prisma.bidangKeahlian.update({
+    const updatedBidang = await prisma.bidangkeahlian.update({
       where: { id },
       data: {
         ...(nama && { nama }),
         ...(deskripsi !== undefined && { deskripsi }),
         ...(status && { status }),
+        updatedAt: new Date(),
       },
       include: {
         _count: {
           select: {
-            dosens: true,
-            reviewers: true,
-            proposals: true,
+            dosen: true,
+            reviewer: true,
+            proposal: true,
           },
         },
       },
@@ -157,14 +158,14 @@ export async function DELETE(
     }
 
     // Check if bidang keahlian exists
-    const bidangKeahlian = await prisma.bidangKeahlian.findUnique({
+    const bidangKeahlian = await prisma.bidangkeahlian.findUnique({
       where: { id },
       include: {
         _count: {
           select: {
-            dosens: true,
-            reviewers: true,
-            proposals: true,
+            dosen: true,
+            reviewer: true,
+            proposal: true,
           },
         },
       },
@@ -178,19 +179,19 @@ export async function DELETE(
     }
 
     // Check if bidang keahlian is used
-    const totalUsage = bidangKeahlian._count.dosens + bidangKeahlian._count.reviewers + bidangKeahlian._count.proposals
+    const totalUsage = bidangKeahlian._count.dosen + bidangKeahlian._count.reviewer + bidangKeahlian._count.proposal
     if (totalUsage > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: `Bidang keahlian digunakan oleh ${bidangKeahlian._count.dosens} dosen, ${bidangKeahlian._count.reviewers} reviewer, dan ${bidangKeahlian._count.proposals} proposal. Nonaktifkan bidang keahlian ini daripada menghapusnya.`,
+          error: `Bidang keahlian digunakan oleh ${bidangKeahlian._count.dosen} dosen, ${bidangKeahlian._count.reviewer} reviewer, dan ${bidangKeahlian._count.proposal} proposal. Nonaktifkan bidang keahlian ini daripada menghapusnya.`,
         },
         { status: 400 }
       )
     }
 
     // Delete bidang keahlian
-    await prisma.bidangKeahlian.delete({
+    await prisma.bidangkeahlian.delete({
       where: { id },
     })
 

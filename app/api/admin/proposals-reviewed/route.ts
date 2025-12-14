@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
             dana: true,
           }
         },
-        ketua: {
+        dosen: {
           select: {
             id: true,
             nidn: true,

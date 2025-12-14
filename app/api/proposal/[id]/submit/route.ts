@@ -46,10 +46,10 @@ export async function POST(
       )
     }
 
-    // Validate proposal status
-    if (proposal.status !== 'DRAFT') {
+    // Validate proposal status (allow DRAFT or REVISI)
+    if (!['DRAFT', 'REVISI'].includes(proposal.status)) {
       return NextResponse.json(
-        { success: false, error: 'Hanya proposal dengan status DRAFT yang dapat disubmit' },
+        { success: false, error: 'Hanya proposal dengan status DRAFT atau REVISI yang dapat disubmit' },
         { status: 400 }
       )
     }
@@ -92,10 +92,12 @@ export async function POST(
       )
     }
 
-    // Validate team members (at least 1 = ketua)
-    if (proposal._count.members < 1) {
+    // Validate team members
+    // Note: Ketua proposal is included in proposalmember table
+    // So minimum is 1 member (the ketua itself)
+    if (proposal._count.proposalmember < 1) {
       return NextResponse.json(
-        { success: false, error: 'Proposal harus memiliki anggota tim' },
+        { success: false, error: 'Proposal harus memiliki anggota tim (minimal ketua)' },
         { status: 400 }
       )
     }
@@ -110,8 +112,8 @@ export async function POST(
       include: {
         periode: true,
         skema: true,
-        ketua: true,
-        bidangKeahlian: true,
+        dosen: true,
+        bidangkeahlian: true,
       },
     })
 

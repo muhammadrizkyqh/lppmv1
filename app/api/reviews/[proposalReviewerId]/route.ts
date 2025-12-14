@@ -31,12 +31,12 @@ export async function GET(
     }
 
     // Get proposal reviewer assignment with full details
-    const assignment = await prisma.proposalReviewer.findUnique({
+    const assignment = await prisma.proposal_reviewer.findUnique({
       where: { id: proposalReviewerId },
       include: {
         proposal: {
           include: {
-            ketua: {
+            dosen: {
               select: {
                 id: true,
                 nidn: true,
@@ -61,13 +61,13 @@ export async function GET(
                 tanggalTutup: true,
               }
             },
-            bidangKeahlian: {
+            bidangkeahlian: {
               select: {
                 id: true,
                 nama: true,
               }
             },
-            members: {
+            proposalmember: {
               include: {
                 dosen: {
                   select: {

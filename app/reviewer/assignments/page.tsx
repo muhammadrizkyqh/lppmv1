@@ -30,7 +30,7 @@ interface ProposalReviewer {
     judul: string;
     abstrak: string;
     status: string;
-    ketua: {
+    dosen: {
       nama: string;
       email: string;
     };
@@ -236,7 +236,7 @@ export default function ReviewerDashboardPage() {
                           <User className="w-4 h-4 text-muted-foreground" />
                           <div>
                             <p className="text-xs text-muted-foreground">Ketua</p>
-                            <p className="font-medium">{assignment.proposal.ketua.nama}</p>
+                            <p className="font-medium">{assignment.proposal.dosen.nama}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

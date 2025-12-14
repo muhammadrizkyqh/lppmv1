@@ -31,7 +31,7 @@ export async function POST(
     }
 
     // Get proposal reviewer assignment
-    const proposalReviewer = await prisma.proposalReviewer.findUnique({
+    const proposalReviewer = await prisma.proposal_reviewer.findUnique({
       where: { id: proposalReviewerId },
       include: {
         proposal: true,
@@ -102,13 +102,14 @@ export async function POST(
       )
     }
 
-    // Calculate total score (average of 4 criteria)
+    // Calculate total score (weighted sum: each criteria 25%)
+    // Formula: K1*25% + K2*25% + K3*25% + K4*25% = Total (max 100)
     const nilaiTotal = (
-      parseInt(nilaiKriteria1) + 
-      parseInt(nilaiKriteria2) + 
-      parseInt(nilaiKriteria3) + 
-      parseInt(nilaiKriteria4)
-    ) / 4
+      parseInt(nilaiKriteria1) * 0.25 + 
+      parseInt(nilaiKriteria2) * 0.25 + 
+      parseInt(nilaiKriteria3) * 0.25 + 
+      parseInt(nilaiKriteria4) * 0.25
+    )
 
     // Create review
     const review = await prisma.review.create({
@@ -126,7 +127,7 @@ export async function POST(
     })
 
     // Update proposal reviewer status to SELESAI
-    await prisma.proposalReviewer.update({
+    await prisma.proposal_reviewer.update({
       where: { id: proposalReviewerId },
       data: { status: 'SELESAI' }
     })

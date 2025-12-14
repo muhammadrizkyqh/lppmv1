@@ -7,15 +7,15 @@ export async function GET() {
   try {
     await requireAuth()
 
-    const bidangKeahlian = await prisma.bidangKeahlian.findMany({
+    const bidangKeahlian = await prisma.bidangkeahlian.findMany({
       // No status filter - show all (AKTIF and NONAKTIF)
       orderBy: { nama: 'asc' },
       include: {
         _count: {
           select: {
-            dosens: true,
-            reviewers: true,
-            proposals: true,
+            dosen: true,
+            reviewer: true,
+            proposal: true,
           },
         },
       },
@@ -57,11 +57,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const bidangKeahlian = await prisma.bidangKeahlian.create({
+    const bidangKeahlian = await prisma.bidangkeahlian.create({
       data: {
+        id: crypto.randomUUID(),
         nama,
         deskripsi,
         status: 'AKTIF',
+        updatedAt: new Date(),
       },
     })
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { generateNomorKontrakDanSK } from '@/lib/kontrak-generator'
 
 // POST /api/proposal/:id/approve - Approve proposal (Admin only)
 export async function POST(
@@ -32,7 +33,7 @@ export async function POST(
     const proposal = await prisma.proposal.findUnique({
       where: { id },
       include: {
-        reviewers: {
+        proposal_reviewer: {
           include: {
             review: true
           }
@@ -55,28 +56,56 @@ export async function POST(
       )
     }
 
-    // Check if all reviews are complete
-    const allReviewsComplete = proposal.reviewers.every(r => r.status === 'SELESAI')
-    if (!allReviewsComplete) {
+    // Validate exactly 2 reviewers assigned
+    if (proposal.proposal_reviewer.length !== 2) {
+      return NextResponse.json(
+        { success: false, error: 'Proposal harus direview oleh 2 reviewer' },
+        { status: 400 }
+      )
+    }
+
+    // Validate all reviews are complete (check review data exists)
+    const reviews = proposal.proposal_reviewer.map(r => r.review).filter(Boolean)
+    if (reviews.length !== 2) {
       return NextResponse.json(
         { success: false, error: 'Belum semua reviewer menyelesaikan review' },
         { status: 400 }
       )
     }
 
-    // Calculate average score
-    const reviews = proposal.reviewers.map(r => r.review).filter(Boolean)
-    const averageScore = reviews.reduce((sum, r) => sum + Number(r!.nilaiTotal), 0) / reviews.length
+    // Calculate average score (use parseFloat with toString for proper Decimal conversion)
+    const averageScore = reviews.reduce((sum, r) => sum + parseFloat(r!.nilaiTotal.toString()), 0) / reviews.length
 
-    // Update proposal status to DITERIMA
-    const updatedProposal = await prisma.proposal.update({
-      where: { id },
-      data: {
-        status: 'DITERIMA',
-        approvedAt: new Date(),
-        nilaiTotal: averageScore,
-        catatan: catatan || null,
-      }
+    // Generate nomor kontrak and SK
+    const { nomorKontrak, nomorSK } = await generateNomorKontrakDanSK()
+
+    // Use transaction to ensure atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Update proposal status to DITERIMA first
+      const updatedProposal = await tx.proposal.update({
+        where: { id },
+        data: {
+          status: 'DITERIMA',
+          approvedAt: new Date(),
+          nilaiTotal: averageScore,
+          catatan: catatan || null,
+        }
+      })
+
+      // 2. Create kontrak and SK automatically
+      const kontrak = await tx.kontrak.create({
+        data: {
+          id: crypto.randomUUID(),
+          proposalId: id,
+          nomorKontrak,
+          nomorSK,
+          createdBy: session.id,
+          status: 'DRAFT', // Admin perlu upload file TTD dulu
+          updatedAt: new Date()
+        }
+      })
+
+      return { proposal: updatedProposal, kontrak }
     })
 
     // TODO: Create notification for dosen
@@ -84,16 +113,17 @@ export async function POST(
     //   data: {
     //     userId: proposal.creatorId,
     //     title: 'Proposal Diterima',
-    //     message: `Selamat! Proposal "${proposal.judul}" telah diterima`,
+    //     message: `Selamat! Proposal "${proposal.judul}" telah diterima. Kontrak sedang diproses.`,
     //     type: 'SUCCESS',
-    //     link: `/dashboard/proposals/${id}`
+    //     link: `/dosen/proposals/${id}`
     //   }
     // })
 
     return NextResponse.json({
       success: true,
-      data: updatedProposal,
-      message: 'Proposal berhasil diterima'
+      data: result.proposal,
+      kontrak: result.kontrak,
+      message: `Proposal berhasil diterima. Kontrak ${nomorKontrak} dan SK ${nomorSK} telah dibuat`
     })
   } catch (error: any) {
     console.error('Approve proposal error:', error)

@@ -85,32 +85,37 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
       key: 'kriteria1',
       criteria: "Kesesuaian Judul & Latar Belakang",
       description: "Kejelasan dan relevansi judul dengan masalah yang diangkat",
-      maxScore: 25,
+      maxScore: 100,
     },
     {
       id: 2,
       key: 'kriteria2',
       criteria: "Kejelasan Metode Penelitian",
       description: "Metodologi yang digunakan sistematis dan dapat dipertanggungjawabkan",
-      maxScore: 25,
+      maxScore: 100,
     },
     {
       id: 3,
       key: 'kriteria3',
       criteria: "Kelayakan Timeline & Jadwal",
       description: "Rencana waktu pelaksanaan realistis dan dapat dicapai",
-      maxScore: 25,
+      maxScore: 100,
     },
     {
       id: 4,
       key: 'kriteria4',
       criteria: "Manfaat & Dampak Penelitian",
       description: "Kontribusi penelitian terhadap keilmuan dan masyarakat",
-      maxScore: 25,
+      maxScore: 100,
     }
   ];
 
-  const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0) / 4;
+  const totalScore = (
+    scores.kriteria1 * 0.25 +
+    scores.kriteria2 * 0.25 +
+    scores.kriteria3 * 0.25 +
+    scores.kriteria4 * 0.25
+  );
   const formProgress = (
     (scores.kriteria1 > 0 ? 25 : 0) +
     (scores.kriteria2 > 0 ? 25 : 0) +
@@ -282,7 +287,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                     <Label className="text-sm font-medium text-muted-foreground">Ketua Peneliti</Label>
                     <div className="flex items-center space-x-2">
                       <User className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium">{proposal.ketua.nama}</span>
+                      <span className="font-medium">{proposal.dosen.nama}</span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -332,18 +337,157 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
               </CardContent>
             </Card>
 
-            {/* Scoring Section */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-primary" />
-                  <span>Penilaian Proposal</span>
-                </CardTitle>
-                <CardDescription>
-                  Berikan skor untuk setiap kriteria penilaian (1-100)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            {/* Review Status - Show if already submitted */}
+            {assignment.status === 'SELESAI' && assignment.review ? (
+              <>
+                {/* Read-only Review Display */}
+                <Card className="border-0 shadow-sm border-l-4 border-l-green-500">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center space-x-2">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <span>Review Telah Disubmit</span>
+                        </CardTitle>
+                        <CardDescription className="mt-2">
+                          Review Anda telah disubmit pada {new Date(assignment.review.submittedAt).toLocaleDateString('id-ID', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Selesai
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                </Card>
+
+                {/* Score Display */}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Star className="w-5 h-5 text-primary" />
+                      <span>Hasil Penilaian</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Kriteria Scores */}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <div className="text-sm text-muted-foreground mb-1">Kesesuaian Judul & Latar Belakang</div>
+                          <div className="flex items-center justify-between">
+                            <Progress value={assignment.review.nilaiKriteria1} className="h-2 flex-1 mr-3" />
+                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria1}</span>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <div className="text-sm text-muted-foreground mb-1">Kejelasan Metode Penelitian</div>
+                          <div className="flex items-center justify-between">
+                            <Progress value={assignment.review.nilaiKriteria2} className="h-2 flex-1 mr-3" />
+                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria2}</span>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <div className="text-sm text-muted-foreground mb-1">Kelayakan Timeline & Jadwal</div>
+                          <div className="flex items-center justify-between">
+                            <Progress value={assignment.review.nilaiKriteria3} className="h-2 flex-1 mr-3" />
+                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria3}</span>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <div className="text-sm text-muted-foreground mb-1">Manfaat & Dampak Penelitian</div>
+                          <div className="flex items-center justify-between">
+                            <Progress value={assignment.review.nilaiKriteria4} className="h-2 flex-1 mr-3" />
+                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria4}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Total Score */}
+                    <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-muted-foreground mb-1">Total Skor Akhir</div>
+                          <div className="text-xs text-muted-foreground">
+                            Bobot masing-masing kriteria: 25%
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl font-bold text-primary">{Number(assignment.review.nilaiTotal).toFixed(2)}</div>
+                          <div className="text-sm text-muted-foreground">dari 100</div>
+                        </div>
+                      </div>
+                      <Progress value={Number(assignment.review.nilaiTotal)} className="mt-3 h-3" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Recommendation Display */}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader>
+                    <CardTitle>Rekomendasi & Catatan</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 rounded-lg border-2 bg-muted/30" style={{
+                      borderColor: assignment.review.rekomendasi === 'DITERIMA' ? '#22c55e' : 
+                                   assignment.review.rekomendasi === 'REVISI' ? '#eab308' : '#ef4444'
+                    }}>
+                      <div className="flex items-center space-x-3 mb-2">
+                        {assignment.review.rekomendasi === 'DITERIMA' ? (
+                          <CheckCircle className="w-6 h-6 text-green-600" />
+                        ) : assignment.review.rekomendasi === 'REVISI' ? (
+                          <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                        ) : (
+                          <XCircle className="w-6 h-6 text-red-600" />
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-muted-foreground">Rekomendasi Anda</div>
+                          <div className="text-lg font-bold" style={{
+                            color: assignment.review.rekomendasi === 'DITERIMA' ? '#22c55e' : 
+                                   assignment.review.rekomendasi === 'REVISI' ? '#eab308' : '#ef4444'
+                          }}>
+                            {assignment.review.rekomendasi === 'DITERIMA' ? 'Diterima' : 
+                             assignment.review.rekomendasi === 'REVISI' ? 'Perlu Revisi' : 'Ditolak'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {assignment.review.catatan && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Catatan & Saran</Label>
+                        <div className="p-4 bg-muted/50 rounded-lg border">
+                          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                            {assignment.review.catatan}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <>
+                {/* Editable Review Form - Only show if not submitted */}
+                {/* Scoring Section */}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Star className="w-5 h-5 text-primary" />
+                      <span>Penilaian Proposal</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Berikan skor untuk setiap kriteria penilaian (1-100)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
                 {criteriaScoring.map((criteria, index) => (
                   <div key={criteria.id} className="space-y-3">
                     <div className="flex items-start justify-between">
@@ -453,100 +597,140 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                 </div>
               </CardContent>
             </Card>
+              </>
+            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Review Progress */}
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
-              <CardContent className="p-6">
-                <div className="text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto">
-                    <FileText className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-blue-900">Review Progress</p>
-                    <p className="text-sm text-blue-700">
-                      {formProgress === 100 ? 'Siap untuk submit' : 'Isi semua kriteria penilaian'}
-                    </p>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-600">{formProgress}%</div>
-                  <Progress value={formProgress} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
+            {/* Review Progress - Only show if not submitted */}
+            {assignment.status !== 'SELESAI' && (
+              <>
+                <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
+                  <CardContent className="p-6">
+                    <div className="text-center space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-blue-900">Review Progress</p>
+                        <p className="text-sm text-blue-700">
+                          {formProgress === 100 ? 'Siap untuk submit' : 'Isi semua kriteria penilaian'}
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold text-blue-600">{formProgress}%</div>
+                      <Progress value={formProgress} className="h-2" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Review Guidelines */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">Panduan Review</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
-                    <div className="text-sm">
-                      <p className="font-medium">Objektivitas</p>
-                      <p className="text-muted-foreground text-xs">
-                        Berikan penilaian yang objektif berdasarkan kriteria
+                {/* Review Guidelines */}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base">Panduan Review</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
+                        <div className="text-sm">
+                          <p className="font-medium">Objektivitas</p>
+                          <p className="text-muted-foreground text-xs">
+                            Berikan penilaian yang objektif berdasarkan kriteria
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
+                        <div className="text-sm">
+                          <p className="font-medium">Feedback Konstruktif</p>
+                          <p className="text-muted-foreground text-xs">
+                            Berikan saran yang membangun untuk perbaikan
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
+                        <div className="text-sm">
+                          <p className="font-medium">Kelengkapan Review</p>
+                          <p className="text-muted-foreground text-xs">
+                            Pastikan semua kriteria telah dinilai
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Deadline Review</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(assignment.deadline).toLocaleDateString('id-ID', { 
+                          day: 'numeric', 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })}
+                        {deadlineStatus && ` (${deadlineStatus.label})`}
+                      </p>
+                      
+                      {deadlineStatus && deadlineStatus.days <= 2 && (
+                        <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
+                          ⚠️ Mohon selesaikan review sebelum deadline
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {/* Status Card - Show if submitted */}
+            {assignment.status === 'SELESAI' && assignment.review && (
+              <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-green-100">
+                <CardContent className="p-6">
+                  <div className="text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-900">Review Selesai</p>
+                      <p className="text-sm text-green-700">
+                        Terima kasih atas review Anda
                       </p>
                     </div>
-                  </div>
-
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
-                    <div className="text-sm">
-                      <p className="font-medium">Feedback Konstruktif</p>
-                      <p className="text-muted-foreground text-xs">
-                        Berikan saran yang membangun untuk perbaikan
-                      </p>
+                    <div className="text-xs text-green-700 bg-green-50 p-2 rounded">
+                      {new Date(assignment.review.submittedAt).toLocaleDateString('id-ID', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </div>
                   </div>
-
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
-                    <div className="text-sm">
-                      <p className="font-medium">Kelengkapan Review</p>
-                      <p className="text-muted-foreground text-xs">
-                        Pastikan semua kriteria telah dinilai
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Deadline Review</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(assignment.deadline).toLocaleDateString('id-ID', { 
-                      day: 'numeric', 
-                      month: 'long', 
-                      year: 'numeric' 
-                    })}
-                    {deadlineStatus && ` (${deadlineStatus.label})`}
-                  </p>
-                  
-                  {deadlineStatus && deadlineStatus.days <= 2 && (
-                    <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
-                      ⚠️ Mohon selesaikan review sebelum deadline
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Actions */}
             <Card className="border-0 shadow-sm">
               <CardContent className="p-6 space-y-3">
-                <Button 
-                  className="w-full bg-gradient-to-r from-primary to-primary/90"
-                  onClick={() => setSubmitDialog(true)}
-                  disabled={formProgress < 100 || assignment.status === 'SELESAI'}
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  {assignment.status === 'SELESAI' ? 'Review Sudah Disubmit' : 'Submit Review'}
-                </Button>
+                {assignment.status !== 'SELESAI' ? (
+                  <Button 
+                    className="w-full bg-gradient-to-r from-primary to-primary/90"
+                    onClick={() => setSubmitDialog(true)}
+                    disabled={formProgress < 100}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Submit Review
+                  </Button>
+                ) : (
+                  <div className="text-center py-2 text-sm text-muted-foreground">
+                    Review telah disubmit dan tidak dapat diubah
+                  </div>
+                )}
                 <Button 
                   variant="outline" 
                   className="w-full"

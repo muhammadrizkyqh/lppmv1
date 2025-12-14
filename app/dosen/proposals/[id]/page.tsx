@@ -55,6 +55,9 @@ import {
 import { useProposalById, useProposalMembers, useDosen, useMahasiswa, useReviewer } from "@/hooks/use-data";
 import { proposalApi } from "@/lib/api-client";
 import { toast } from "sonner";
+import PencairanSection from "@/components/proposal/pencairan-section";
+import LuaranSection from "@/components/proposal/luaran-section";
+import SeminarSection from "@/components/proposal/seminar-section";
 
 // Status configuration
 const statusConfig = {
@@ -495,6 +498,11 @@ export default function ProposalDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Seminar Section */}
+            {(status === "diajukan" || status === "direview" || status === "diterima" || status === "berjalan" || status === "selesai") && (
+              <SeminarSection proposalId={id as string} isAdmin={isAdmin} />
+            )}
           </div>
 
           {/* Sidebar */}
@@ -612,6 +620,14 @@ export default function ProposalDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Pencairan Dana Section - Only show if proposal DITERIMA/BERJALAN/SELESAI */}
+            {['DITERIMA', 'BERJALAN', 'SELESAI'].includes(proposal.status) && (
+              <PencairanSection proposalId={proposal.id} />
+            )}
+
+            {/* Luaran Section - Only show if proposal BERJALAN/SELESAI */}
+            <LuaranSection proposalId={proposal.id} proposalStatus={proposal.status} />
           </div>
         </div>
       </div>

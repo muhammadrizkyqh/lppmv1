@@ -72,9 +72,9 @@ export default function AdminMonitoringPage() {
         search: searchValue || undefined,
       });
 
-      if (response.success && response.data) {
-        setProposals(response.data.data || []);
-        setStats(response.data.stats || {
+      if (response.success) {
+        setProposals(response.data || []);
+        setStats(response.stats || {
           total: 0,
           berjalan: 0,
           selesai: 0,

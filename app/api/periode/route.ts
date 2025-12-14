@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       include: {
         _count: {
           select: {
-            proposals: true,
+            proposal: true,
           },
         },
       },
@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
 
     const periode = await prisma.periode.create({
       data: {
+        id: crypto.randomUUID(),
         tahun,
         nama,
         tanggalBuka: new Date(tanggalBuka),

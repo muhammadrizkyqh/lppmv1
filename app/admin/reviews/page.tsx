@@ -30,7 +30,7 @@ interface ProposalReviewed {
     tipe: string
     dana: number
   }
-  ketua: {
+  dosen: {
     id: string
     nidn: string
     nama: string
@@ -74,7 +74,7 @@ export default function AdminReviewsPage() {
 
   const filteredProposals = proposals.filter(p =>
     p.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.ketua.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.dosen.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.skema.nama.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -134,7 +134,7 @@ export default function AdminReviewsPage() {
         <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4 mb-4">
           <div className="space-y-1 min-w-0">
             <p className="text-xs text-muted-foreground">Pengusul</p>
-            <p className="text-sm font-medium truncate">{proposal.ketua.nama}</p>
+            <p className="text-sm font-medium truncate">{proposal.dosen.nama}</p>
             <p className="text-xs text-muted-foreground truncate">{proposal.ketua.nidn}</p>
           </div>
           <div className="space-y-1 min-w-0">

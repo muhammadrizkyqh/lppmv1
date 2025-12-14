@@ -23,9 +23,9 @@ export async function GET(
       include: {
         periode: true,
         skema: true,
-        ketua: true,
-        bidangKeahlian: true,
-        members: {
+        dosen: true,
+        bidangkeahlian: true,
+        proposalmember: {
           include: {
             dosen: {
               select: {
@@ -45,7 +45,7 @@ export async function GET(
             },
           },
         },
-        reviewers: {
+        proposal_reviewer: {
           include: {
             reviewer: {
               select: {
@@ -60,8 +60,8 @@ export async function GET(
         },
         _count: {
           select: {
-            members: true,
-            reviewers: true,
+            proposalmember: true,
+            proposal_reviewer: true,
           },
         },
       },
@@ -151,10 +151,10 @@ export async function PUT(
       )
     }
 
-    // Cannot edit if already submitted (status not DRAFT)
-    if (existingProposal.status !== 'DRAFT') {
+    // Can only edit DRAFT or REVISI proposals
+    if (!['DRAFT', 'REVISI'].includes(existingProposal.status)) {
       return NextResponse.json(
-        { success: false, error: 'Proposal yang sudah disubmit tidak dapat diedit' },
+        { success: false, error: 'Hanya proposal dengan status DRAFT atau REVISI yang dapat diedit' },
         { status: 400 }
       )
     }
@@ -183,8 +183,8 @@ export async function PUT(
       include: {
         periode: true,
         skema: true,
-        ketua: true,
-        bidangKeahlian: true,
+        dosen: true,
+        bidangkeahlian: true,
       },
     })
 
@@ -232,7 +232,7 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            reviewers: true,
+            proposal_reviewer: true,
           },
         },
       },
@@ -254,7 +254,7 @@ export async function DELETE(
     }
 
     // Cannot delete if has reviewers assigned
-    if (proposal._count.reviewers > 0) {
+    if (proposal._count.proposal_reviewer > 0) {
       return NextResponse.json(
         {
           success: false,

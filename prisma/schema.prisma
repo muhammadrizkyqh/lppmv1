@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,23 +7,524 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==========================================
-// ENUM TYPES
-// ==========================================
+model sequence {
+  id         String   @id
+  year       Int
+  lastNumber Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-enum UserRole {
+  @@unique([id, year])
+  @@index([id, year])
+}
+
+model bidangkeahlian {
+  id        String                @id @default(cuid())
+  nama      String                @unique(map: "BidangKeahlian_nama_key")
+  deskripsi String?               @db.Text
+  status    bidangkeahlian_status @default(AKTIF)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  dosen     dosen[]
+  proposal  proposal[]
+  reviewer  reviewer[]
+}
+
+model dosen {
+  id               String           @id @default(cuid())
+  userId           String           @unique(map: "Dosen_userId_key")
+  nidn             String           @unique(map: "Dosen_nidn_key")
+  nama             String
+  email            String           @unique(map: "Dosen_email_key")
+  noHp             String?
+  bidangKeahlianId String?
+  status           dosen_status     @default(AKTIF)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  bidangkeahlian   bidangkeahlian?  @relation(fields: [bidangKeahlianId], references: [id], map: "Dosen_bidangKeahlianId_fkey")
+  user             user             @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Dosen_userId_fkey")
+  proposal         proposal[]
+  proposalmember   proposalmember[]
+
+  @@index([bidangKeahlianId], map: "Dosen_bidangKeahlianId_fkey")
+  @@index([email], map: "Dosen_email_idx")
+  @@index([nidn], map: "Dosen_nidn_idx")
+}
+
+model kontrak {
+  id                            String    @id @default(cuid())
+  proposalId                    String    @unique
+  nomorKontrak                  String    @unique
+  nomorSK                       String    @unique
+  tanggalKontrak                DateTime  @default(now())
+  fileKontrak                   String?
+  fileSK                        String?
+  status                        String    @default("DRAFT")
+  createdBy                     String
+  uploadedBy                    String?
+  uploadedAt                    DateTime?
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+  user_kontrak_createdByTouser  user      @relation("kontrak_createdByTouser", fields: [createdBy], references: [id])
+  proposal                      proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user_kontrak_uploadedByTouser user?     @relation("kontrak_uploadedByTouser", fields: [uploadedBy], references: [id])
+
+  @@index([createdBy])
+  @@index([proposalId])
+  @@index([status])
+  @@index([uploadedBy], map: "kontrak_uploadedBy_fkey")
+}
+
+model luaran {
+  id                String                  @id @default(cuid())
+  proposalId        String
+  jenis             luaran_jenis
+  judul             String                  @db.VarChar(500)
+  penerbit          String?                 @db.VarChar(200)
+  tahunTerbit       Int?
+  url               String?                 @db.VarChar(500)
+  fileBukti         String?
+  keterangan        String?                 @db.Text
+  tanggalUpload     DateTime                @default(now())
+  statusVerifikasi  luaran_statusVerifikasi @default(PENDING)
+  catatanVerifikasi String?                 @db.Text
+  verifiedBy        String?
+  verifiedAt        DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  proposal          proposal                @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user              user?                   @relation(fields: [verifiedBy], references: [id])
+
+  @@index([proposalId])
+  @@index([statusVerifikasi])
+  @@index([verifiedBy], map: "luaran_verifiedBy_fkey")
+}
+
+model mahasiswa {
+  id             String           @id @default(cuid())
+  userId         String           @unique(map: "Mahasiswa_userId_key")
+  nim            String           @unique(map: "Mahasiswa_nim_key")
+  nama           String
+  email          String           @unique(map: "Mahasiswa_email_key")
+  prodi          String
+  angkatan       String
+  status         mahasiswa_status @default(AKTIF)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           user             @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Mahasiswa_userId_fkey")
+  proposalmember proposalmember[]
+
+  @@index([email], map: "Mahasiswa_email_idx")
+  @@index([nim], map: "Mahasiswa_nim_idx")
+}
+
+model monitoring {
+  id                       String    @id @default(cuid())
+  proposalId               String
+  laporanKemajuan          String?   @db.Text
+  laporanAkhir             String?   @db.Text
+  fileKemajuan             String?
+  fileAkhir                String?
+  persentaseKemajuan       Int       @default(0)
+  status                   String    @default("BERJALAN")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  catatanAkhir             String?   @db.Text
+  catatanKemajuan          String?   @db.Text
+  verifikasiAkhirAt        DateTime?
+  verifikasiAkhirStatus    String?
+  verifikasiKemajuanAt     DateTime?
+  verifikasiKemajuanStatus String?
+  catatanFinal             String?   @db.Text
+  fileLaporanFinal         String?
+  laporanFinal             String?   @db.Text
+  plagiarismeCheckedAt     DateTime?
+  plagiarismeFile          String?
+  plagiarismePercentage    Decimal?  @db.Decimal(5, 2)
+  plagiarismeStatus        String?
+  verifikasiFinalAt        DateTime?
+  verifikasiFinalStatus    String?
+  proposal                 proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade, map: "Monitoring_proposalId_fkey")
+
+  @@index([proposalId], map: "Monitoring_proposalId_idx")
+}
+
+model notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String   @db.Text
+  type      String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Notification_userId_fkey")
+
+  @@index([isRead], map: "Notification_isRead_idx")
+  @@index([userId], map: "Notification_userId_idx")
+}
+
+model pencairan_dana {
+  id               String                @id @default(cuid())
+  proposalId       String
+  termin           pencairan_dana_termin
+  nominal          Decimal               @db.Decimal(15, 2)
+  persentase       Decimal               @db.Decimal(5, 2)
+  tanggalPencairan DateTime?
+  status           pencairan_dana_status @default(PENDING)
+  keterangan       String?               @db.Text
+  fileBukti        String?
+  createdBy        String
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  user             user                  @relation(fields: [createdBy], references: [id])
+  proposal         proposal              @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([createdBy], map: "pencairan_dana_createdBy_fkey")
+  @@index([proposalId])
+  @@index([status])
+  @@index([termin])
+}
+
+model periode {
+  id           String         @id @default(cuid())
+  tahun        String
+  nama         String
+  tanggalBuka  DateTime
+  tanggalTutup DateTime
+  kuota        Int            @default(0)
+  status       periode_status @default(NONAKTIF)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  proposal     proposal[]
+
+  @@index([status], map: "Periode_status_idx")
+}
+
+model proposal {
+  id                      String              @id @default(cuid())
+  periodeId               String
+  skemaId                 String
+  ketuaId                 String
+  creatorId               String
+  bidangKeahlianId        String?
+  judul                   String              @db.Text
+  abstrak                 String              @db.Text
+  filePath                String?
+  fileName                String?
+  fileSize                Int?
+  status                  proposal_status     @default(DRAFT)
+  submittedAt             DateTime?
+  approvedAt              DateTime?
+  rejectedAt              DateTime?
+  nilaiTotal              Decimal?            @db.Decimal(5, 2)
+  revisiCount             Int                 @default(0)
+  catatan                 String?             @db.Text
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  catatanRevisi           String?             @db.Text
+  catatanAdministrasi     String?             @db.Text
+  checkDaftarPustaka      Boolean             @default(false)
+  checkJudul              Boolean             @default(false)
+  checkKajianTerdahulu    Boolean             @default(false)
+  checkKonsepTeori        Boolean             @default(false)
+  checkLampiran           Boolean             @default(false)
+  checkLatarBelakang      Boolean             @default(false)
+  checkManfaat            Boolean             @default(false)
+  checkMetodologi         Boolean             @default(false)
+  checkRencanaPembahasan  Boolean             @default(false)
+  checkRencanaPublikasi   Boolean             @default(false)
+  checkRumusanMasalah     Boolean             @default(false)
+  checkTinjauanPustaka    Boolean             @default(false)
+  checkTujuan             Boolean             @default(false)
+  checkWaktuPelaksanaan   Boolean             @default(false)
+  checkedAdminAt          DateTime?
+  checkedAdminBy          String?
+  deadlineLuaran          DateTime?
+  deadlineMonitoring1     DateTime?
+  deadlineMonitoring2     DateTime?
+  deadlineSeminarInternal DateTime?
+  deadlineSeminarProposal DateTime?
+  deadlineSeminarPublik   DateTime?
+  statusAdministrasi      String?             @default("BELUM_DICEK")
+  tanggalMulai            DateTime?
+  tanggalSelesai          DateTime?
+  kontrak                 kontrak?
+  luaran                  luaran[]
+  monitoring              monitoring[]
+  pencairan_dana          pencairan_dana[]
+  bidangkeahlian          bidangkeahlian?     @relation(fields: [bidangKeahlianId], references: [id], map: "Proposal_bidangKeahlianId_fkey")
+  user                    user                @relation(fields: [creatorId], references: [id], map: "Proposal_creatorId_fkey")
+  dosen                   dosen               @relation(fields: [ketuaId], references: [id], map: "Proposal_ketuaId_fkey")
+  periode                 periode             @relation(fields: [periodeId], references: [id], map: "Proposal_periodeId_fkey")
+  skema                   skema               @relation(fields: [skemaId], references: [id], map: "Proposal_skemaId_fkey")
+  proposal_reviewer       proposal_reviewer[]
+  proposalmember          proposalmember[]
+  proposalrevision        proposalrevision[]
+  seminar                 seminar[]
+
+  @@index([bidangKeahlianId], map: "Proposal_bidangKeahlianId_fkey")
+  @@index([creatorId], map: "Proposal_creatorId_idx")
+  @@index([ketuaId], map: "Proposal_ketuaId_idx")
+  @@index([periodeId], map: "Proposal_periodeId_idx")
+  @@index([skemaId], map: "Proposal_skemaId_fkey")
+  @@index([status], map: "Proposal_status_idx")
+}
+
+model proposal_reviewer {
+  id         String   @id @default(cuid())
+  proposalId String
+  reviewerId String
+  status     String   @default("PENDING")
+  deadline   DateTime
+  assignedAt DateTime @default(now())
+  proposal   proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  reviewer   reviewer @relation(fields: [reviewerId], references: [id])
+  review     review?
+
+  @@unique([proposalId, reviewerId])
+  @@index([proposalId])
+  @@index([reviewerId])
+}
+
+model proposalmember {
+  id          String     @id @default(cuid())
+  proposalId  String
+  dosenId     String?
+  mahasiswaId String?
+  role        String
+  createdAt   DateTime   @default(now())
+  dosen       dosen?     @relation(fields: [dosenId], references: [id], map: "ProposalMember_dosenId_fkey")
+  mahasiswa   mahasiswa? @relation(fields: [mahasiswaId], references: [id], map: "ProposalMember_mahasiswaId_fkey")
+  proposal    proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade, map: "ProposalMember_proposalId_fkey")
+
+  @@unique([proposalId, dosenId], map: "ProposalMember_proposalId_dosenId_key")
+  @@unique([proposalId, mahasiswaId], map: "ProposalMember_proposalId_mahasiswaId_key")
+  @@index([dosenId], map: "ProposalMember_dosenId_fkey")
+  @@index([mahasiswaId], map: "ProposalMember_mahasiswaId_fkey")
+  @@index([proposalId], map: "ProposalMember_proposalId_idx")
+}
+
+model proposalrevision {
+  id         String   @id @default(cuid())
+  proposalId String
+  revisiKe   Int
+  filePath   String
+  fileName   String
+  fileSize   Int
+  catatan    String?  @db.Text
+  uploadedAt DateTime @default(now())
+  proposal   proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade, map: "ProposalRevision_proposalId_fkey")
+
+  @@index([proposalId], map: "ProposalRevision_proposalId_idx")
+}
+
+model review {
+  id                 String             @id @default(cuid())
+  proposalReviewerId String             @unique
+  reviewerId         String
+  nilaiKriteria1     Int
+  nilaiKriteria2     Int
+  nilaiKriteria3     Int
+  nilaiKriteria4     Int
+  nilaiTotal         Decimal            @db.Decimal(5, 2)
+  rekomendasi        review_rekomendasi
+  catatan            String?            @db.Text
+  submittedAt        DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  proposal_reviewer  proposal_reviewer  @relation(fields: [proposalReviewerId], references: [id], onDelete: Cascade)
+  reviewer           reviewer           @relation(fields: [reviewerId], references: [id])
+
+  @@index([reviewerId])
+}
+
+model reviewer {
+  id                String              @id @default(cuid())
+  userId            String              @unique(map: "Reviewer_userId_key")
+  nama              String
+  email             String              @unique(map: "Reviewer_email_key")
+  institusi         String
+  bidangKeahlianId  String?
+  tipe              reviewer_tipe
+  status            reviewer_status     @default(AKTIF)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  proposal_reviewer proposal_reviewer[]
+  review            review[]
+  bidangkeahlian    bidangkeahlian?     @relation(fields: [bidangKeahlianId], references: [id], map: "Reviewer_bidangKeahlianId_fkey")
+  user              user                @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Reviewer_userId_fkey")
+
+  @@index([bidangKeahlianId], map: "Reviewer_bidangKeahlianId_fkey")
+  @@index([email], map: "Reviewer_email_idx")
+}
+
+model seminar {
+  id              String            @id @default(cuid())
+  proposalId      String
+  jenis           String
+  judul           String            @db.VarChar(500)
+  tanggal         DateTime
+  waktu           String            @db.VarChar(20)
+  tempat          String            @db.VarChar(200)
+  moderator       String?           @db.VarChar(200)
+  notulensi       String?           @db.Text
+  hasilKeputusan  String?           @db.Text
+  fileUndangan    String?
+  fileMateri      String?
+  fileDokumentasi String?
+  fileNotulensi   String?
+  status          String            @default("SCHEDULED")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  proposal        proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  seminar_peserta seminar_peserta[]
+
+  @@index([jenis])
+  @@index([proposalId])
+  @@index([status])
+}
+
+model seminar_peserta {
+  id         String   @id @default(cuid())
+  seminarId  String
+  nama       String   @db.VarChar(200)
+  institusi  String?  @db.VarChar(200)
+  email      String?  @db.VarChar(100)
+  jabatan    String?  @db.VarChar(100)
+  hadir      Boolean  @default(false)
+  keterangan String?  @db.Text
+  createdAt  DateTime @default(now())
+  seminar    seminar  @relation(fields: [seminarId], references: [id], onDelete: Cascade)
+
+  @@index([seminarId])
+}
+
+model skema {
+  id        String       @id @default(cuid())
+  nama      String       @unique(map: "Skema_nama_key")
+  tipe      skema_tipe
+  dana      Decimal      @db.Decimal(15, 2)
+  deskripsi String?      @db.Text
+  status    skema_status @default(AKTIF)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  proposal  proposal[]
+}
+
+model user {
+  id                               String           @id @default(cuid())
+  username                         String           @unique(map: "User_username_key")
+  email                            String           @unique(map: "User_email_key")
+  password                         String
+  role                             user_role
+  status                           user_status      @default(AKTIF)
+  mustChangePassword               Boolean          @default(true)
+  lastLogin                        DateTime?
+  createdAt                        DateTime         @default(now())
+  updatedAt                        DateTime         @updatedAt
+  dosen                            dosen?
+  kontrak_kontrak_createdByTouser  kontrak[]        @relation("kontrak_createdByTouser")
+  kontrak_kontrak_uploadedByTouser kontrak[]        @relation("kontrak_uploadedByTouser")
+  luaran                           luaran[]
+  mahasiswa                        mahasiswa?
+  notification                     notification[]
+  pencairan_dana                   pencairan_dana[]
+  proposal                         proposal[]
+  reviewer                         reviewer?
+
+  @@index([email], map: "User_email_idx")
+  @@index([username], map: "User_username_idx")
+}
+
+enum luaran_jenis {
+  JURNAL
+  BUKU
+  HAKI
+  PRODUK
+  MEDIA_MASSA
+  LAINNYA
+}
+
+enum pencairan_dana_termin {
+  TERMIN_1
+  TERMIN_2
+  TERMIN_3
+}
+
+enum skema_tipe {
+  DASAR
+  TERAPAN
+  PENGEMBANGAN
+  MANDIRI
+}
+
+enum bidangkeahlian_status {
+  AKTIF
+  NONAKTIF
+}
+
+enum user_role {
   ADMIN
   DOSEN
   MAHASISWA
   REVIEWER
 }
 
-enum UserStatus {
+enum skema_status {
   AKTIF
   NONAKTIF
 }
 
-enum ProposalStatus {
+enum user_status {
+  AKTIF
+  NONAKTIF
+}
+
+enum pencairan_dana_status {
+  PENDING
+  DICAIRKAN
+  DITOLAK
+}
+
+enum periode_status {
+  AKTIF
+  NONAKTIF
+  SELESAI
+}
+
+enum reviewer_tipe {
+  INTERNAL
+  EKSTERNAL
+}
+
+enum dosen_status {
+  AKTIF
+  NONAKTIF
+}
+
+enum mahasiswa_status {
+  AKTIF
+  NONAKTIF
+}
+
+enum reviewer_status {
+  AKTIF
+  NONAKTIF
+}
+
+enum review_rekomendasi {
+  DITERIMA
+  REVISI
+  DITOLAK
+}
+
+enum luaran_statusVerifikasi {
+  PENDING
+  DIVERIFIKASI
+  DITOLAK
+}
+
+enum proposal_status {
   DRAFT
   DIAJUKAN
   DIREVIEW
@@ -35,359 +533,4 @@ enum ProposalStatus {
   DITOLAK
   BERJALAN
   SELESAI
-}
-
-enum ReviewerType {
-  INTERNAL
-  EKSTERNAL
-}
-
-enum SkemaType {
-  DASAR
-  TERAPAN
-  PENGEMBANGAN
-  MANDIRI
-}
-
-enum ReviewRecommendation {
-  DITERIMA
-  REVISI
-  DITOLAK
-}
-
-enum PeriodeStatus {
-  AKTIF
-  NONAKTIF
-  SELESAI
-}
-
-// ==========================================
-// USER & AUTHENTICATION
-// ==========================================
-
-model User {
-  id                String         @id @default(cuid())
-  username          String         @unique
-  email             String         @unique
-  password          String
-  role              UserRole
-  status            UserStatus     @default(AKTIF)
-  mustChangePassword Boolean       @default(true)
-  lastLogin         DateTime?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  // Relations
-  dosen             Dosen?
-  mahasiswa         Mahasiswa?
-  reviewer          Reviewer?
-  proposals         Proposal[]     @relation("ProposalCreator")
-  notifications     Notification[]
-
-  @@index([email])
-  @@index([username])
-}
-
-// ==========================================
-// DATA MASTER
-// ==========================================
-
-model Dosen {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  nidn            String    @unique
-  nama            String
-  email           String    @unique
-  noHp            String?
-  bidangKeahlianId String?
-  status          UserStatus @default(AKTIF)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
-  proposals       Proposal[] @relation("ProposalKetua")
-  proposalMembers ProposalMember[]
-
-  @@index([nidn])
-  @@index([email])
-}
-
-model Mahasiswa {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  nim             String    @unique
-  nama            String
-  email           String    @unique
-  prodi           String
-  angkatan        String
-  status          UserStatus @default(AKTIF)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  proposalMembers ProposalMember[]
-
-  @@index([nim])
-  @@index([email])
-}
-
-model Reviewer {
-  id              String        @id @default(cuid())
-  userId          String        @unique
-  nama            String
-  email           String        @unique
-  institusi       String
-  bidangKeahlianId String?
-  tipe            ReviewerType
-  status          UserStatus    @default(AKTIF)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  // Relations
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
-  assignedReviews ProposalReviewer[] @relation("ReviewerAssignments")
-  submittedReviews Review[]          @relation("ReviewSubmissions")
-
-  @@index([email])
-}
-
-model BidangKeahlian {
-  id          String    @id @default(cuid())
-  nama        String    @unique
-  deskripsi   String?   @db.Text
-  status      UserStatus @default(AKTIF)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relations
-  dosens      Dosen[]
-  reviewers   Reviewer[]
-  proposals   Proposal[]
-}
-
-// ==========================================
-// SETTING SISTEM
-// ==========================================
-
-model Periode {
-  id          String        @id @default(cuid())
-  tahun       String
-  nama        String
-  tanggalBuka DateTime
-  tanggalTutup DateTime
-  kuota       Int           @default(0)
-  status      PeriodeStatus @default(NONAKTIF)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  // Relations
-  proposals   Proposal[]
-
-  @@index([status])
-}
-
-model Skema {
-  id          String     @id @default(cuid())
-  nama        String     @unique
-  tipe        SkemaType
-  dana        Decimal    @db.Decimal(15, 2)
-  deskripsi   String?    @db.Text
-  status      UserStatus @default(AKTIF)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  // Relations
-  proposals   Proposal[]
-}
-
-// ==========================================
-// PROPOSAL & PENELITIAN
-// ==========================================
-
-model Proposal {
-  id              String          @id @default(cuid())
-  periodeId       String
-  skemaId         String
-  ketuaId         String
-  creatorId       String
-  bidangKeahlianId String?
-  
-  judul           String          @db.Text
-  abstrak         String          @db.Text
-  filePath        String?
-  fileName        String?
-  fileSize        Int?
-  
-  status          ProposalStatus  @default(DRAFT)
-  submittedAt     DateTime?
-  approvedAt      DateTime?
-  rejectedAt      DateTime?
-  
-  nilaiTotal      Decimal?        @db.Decimal(5, 2)
-  revisiCount     Int             @default(0)
-  catatan         String?         @db.Text
-  catatanRevisi   String?         @db.Text
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-
-  // Relations
-  periode         Periode         @relation(fields: [periodeId], references: [id])
-  skema           Skema           @relation(fields: [skemaId], references: [id])
-  ketua           Dosen           @relation("ProposalKetua", fields: [ketuaId], references: [id])
-  creator         User            @relation("ProposalCreator", fields: [creatorId], references: [id])
-  bidangKeahlian  BidangKeahlian? @relation(fields: [bidangKeahlianId], references: [id])
-  
-  members         ProposalMember[]
-  reviewers       ProposalReviewer[]
-  revisions       ProposalRevision[]
-  monitorings     Monitoring[]
-
-  @@index([periodeId])
-  @@index([status])
-  @@index([ketuaId])
-  @@index([creatorId])
-}
-
-model ProposalMember {
-  id          String    @id @default(cuid())
-  proposalId  String
-  dosenId     String?
-  mahasiswaId String?
-  role        String    // "Ketua" | "Anggota" | "Mahasiswa"
-  createdAt   DateTime  @default(now())
-
-  // Relations
-  proposal    Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  dosen       Dosen?     @relation(fields: [dosenId], references: [id])
-  mahasiswa   Mahasiswa? @relation(fields: [mahasiswaId], references: [id])
-
-  @@unique([proposalId, dosenId])
-  @@unique([proposalId, mahasiswaId])
-  @@index([proposalId])
-}
-
-model ProposalRevision {
-  id          String    @id @default(cuid())
-  proposalId  String
-  revisiKe    Int
-  filePath    String
-  fileName    String
-  fileSize    Int
-  catatan     String?   @db.Text
-  uploadedAt  DateTime  @default(now())
-  
-  // Relations
-  proposal    Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
-  @@index([proposalId])
-}
-
-// ==========================================
-// REVIEW & PENILAIAN
-// ==========================================
-
-model ProposalReviewer {
-  id          String   @id @default(cuid())
-  proposalId  String
-  reviewerId  String
-  status      String   @default("PENDING") // PENDING, SELESAI
-  deadline    DateTime
-  assignedAt  DateTime @default(now())
-  
-  // Relations
-  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  reviewer    Reviewer @relation("ReviewerAssignments", fields: [reviewerId], references: [id])
-  review      Review?  // One-to-one with Review
-  
-  @@unique([proposalId, reviewerId])
-  @@index([proposalId])
-  @@index([reviewerId])
-  @@map("proposal_reviewer")
-}
-
-model Review {
-  id                  String            @id @default(cuid())
-  proposalReviewerId  String            @unique
-  reviewerId          String
-  
-  // 4 Kriteria @ 25% (sesuai aturan.md)
-  nilaiKriteria1      Int               // Kesesuaian judul & latar belakang (1-100)
-  nilaiKriteria2      Int               // Kejelasan metode (1-100)
-  nilaiKriteria3      Int               // Kelayakan timeline (1-100)
-  nilaiKriteria4      Int               // Manfaat penelitian (1-100)
-  
-  nilaiTotal          Decimal           @db.Decimal(5, 2) // Auto calculated: (K1+K2+K3+K4)/4
-  rekomendasi         ReviewRecommendation // DITERIMA, REVISI, DITOLAK
-  catatan             String?           @db.Text
-  
-  submittedAt         DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-
-  // Relations
-  proposalReviewer    ProposalReviewer  @relation(fields: [proposalReviewerId], references: [id], onDelete: Cascade)
-  reviewer            Reviewer          @relation("ReviewSubmissions", fields: [reviewerId], references: [id])
-
-  @@index([reviewerId])
-  @@map("review")
-}
-
-// ==========================================
-// MONITORING & LAPORAN
-// ==========================================
-
-model Monitoring {
-  id              String    @id @default(cuid())
-  proposalId      String
-  
-  laporanKemajuan String?   @db.Text
-  laporanAkhir    String?   @db.Text
-  fileKemajuan    String?
-  fileAkhir       String?
-  
-  persentaseKemajuan Int    @default(0)
-  status          String    @default("BERJALAN") // BERJALAN | SELESAI
-  
-  // Verification fields for laporan kemajuan
-  verifikasiKemajuanStatus String?  // APPROVED | REJECTED
-  verifikasiKemajuanAt     DateTime?
-  catatanKemajuan          String?  @db.Text
-  
-  // Verification fields for laporan akhir
-  verifikasiAkhirStatus    String?  // APPROVED | REJECTED
-  verifikasiAkhirAt        DateTime?
-  catatanAkhir             String?  @db.Text
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relations
-  proposal        Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
-  @@index([proposalId])
-}
-
-// ==========================================
-// NOTIFIKASI
-// ==========================================
-
-model Notification {
-  id          String    @id @default(cuid())
-  userId      String
-  title       String
-  message     String    @db.Text
-  type        String    // INFO | SUCCESS | WARNING | ERROR
-  isRead      Boolean   @default(false)
-  link        String?
-  createdAt   DateTime  @default(now())
-
-  // Relations
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRead])
 }

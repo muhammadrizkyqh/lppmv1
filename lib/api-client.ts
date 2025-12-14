@@ -15,7 +15,7 @@ export interface ApiResponse<T = any> {
 }
 
 // Helper function untuk fetch dengan error handling
-async function fetchApi<T>(
+export async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
@@ -687,6 +687,18 @@ export const proposalApi = {
     return fetchApi<Proposal[]>(`/api/proposal${queryString ? `?${queryString}` : ''}`)
   },
 
+  // Alias for getAll (for compatibility)
+  list: (params?: {
+    status?: string
+    periodeId?: string
+  }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.periodeId) searchParams.set('periodeId', params.periodeId)
+    const queryString = searchParams.toString()
+    return fetchApi<Proposal[]>(`/api/proposal${queryString ? `?${queryString}` : ''}`)
+  },
+
   // Get proposal by ID
   getById: (id: string) => {
     return fetchApi<Proposal>(`/api/proposal/${id}`)
@@ -803,7 +815,7 @@ export interface ReviewAssignment {
     filePath?: string
     fileName?: string
     submittedAt?: string
-    ketua: {
+    dosen: {
       id: string
       nama: string
       email: string
@@ -923,7 +935,7 @@ interface ProposalReviewed {
     tipe: string
     dana: number
   }
-  ketua: {
+  dosen: {
     id: string
     nidn: string
     nama: string
@@ -940,6 +952,11 @@ interface ProposalReviewed {
     label: string
   }
 }
+
+// Alias for compatibility
+export type ProposalList = Proposal
+
+export type ProposalList = Proposal
 
 interface ReviewComparison {
   proposal: any
@@ -1048,7 +1065,7 @@ export interface MonitoringDetail {
       id: string
       nama: string
     }
-    ketua: {
+    dosen: {
       id: string
       nama: string
       nidn: string
@@ -1074,7 +1091,7 @@ export interface MonitoringList {
     id: string
     nama: string
   }
-  ketua: {
+  dosen: {
     id: string
     nama: string
   }
@@ -1173,6 +1190,470 @@ export const monitoringApi = {
     return response.json()
   },
 }
+
+// ==========================================
+// PENCAIRAN DANA API
+// ==========================================
+
+export interface PencairanDana {
+  id: string
+  proposalId: string
+  termin: 'TERMIN_1' | 'TERMIN_2' | 'TERMIN_3'
+  nominal: number
+  persentase: number
+  tanggalPencairan: string | null
+  status: 'PENDING' | 'DICAIRKAN' | 'DITOLAK'
+  keterangan: string | null
+  fileBukti: string | null
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PencairanList extends PencairanDana {
+  proposal: {
+    id: string
+    judul: string
+    status: string
+    periode: {
+      id: string
+      nama: string
+      tahun: string
+    }
+    skema: {
+      id: string
+      nama: string
+      danaHibah: number
+    }
+    dosen: {
+      id: string
+      nama: string
+      nidn: string
+    }
+  }
+  creator: {
+    id: string
+    username: string
+    email: string
+  }
+}
+
+export interface PencairanStats {
+  total: number
+  pending: number
+  dicairkan: number
+  ditolak: number
+  totalNominal: number
+}
+
+export const pencairanApi = {
+  // Get all pencairan (Admin only)
+  listPencairan: (params?: {
+    status?: string
+    termin?: string
+    periodeId?: string
+    search?: string
+  }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.termin) searchParams.set('termin', params.termin)
+    if (params?.periodeId) searchParams.set('periodeId', params.periodeId)
+    if (params?.search) searchParams.set('search', params.search)
+
+    return fetchApi<{
+      data: PencairanList[]
+      stats: PencairanStats
+    }>(`/api/pencairan?${searchParams}`)
+  },
+
+  // Get pencairan by proposal ID
+  getPencairanByProposal: (proposalId: string) => {
+    return fetchApi<{
+      data: PencairanDana[]
+      total: {
+        dicairkan: number
+        pending: number
+      }
+    }>(`/api/pencairan/proposal/${proposalId}`)
+  },
+
+  // Get pencairan detail
+  getPencairan: (id: string) => {
+    return fetchApi<PencairanDana>(`/api/pencairan/${id}`)
+  },
+
+  // Create new pencairan (Admin only)
+  createPencairan: async (data: {
+    proposalId: string
+    termin: 'TERMIN_1' | 'TERMIN_2' | 'TERMIN_3'
+    keterangan?: string
+  }) => {
+    const response = await fetch('/api/pencairan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Gagal membuat pencairan')
+    }
+
+    return response.json()
+  },
+
+  // Update pencairan status (Admin only)
+  updatePencairan: async (id: string, data: {
+    status?: 'PENDING' | 'DICAIRKAN' | 'DITOLAK'
+    keterangan?: string
+    tanggalPencairan?: string
+  }) => {
+    const response = await fetch(`/api/pencairan/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Gagal mengupdate pencairan')
+    }
+
+    return response.json()
+  },
+
+  // Upload bukti transfer (Admin only)
+  uploadBuktiTransfer: async (id: string, file: File) => {
+    const formData = new FormData()
+    formData.append('fileBukti', file)
+
+    const response = await fetch(`/api/pencairan/${id}/upload-bukti`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Gagal mengupload bukti transfer')
+    }
+
+    return response.json()
+  },
+}
+
+// ==========================================
+// LUARAN API
+// ==========================================
+
+export interface Luaran {
+  id: string
+  proposalId: string
+  jenis: string
+  judul: string
+  penerbit?: string
+  tahunTerbit?: number
+  url?: string
+  fileBukti?: string
+  keterangan?: string
+  tanggalUpload: string
+  statusVerifikasi: string
+  catatanVerifikasi?: string
+  verifiedBy?: string
+  verifiedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface LuaranList extends Luaran {
+  proposal: {
+    id: string
+    judul: string
+    status: string
+    periode: {
+      id: string
+      nama: string
+      tahun: string
+    }
+    dosen: {
+      id: string
+      nama: string
+      nidn: string
+    }
+  }
+  verifier?: {
+    id: string
+    username: string
+    email: string
+  }
+}
+
+export interface LuaranStats {
+  total: number
+  pending: number
+  diverifikasi: number
+  ditolak: number
+}
+
+export const luaranApi = {
+  // Get all luaran with filters (Admin/Dosen)
+  list: async (filters?: {
+    status?: string
+    jenis?: string
+    periodeId?: string
+    search?: string
+  }): Promise<ApiResponse<{ data: LuaranList[], stats: LuaranStats }>> => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.jenis) params.append('jenis', filters.jenis)
+    if (filters?.periodeId) params.append('periodeId', filters.periodeId)
+    if (filters?.search) params.append('search', filters.search)
+
+    return fetchApi(`/api/luaran?${params.toString()}`)
+  },
+
+  // Get luaran by proposal ID
+  getByProposal: async (proposalId: string): Promise<ApiResponse<{
+    data: Luaran[]
+    totals: {
+      total: number
+      pending: number
+      diverifikasi: number
+      ditolak: number
+    }
+  }>> => {
+    return fetchApi(`/api/luaran/proposal/${proposalId}`)
+  },
+
+  // Create new luaran (Dosen only)
+  create: async (data: {
+    proposalId: string
+    jenis: string
+    judul: string
+    penerbit?: string
+    tahunTerbit?: number
+    url?: string
+    keterangan?: string
+  }): Promise<ApiResponse<Luaran>> => {
+    return fetchApi('/api/luaran', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // Update luaran (Dosen only)
+  update: async (id: string, data: {
+    jenis?: string
+    judul?: string
+    penerbit?: string
+    tahunTerbit?: number
+    url?: string
+    keterangan?: string
+  }): Promise<ApiResponse<Luaran>> => {
+    return fetchApi(`/api/luaran/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // Verify/Reject luaran (Admin only)
+  verify: async (id: string, data: {
+    statusVerifikasi: string
+    catatanVerifikasi?: string
+  }): Promise<ApiResponse<Luaran>> => {
+    return fetchApi(`/api/luaran/${id}/verify`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // Upload bukti luaran
+  uploadBukti: async (id: string, file: File) => {
+    const formData = new FormData()
+    formData.append('fileBukti', file)
+
+    const response = await fetch(`/api/luaran/${id}/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Gagal mengupload bukti luaran')
+    }
+
+    return response.json()
+  },
+}
+
+// ==========================================
+// SEMINAR API
+// ==========================================
+
+export interface Seminar {
+  id: string
+  proposalId: string
+  jenis: string  // PROPOSAL, INTERNAL, PUBLIK
+  judul: string
+  tanggal: string
+  waktu: string
+  tempat: string
+  linkOnline?: string
+  keterangan?: string
+  moderator?: string
+  notulensi?: string
+  hasilKeputusan?: string
+  fileUndangan?: string
+  fileMateri?: string
+  fileMateriPresentasi?: string
+  fileDokumentasi?: string
+  fileNotulensi?: string
+  fileDaftarHadir?: string
+  status: string  // SCHEDULED, SELESAI, DIBATALKAN
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SeminarList extends Seminar {
+  proposal: {
+    id: string
+    judul: string
+    dosen: {
+      id: string
+      nama: string
+      nidn: string
+    }
+    skema: {
+      nama: string
+      tipe: string
+    }
+    periode: {
+      tahun: string
+      nama: string
+    }
+  }
+  peserta?: Array<{
+    id: string
+    nama: string
+    institusi?: string
+    hadir: boolean
+  }>
+  _count?: {
+    peserta: number
+  }
+}
+
+export interface SeminarStats {
+  total: number
+  scheduled: number
+  selesai: number
+  dibatalkan: number
+}
+
+export const seminarApi = {
+  // Get all seminars
+  list: async (params?: {
+    jenis?: string
+    status?: string
+    proposalId?: string
+  }): Promise<ApiResponse<SeminarList[]>> => {
+    const searchParams = new URLSearchParams()
+    if (params?.jenis) searchParams.append('jenis', params.jenis)
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.proposalId) searchParams.append('proposalId', params.proposalId)
+    
+    return fetchApi(`/api/seminar?${searchParams.toString()}`)
+  },
+
+  // Get seminar by ID
+  getById: async (id: string): Promise<ApiResponse<SeminarList>> => {
+    return fetchApi(`/api/seminar/${id}`)
+  },
+
+  // Create seminar (Admin only)
+  create: async (data: {
+    proposalId: string
+    jenis: string
+    judul?: string
+    tanggal: string
+    waktu: string
+    tempat: string
+    linkOnline?: string
+    keterangan?: string
+    moderator?: string
+  }): Promise<ApiResponse<Seminar>> => {
+    return fetchApi('/api/seminar', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // Update seminar (Admin only)
+  update: async (id: string, data: Partial<Seminar>): Promise<ApiResponse<Seminar>> => {
+    return fetchApi(`/api/seminar/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // Cancel seminar (Admin only)
+  cancel: async (id: string): Promise<ApiResponse> => {
+    return fetchApi(`/api/seminar/${id}`, {
+      method: 'DELETE',
+    })
+  },
+}
+
+// ==========================================
+// PENILAIAN ADMINISTRATIF API
+// ==========================================
+
+export interface PenilaianAdministratif {
+  statusAdministrasi: string  // BELUM_DICEK, LOLOS, TIDAK_LOLOS
+  catatanAdministrasi?: string
+  checkedAdminBy?: string
+  checkedAdminAt?: string
+  checkJudul: boolean
+  checkLatarBelakang: boolean
+  checkRumusanMasalah: boolean
+  checkTujuan: boolean
+  checkManfaat: boolean
+  checkKajianTerdahulu: boolean
+  checkTinjauanPustaka: boolean
+  checkKonsepTeori: boolean
+  checkMetodologi: boolean
+  checkRencanaPembahasan: boolean
+  checkWaktuPelaksanaan: boolean
+  checkRencanaPublikasi: boolean
+  checkDaftarPustaka: boolean
+  checkLampiran: boolean
+}
+
+export const penilaianAdministratifApi = {
+  // Get penilaian administratif
+  get: async (proposalId: string): Promise<ApiResponse<PenilaianAdministratif>> => {
+    return fetchApi(`/api/proposal/${proposalId}/penilaian-administratif`)
+  },
+
+  // Submit penilaian administratif (Admin only)
+  submit: async (proposalId: string, data: {
+    statusAdministrasi: string
+    catatanAdministrasi?: string
+    [key: string]: any  // Allow dynamic checklist fields
+  }): Promise<ApiResponse> => {
+    return fetchApi(`/api/proposal/${proposalId}/penilaian-administratif`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+}
+
+
+
+
 
 
 

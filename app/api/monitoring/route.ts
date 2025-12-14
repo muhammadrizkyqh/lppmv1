@@ -28,16 +28,20 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
 
     const where: any = {
+      // Show all approved proposals (after review completion)
+      // Include DITERIMA (kontrak created but not signed yet)
+      // Include BERJALAN (kontrak signed, monitoring active)
+      // Include SELESAI (research completed)
       status: {
         in: ['DITERIMA', 'BERJALAN', 'SELESAI'],
-      },
+      }
     }
 
-    // Filter by search (judul or ketua name)
+    // Filter by search (judul or dosen name)
     if (search) {
       where.OR = [
         { judul: { contains: search } },
-        { ketua: { nama: { contains: search } } },
+        { dosen: { nama: { contains: search } } },
       ]
     }
 
@@ -65,14 +69,14 @@ export async function GET(request: NextRequest) {
             tipe: true,
           },
         },
-        ketua: {
+        dosen: {
           select: {
             id: true,
             nama: true,
             nidn: true,
           },
         },
-        monitorings: {
+        monitoring: {
           orderBy: { updatedAt: 'desc' },
           take: 1,
         },
@@ -83,7 +87,7 @@ export async function GET(request: NextRequest) {
     let filteredProposals = proposals
     if (status) {
       filteredProposals = proposals.filter((p) => {
-        const monitoring = p.monitorings[0]
+        const monitoring = p.monitoring[0]
         if (!monitoring) {
           return status === 'BELUM_MONITORING'
         }
@@ -93,7 +97,6 @@ export async function GET(request: NextRequest) {
 
     // Transform data
     const data = filteredProposals.map((proposal) => {
-      const monitoring = proposal.monitorings[0] || null
       return {
         id: proposal.id,
         judul: proposal.judul,
@@ -101,26 +104,34 @@ export async function GET(request: NextRequest) {
         approvedAt: proposal.approvedAt,
         periode: proposal.periode,
         skema: proposal.skema,
-        ketua: proposal.ketua,
-        monitoring: monitoring
-          ? {
-              id: monitoring.id,
-              persentaseKemajuan: monitoring.persentaseKemajuan,
-              status: monitoring.status,
-              hasLaporanKemajuan: !!monitoring.laporanKemajuan,
-              hasLaporanAkhir: !!monitoring.laporanAkhir,
-              updatedAt: monitoring.updatedAt,
-            }
-          : null,
+        ketua: proposal.dosen,
+        monitoring: proposal.monitoring.map(m => ({
+          id: m.id,
+          proposalId: m.proposalId,
+          laporanKemajuan: m.laporanKemajuan,
+          fileKemajuan: m.fileKemajuan,
+          laporanAkhir: m.laporanAkhir,
+          fileAkhir: m.fileAkhir,
+          persentaseKemajuan: m.persentaseKemajuan,
+          status: m.status,
+          verifikasiKemajuanStatus: m.verifikasiKemajuanStatus,
+          verifikasiKemajuanAt: m.verifikasiKemajuanAt,
+          catatanKemajuan: m.catatanKemajuan,
+          verifikasiAkhirStatus: m.verifikasiAkhirStatus,
+          verifikasiAkhirAt: m.verifikasiAkhirAt,
+          catatanAkhir: m.catatanAkhir,
+          createdAt: m.createdAt,
+          updatedAt: m.updatedAt,
+        })),
       }
     })
 
     // Calculate statistics
     const stats = {
       total: data.length,
-      berjalan: data.filter((d) => d.monitoring?.status === 'BERJALAN').length,
-      selesai: data.filter((d) => d.monitoring?.status === 'SELESAI').length,
-      belumMonitoring: data.filter((d) => !d.monitoring).length,
+      berjalan: data.filter((d) => d.monitoring.length > 0 && d.monitoring[0].status === 'BERJALAN').length,
+      selesai: data.filter((d) => d.monitoring.length > 0 && d.monitoring[0].status === 'SELESAI').length,
+      belumMonitoring: data.filter((d) => d.monitoring.length === 0).length,
     }
 
     return NextResponse.json({

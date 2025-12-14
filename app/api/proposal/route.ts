@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
             dana: true,
           },
         },
-        ketua: {
+        dosen: {
           select: {
             id: true,
             nidn: true,
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
-        bidangKeahlian: {
+        bidangkeahlian: {
           select: {
             id: true,
             nama: true,
@@ -77,11 +77,23 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            members: true,
-            reviewers: true,
+            proposalmember: true,
+            proposal_reviewer: true,
           },
         },
-        monitorings: {
+        kontrak: {
+          select: {
+            id: true,
+            nomorKontrak: true,
+            nomorSK: true,
+            tanggalKontrak: true,
+            status: true,
+            fileKontrak: true,
+            fileSK: true,
+            uploadedAt: true,
+          },
+        },
+        monitoring: {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -241,13 +253,13 @@ export async function POST(request: NextRequest) {
       include: {
         periode: true,
         skema: true,
-        ketua: true,
-        bidangKeahlian: true,
+        dosen: true,
+        bidangkeahlian: true,
       },
     })
 
     // Create proposal member (ketua)
-    await prisma.proposalMember.create({
+    await prisma.proposalmember.create({
       data: {
         proposalId: proposal.id,
         dosenId: dosen.id,

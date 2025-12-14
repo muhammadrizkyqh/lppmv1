@@ -349,6 +349,132 @@ export default function DataMasterPage() {
     toast.success('Data berhasil di-refresh');
   };
 
+  // Handle export
+  const handleExport = () => {
+    try {
+      let data: any[] = [];
+      let filename = '';
+      let headers: string[] = [];
+
+      if (activeTab === 'dosen') {
+        data = dosenData || [];
+        filename = 'data-dosen.csv';
+        headers = ['NIDN', 'Nama', 'Email', 'Program Studi', 'Fakultas', 'Bidang Keahlian', 'Jenjang', 'Status'];
+        
+        const csvContent = [
+          headers.join(','),
+          ...data.map((d: Dosen) => [
+            d.nidn,
+            `"${d.nama}"`,
+            d.email,
+            `"${d.prodi?.nama || ''}"`,
+            `"${d.prodi?.fakultas?.nama || ''}"`,
+            `"${d.bidangKeahlian?.nama || ''}"`,
+            d.jenjang,
+            d.status
+          ].join(','))
+        ].join('\n');
+
+        downloadCSV(csvContent, filename);
+      } else if (activeTab === 'mahasiswa') {
+        data = mahasiswaData || [];
+        filename = 'data-mahasiswa.csv';
+        headers = ['NIM', 'Nama', 'Email', 'Program Studi', 'Fakultas', 'Angkatan', 'Status'];
+        
+        const csvContent = [
+          headers.join(','),
+          ...data.map((m: Mahasiswa) => [
+            m.nim,
+            `"${m.nama}"`,
+            m.email,
+            `"${m.prodi?.nama || ''}"`,
+            `"${m.prodi?.fakultas?.nama || ''}"`,
+            m.angkatan,
+            m.status
+          ].join(','))
+        ].join('\n');
+
+        downloadCSV(csvContent, filename);
+      } else if (activeTab === 'reviewer') {
+        data = reviewerData || [];
+        filename = 'data-reviewer.csv';
+        headers = ['NIDN', 'Nama', 'Email', 'Bidang Keahlian', 'Institusi', 'Status'];
+        
+        const csvContent = [
+          headers.join(','),
+          ...data.map((r: Reviewer) => [
+            r.nidn,
+            `"${r.nama}"`,
+            r.email,
+            `"${r.bidangKeahlian?.nama || ''}"`,
+            `"${r.institusi}"`,
+            r.status
+          ].join(','))
+        ].join('\n');
+
+        downloadCSV(csvContent, filename);
+      }
+
+      toast.success(`Data ${activeTab} berhasil di-export`);
+    } catch (error) {
+      toast.error('Gagal export data');
+      console.error('Export error:', error);
+    }
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Handle import
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const lines = text.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        
+        if (activeTab === 'dosen') {
+          if (!headers.includes('NIDN') || !headers.includes('Nama') || !headers.includes('Email')) {
+            toast.error('Format CSV tidak valid. Header harus: NIDN, Nama, Email, Program Studi, Fakultas, Bidang Keahlian, Jenjang, Status');
+            return;
+          }
+          toast.info('Fitur import sedang dalam pengembangan. Saat ini hanya support export.');
+        } else if (activeTab === 'mahasiswa') {
+          if (!headers.includes('NIM') || !headers.includes('Nama') || !headers.includes('Email')) {
+            toast.error('Format CSV tidak valid. Header harus: NIM, Nama, Email, Program Studi, Fakultas, Angkatan, Status');
+            return;
+          }
+          toast.info('Fitur import sedang dalam pengembangan. Saat ini hanya support export.');
+        } else if (activeTab === 'reviewer') {
+          if (!headers.includes('NIDN') || !headers.includes('Nama') || !headers.includes('Email')) {
+            toast.error('Format CSV tidak valid. Header harus: NIDN, Nama, Email, Bidang Keahlian, Institusi, Status');
+            return;
+          }
+          toast.info('Fitur import sedang dalam pengembangan. Saat ini hanya support export.');
+        }
+      } catch (error) {
+        toast.error('Gagal membaca file CSV');
+        console.error('Import error:', error);
+      }
+    };
+    input.click();
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -365,11 +491,11 @@ export default function DataMasterPage() {
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExport}>
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleImport}>
               <Upload className="w-4 h-4 mr-2" />
               Import
             </Button>

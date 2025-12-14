@@ -67,20 +67,12 @@ export async function POST(
       )
     }
 
-    // Check proposal status
-    if (!['DITERIMA', 'BERJALAN'].includes(proposal.status)) {
+    // Check proposal status - must be BERJALAN (after kontrak signed)
+    if (proposal.status !== 'BERJALAN') {
       return NextResponse.json(
-        { success: false, error: 'Hanya proposal yang diterima dapat dimonitor' },
+        { success: false, error: 'Monitoring hanya untuk proposal yang sudah BERJALAN (kontrak sudah ditandatangani)' },
         { status: 400 }
       )
-    }
-
-    // Update proposal status to BERJALAN if still DITERIMA
-    if (proposal.status === 'DITERIMA') {
-      await prisma.proposal.update({
-        where: { id: proposalId },
-        data: { status: 'BERJALAN' },
-      })
     }
 
     // Check if monitoring exists

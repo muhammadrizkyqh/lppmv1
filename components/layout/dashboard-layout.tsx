@@ -77,9 +77,27 @@ const getNavigationByRole = (role: string) => {
             badge: null,
           },
           {
+            title: "Penilaian Administratif",
+            icon: ClipboardList,
+            href: "/admin/penilaian-administratif",
+            badge: null,
+          },
+          {
+            title: "Jadwal Seminar",
+            icon: Calendar,
+            href: "/admin/seminar",
+            badge: null,
+          },
+          {
             title: "Review & Approval",
             icon: ClipboardList,
             href: "/admin/reviews",
+            badge: null,
+          },
+          {
+            title: "Kontrak Penelitian",
+            icon: Award,
+            href: "/admin/kontrak",
             badge: null,
           },
           {
@@ -142,6 +160,12 @@ const getNavigationByRole = (role: string) => {
             title: "Ajukan Proposal",
             icon: BookOpen,
             href: "/dosen/proposals/create",
+            badge: null,
+          },
+          {
+            title: "Kontrak Saya",
+            icon: Award,
+            href: "/dosen/kontrak",
             badge: null,
           },
           {

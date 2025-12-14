@@ -45,7 +45,7 @@ export async function GET(
             dana: true,
           }
         },
-        ketua: {
+        dosen: {
           select: {
             id: true,
             nidn: true,

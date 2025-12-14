@@ -26,14 +26,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all review assignments for this reviewer
-    const assignments = await prisma.proposalReviewer.findMany({
+    const assignments = await prisma.proposal_reviewer.findMany({
       where: {
-        reviewerId: reviewer.id
+        reviewerId: reviewer.id,
+        // Only show proposals that need review (DIREVIEW) or still in review process
+        proposal: {
+          status: {
+            in: ['DIREVIEW', 'DIAJUKAN'] // Include both submitted and being reviewed
+          }
+        }
       },
       include: {
         proposal: {
           include: {
-            ketua: {
+            dosen: {
               select: {
                 id: true,
                 nama: true,
@@ -70,6 +76,8 @@ export async function GET(request: NextRequest) {
     })
 
     // Separate into pending and completed
+    // Pending: assignment status is PENDING (can still submit review)
+    // Completed: assignment status is SELESAI (already submitted review)
     const pending = assignments.filter(a => a.status === 'PENDING')
     const completed = assignments.filter(a => a.status === 'SELESAI')
 

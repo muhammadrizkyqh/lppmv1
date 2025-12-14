@@ -39,7 +39,7 @@ export async function GET(
             dana: true,
           },
         },
-        ketua: {
+        dosen: {
           select: {
             id: true,
             nama: true,
@@ -53,7 +53,7 @@ export async function GET(
             nama: true,
           },
         },
-        monitorings: {
+        monitoring: {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -83,7 +83,7 @@ export async function GET(
       )
     }
 
-    const monitoring = proposal.monitorings[0] || null
+    const monitoring = proposal.monitoring[0] || null
 
     return NextResponse.json({
       success: true,

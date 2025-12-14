@@ -163,7 +163,7 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            proposals: true,
+            proposal: true,
           },
         },
       },
@@ -177,11 +177,11 @@ export async function DELETE(
     }
 
     // Check if skema has proposals
-    if (skema._count.proposals > 0) {
+    if (skema._count.proposal > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: `Skema memiliki ${skema._count.proposals} proposal. Nonaktifkan skema ini daripada menghapusnya.`,
+          error: `Skema memiliki ${skema._count.proposal} proposal. Nonaktifkan skema ini daripada menghapusnya.`,
         },
         { status: 400 }
       )
