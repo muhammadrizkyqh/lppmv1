@@ -73,7 +73,7 @@ export default function DosenDashboardPage() {
       const result = await fetchApi("/api/dashboard/dosen");
       
       if (result.success && result.data) {
-        setData(result.data);
+        setData(result.data as DosenDashboardData);
       } else {
         setError(result.error || "Failed to load dashboard");
         toast.error("Gagal memuat data dashboard");
@@ -229,7 +229,7 @@ export default function DosenDashboardPage() {
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={(entry) => `${entry.label}: ${entry.count}`}
+                      label={(entry: any) => `${entry.label}: ${entry.count}`}
                     >
                       {data.proposalsByStatus.map((entry) => (
                         <Cell key={entry.status} fill={COLORS[entry.status as keyof typeof COLORS]} />

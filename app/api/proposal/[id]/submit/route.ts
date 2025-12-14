@@ -25,7 +25,7 @@ export async function POST(
         periode: true,
         _count: {
           select: {
-            members: true,
+            proposalmember: true,
           },
         },
       },

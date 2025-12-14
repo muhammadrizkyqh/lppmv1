@@ -53,13 +53,13 @@ export async function GET(
             email: true,
           }
         },
-        bidangKeahlian: {
+        bidangkeahlian: {
           select: {
             id: true,
             nama: true,
           }
         },
-        members: {
+        proposalmember: {
           include: {
             dosen: {
               select: {
@@ -77,7 +77,7 @@ export async function GET(
             }
           }
         },
-        reviewers: {
+        proposal_reviewer: {
           include: {
             reviewer: {
               select: {
@@ -102,7 +102,7 @@ export async function GET(
     }
 
     // Calculate average scores if all reviews are complete
-    const completedReviews = proposal.reviewers.filter(r => r.review)
+    const completedReviews = proposal.proposal_reviewer.filter(r => r.review)
     let averageScores = null
     
     if (completedReviews.length > 0) {
@@ -129,10 +129,10 @@ export async function GET(
       data: {
         proposal,
         reviewStatus: {
-          total: proposal.reviewers.length,
+          total: proposal.proposal_reviewer.length,
           completed: completedReviews.length,
-          allComplete: proposal.reviewers.length > 0 && 
-                       completedReviews.length === proposal.reviewers.length
+          allComplete: proposal.proposal_reviewer.length > 0 && 
+                       completedReviews.length === proposal.proposal_reviewer.length
         },
         averageScores
       }

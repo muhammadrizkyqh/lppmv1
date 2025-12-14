@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     const dosen = await prisma.dosen.findMany({
       where,
       include: {
-        bidangKeahlian: true,
+        bidangkeahlian: true,
         user: {
           select: {
             id: true,
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
           status: 'AKTIF',
         },
         include: {
-          bidangKeahlian: true,
+          bidangkeahlian: true,
           user: {
             select: {
               id: true,

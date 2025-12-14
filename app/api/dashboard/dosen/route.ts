@@ -231,11 +231,11 @@ export async function GET(request: NextRequest) {
         createdAt: p.createdAt,
         submittedAt: p.submittedAt,
         approvedAt: p.approvedAt,
-        monitoring: p.monitorings && p.monitorings.length > 0 ? {
-          progress: p.monitorings[0].persentaseKemajuan,
-          status: p.monitorings[0].status,
-          verifikasiKemajuanStatus: p.monitorings[0].verifikasiKemajuanStatus,
-          verifikasiAkhirStatus: p.monitorings[0].verifikasiAkhirStatus,
+        monitoring: p.monitoring && p.monitoring.length > 0 ? {
+          progress: p.monitoring[0].persentaseKemajuan,
+          status: p.monitoring[0].status,
+          verifikasiKemajuanStatus: p.monitoring[0].verifikasiKemajuanStatus,
+          verifikasiAkhirStatus: p.monitoring[0].verifikasiAkhirStatus,
         } : null,
       })),
       upcomingDeadlines: runningProposalsWithDeadlines,

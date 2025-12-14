@@ -292,7 +292,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Bidang Keahlian</Label>
-                    <span className="text-sm">{proposal.bidangKeahlian?.nama || '-'}</span>
+                    <span className="text-sm">{proposal.bidangkeahlian?.nama || '-'}</span>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Dana Hibah</Label>
@@ -314,11 +314,11 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                   </div>
                 </div>
 
-                {proposal.members && proposal.members.length > 0 && (
+                {proposal.proposalmember && proposal.proposalmember.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Anggota Tim</Label>
                     <div className="flex flex-wrap gap-2">
-                      {proposal.members.map((member: any) => (
+                      {proposal.proposalmember.map((member: any) => (
                         <Badge key={member.id} variant="secondary">
                           {member.dosen?.nama || member.mahasiswa?.nama} 
                           {member.mahasiswa && ` (${member.mahasiswa.nim})`}

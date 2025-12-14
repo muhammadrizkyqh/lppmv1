@@ -7,7 +7,7 @@ import path from 'path'
 // POST /api/pencairan/[id]/upload-bukti - Upload bukti transfer (Admin only)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -18,7 +18,7 @@ export async function POST(
       )
     }
 
-    const { id } = params
+    const { id } = await params
     const formData = await request.formData()
     const file = formData.get('fileBukti') as File | null
 

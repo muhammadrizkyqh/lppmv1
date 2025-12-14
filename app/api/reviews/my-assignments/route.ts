@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
                 nama: true,
               }
             },
-            bidangKeahlian: {
+            bidangkeahlian: {
               select: {
                 id: true,
                 nama: true,

@@ -102,7 +102,7 @@ export async function PATCH(
       const danaHibah = Number(updated.proposal.skema.dana)
       const nominalTermin1 = danaHibah * 0.5
 
-      await tx.pencairanDana.create({
+      await tx.pencairan_dana.create({
         data: {
           proposalId: kontrak.proposalId,
           termin: 'TERMIN_1',

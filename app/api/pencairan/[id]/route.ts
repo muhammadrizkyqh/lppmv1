@@ -5,12 +5,12 @@ import { requireAuth } from '@/lib/auth'
 // GET /api/pencairan/[id] - Get pencairan detail
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
 
-    const { id } = params
+    const { id } = await params
 
     const pencairan = await prisma.pencairan_dana.findUnique({
       where: { id },
@@ -65,7 +65,7 @@ export async function GET(
 // PATCH /api/pencairan/[id] - Update pencairan status & upload bukti (Admin only)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -76,7 +76,7 @@ export async function PATCH(
       )
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { status, fileBukti, keterangan, tanggalPencairan } = body
 

@@ -478,7 +478,7 @@ export default function SeminarPage() {
                           <div className="flex flex-col">
                             <span className="font-medium">{p.judul}</span>
                             <span className="text-xs text-muted-foreground">
-                              {p.ketua?.nama} - {p.skema?.nama}
+                              {p.dosen?.nama} - {p.skema?.nama}
                             </span>
                           </div>
                         </SelectItem>

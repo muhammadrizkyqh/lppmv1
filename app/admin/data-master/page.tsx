@@ -363,7 +363,7 @@ export default function DataMasterPage() {
         
         const csvContent = [
           headers.join(','),
-          ...data.map((d: Dosen) => [
+          ...data.map((d: any) => [
             d.nidn,
             `"${d.nama}"`,
             d.email,
@@ -383,7 +383,7 @@ export default function DataMasterPage() {
         
         const csvContent = [
           headers.join(','),
-          ...data.map((m: Mahasiswa) => [
+          ...data.map((m: any) => [
             m.nim,
             `"${m.nama}"`,
             m.email,
@@ -402,7 +402,7 @@ export default function DataMasterPage() {
         
         const csvContent = [
           headers.join(','),
-          ...data.map((r: Reviewer) => [
+          ...data.map((r: any) => [
             r.nidn,
             `"${r.nama}"`,
             r.email,

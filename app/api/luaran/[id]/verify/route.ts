@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/auth'
 // POST /api/luaran/[id]/verify - Verify/Reject luaran (Admin only)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -16,6 +16,7 @@ export async function POST(
       )
     }
 
+    const { id } = await params
     const body = await request.json()
     const { statusVerifikasi, catatanVerifikasi } = body
 
@@ -29,7 +30,7 @@ export async function POST(
 
     // Get luaran
     const luaran = await prisma.luaran.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         proposal: {
           select: {
@@ -55,7 +56,7 @@ export async function POST(
 
     // Update luaran verification status
     const updated = await prisma.luaran.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         statusVerifikasi,
         catatanVerifikasi,

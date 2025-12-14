@@ -84,12 +84,12 @@ interface KontrakDetail {
       tanggalBuka: string
       tanggalTutup: string
     }
-    members: TeamMember[]
+    proposalmember: TeamMember[]
   }
-  creator: {
+  user_kontrak_createdByTouser: {
     username: string
   }
-  uploader: {
+  user_kontrak_uploadedByTouser: {
     username: string
   } | null
 }
@@ -305,12 +305,12 @@ export default function AdminKontrakDetailPage() {
             </div>
             <div>
               <Label className="text-muted-foreground">Dibuat Oleh</Label>
-              <p className="font-medium">{kontrak.creator.username}</p>
+              <p className="font-medium">{kontrak.user_kontrak_createdByTouser.username}</p>
             </div>
-            {kontrak.uploader && (
+            {kontrak.user_kontrak_uploadedByTouser && (
               <div>
                 <Label className="text-muted-foreground">Upload TTD Oleh</Label>
-                <p className="font-medium">{kontrak.uploader.username}</p>
+                <p className="font-medium">{kontrak.user_kontrak_uploadedByTouser.username}</p>
                 <p className="text-sm text-muted-foreground">
                   {kontrak.uploadedAt && formatDate(kontrak.uploadedAt)}
                 </p>
@@ -377,13 +377,13 @@ export default function AdminKontrakDetailPage() {
             <TableBody>
               <TableRow>
                 <TableCell className="font-medium">{kontrak.proposal.dosen.nama}</TableCell>
-                <TableCell>{kontrak.proposal.ketua.nidn}</TableCell>
-                <TableCell>{kontrak.proposal.ketua.email}</TableCell>
+                <TableCell>{kontrak.proposal.dosen.nidn}</TableCell>
+                <TableCell>{kontrak.proposal.dosen.email}</TableCell>
                 <TableCell>
                   <Badge>Ketua</Badge>
                 </TableCell>
               </TableRow>
-              {kontrak.proposal.members
+              {kontrak.proposal.proposalmember
                 .filter(member => member.role !== 'Ketua') // Exclude ketua (already shown above)
                 .map((member) => (
                 <TableRow key={member.id}>

@@ -7,14 +7,16 @@ import { join } from 'path'
 // POST /api/luaran/[id]/upload - Upload bukti luaran
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
 
+    const { id } = await params
+
     // Get luaran
     const luaran = await prisma.luaran.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         proposal: true
       }
@@ -79,7 +81,7 @@ export async function POST(
 
     // Generate unique filename
     const ext = file.name.split('.').pop()
-    const fileName = `${params.id}_${Date.now()}.${ext}`
+    const fileName = `${id}_${Date.now()}.${ext}`
     const filePath = join(uploadDir, fileName)
 
     // Save file
@@ -89,7 +91,7 @@ export async function POST(
     // Update luaran with file path
     const fileUrl = `/uploads/luaran/${fileName}`
     const updated = await prisma.luaran.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         fileBukti: fileUrl,
       },

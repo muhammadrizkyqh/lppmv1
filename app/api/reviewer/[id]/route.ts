@@ -31,7 +31,7 @@ export async function GET(
             lastLogin: true,
           },
         },
-        bidangKeahlian: {
+        bidangkeahlian: {
           select: {
             id: true,
             nama: true,
@@ -150,7 +150,7 @@ export async function PUT(
               lastLogin: true,
             },
           },
-          bidangKeahlian: {
+          bidangkeahlian: {
             select: {
               id: true,
               nama: true,

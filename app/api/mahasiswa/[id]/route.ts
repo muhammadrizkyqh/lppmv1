@@ -201,7 +201,7 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            proposalMembers: true,
+            proposalmember: true,
           },
         },
       },
@@ -215,11 +215,11 @@ export async function DELETE(
     }
 
     // Check if mahasiswa has proposal members
-    if (mahasiswa._count.proposalMembers > 0) {
+    if (mahasiswa._count.proposalmember > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: `Mahasiswa terdaftar di ${mahasiswa._count.proposalMembers} proposal. Hapus dari proposal terlebih dahulu.`,
+          error: `Mahasiswa terdaftar di ${mahasiswa._count.proposalmember} proposal. Hapus dari proposal terlebih dahulu.`,
         },
         { status: 400 }
       )

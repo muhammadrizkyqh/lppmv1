@@ -181,9 +181,9 @@ export default function AdminMonitoringDetailPage() {
                 <CardTitle className="text-xl">{proposal.judul}</CardTitle>
                 <CardDescription>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className="font-medium">{proposal.ketua?.nama}</span>
+                    <span className="font-medium">{proposal.dosen?.nama}</span>
                     <span>•</span>
-                    <span>{proposal.ketua?.nidn}</span>
+                    <span>{proposal.dosen?.nidn}</span>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
@@ -194,12 +194,12 @@ export default function AdminMonitoringDetailPage() {
                       <Award className="w-4 h-4" />
                       {proposal.skema?.nama}
                     </div>
-                    {proposal.bidangKeahlian && (
+                    {proposal.bidangkeahlian && (
                       <>
                         <span>•</span>
                         <div className="flex items-center gap-1">
                           <FileText className="w-4 h-4" />
-                          {proposal.bidangKeahlian.nama}
+                          {proposal.bidangkeahlian.nama}
                         </div>
                       </>
                     )}

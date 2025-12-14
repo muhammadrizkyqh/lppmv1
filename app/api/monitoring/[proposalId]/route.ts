@@ -47,7 +47,7 @@ export async function GET(
             email: true,
           },
         },
-        bidangKeahlian: {
+        bidangkeahlian: {
           select: {
             id: true,
             nama: true,
@@ -98,8 +98,8 @@ export async function GET(
         },
         periode: proposal.periode,
         skema: proposal.skema,
-        ketua: proposal.ketua,
-        bidangKeahlian: proposal.bidangKeahlian,
+        dosen: proposal.dosen,
+        bidangkeahlian: proposal.bidangkeahlian,
         monitoring,
       },
     })

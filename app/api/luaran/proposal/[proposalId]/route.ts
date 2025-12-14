@@ -5,14 +5,16 @@ import { requireAuth } from '@/lib/auth'
 // GET /api/luaran/proposal/[proposalId] - Get all luaran for a proposal
 export async function GET(
   request: NextRequest,
-  { params }: { params: { proposalId: string } }
+  { params }: { params: Promise<{ proposalId: string }> }
 ) {
   try {
     const session = await requireAuth()
 
+    const { proposalId } = await params
+
     // Check proposal exists
     const proposal = await prisma.proposal.findUnique({
-      where: { id: params.proposalId }
+      where: { id: proposalId }
     })
 
     if (!proposal) {
@@ -38,7 +40,7 @@ export async function GET(
     // Get all luaran for this proposal
     const luaran = await prisma.luaran.findMany({
       where: {
-        proposalId: params.proposalId
+        proposalId
       },
       orderBy: { createdAt: 'desc' },
       include: {

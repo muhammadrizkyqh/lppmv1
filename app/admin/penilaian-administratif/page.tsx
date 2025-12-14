@@ -173,7 +173,7 @@ export default function PenilaianAdministratifPage() {
 
   const filteredProposals = proposals.filter(p => 
     p.judul?.toLowerCase().includes(searchValue.toLowerCase()) ||
-    p.ketua?.nama?.toLowerCase().includes(searchValue.toLowerCase()) ||
+    (p as any).dosen?.nama?.toLowerCase().includes(searchValue.toLowerCase()) ||
     p.skema?.nama?.toLowerCase().includes(searchValue.toLowerCase())
   );
 
@@ -273,7 +273,7 @@ export default function PenilaianAdministratifPage() {
                       <TableCell className="font-medium max-w-md">
                         <div className="line-clamp-2">{proposal.judul}</div>
                       </TableCell>
-                      <TableCell>{proposal.ketua?.nama || "-"}</TableCell>
+                      <TableCell>{(proposal as any).dosen?.nama || "-"}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{proposal.skema?.nama}</Badge>
                       </TableCell>
@@ -347,7 +347,7 @@ export default function PenilaianAdministratifPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Ketua</p>
-                        <p className="font-medium">{selectedProposal.ketua?.nama}</p>
+                        <p className="font-medium">{(selectedProposal as any).dosen?.nama}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Skema</p>

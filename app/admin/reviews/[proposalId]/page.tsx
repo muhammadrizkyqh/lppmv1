@@ -167,7 +167,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
   }
 
   const { proposal, reviewStatus, averageScores } = data
-  const reviews = proposal.reviewers?.filter((r: any) => r.review) || []
+  const reviews = proposal.proposal_reviewer?.filter((r: any) => r.review) || []
 
   return (
     <DashboardLayout>
@@ -223,7 +223,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm md:text-base truncate">{proposal.dosen.nama}</p>
-                    <p className="text-xs text-muted-foreground">{proposal.ketua.nidn}</p>
+                    <p className="text-xs text-muted-foreground">{proposal.dosen.nidn}</p>
                   </div>
                 </div>
               </div>

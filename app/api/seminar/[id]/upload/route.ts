@@ -6,11 +6,11 @@ import { requireAuth } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth();
-    const seminarId = params.id;
+    const { id: seminarId } = await params;
 
     // Get form data
     const formData = await request.formData();

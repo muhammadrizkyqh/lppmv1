@@ -50,13 +50,13 @@ export async function GET(request: NextRequest) {
             email: true,
           }
         },
-        bidangKeahlian: {
+        bidangkeahlian: {
           select: {
             id: true,
             nama: true,
           }
         },
-        reviewers: {
+        proposal_reviewer: {
           include: {
             reviewer: {
               select: {
@@ -68,11 +68,6 @@ export async function GET(request: NextRequest) {
             review: true,
           }
         },
-        _count: {
-          select: {
-            reviewers: true,
-          }
-        }
       },
       orderBy: {
         submittedAt: 'desc'
@@ -81,8 +76,8 @@ export async function GET(request: NextRequest) {
 
     // Add review completion info
     const proposalsWithReviewStatus = proposals.map(proposal => {
-      const totalReviewers = proposal.reviewers.length
-      const completedReviews = proposal.reviewers.filter(r => r.status === 'SELESAI').length
+      const totalReviewers = proposal.proposal_reviewer.length
+      const completedReviews = proposal.proposal_reviewer.filter(r => r.status === 'SELESAI').length
       const allReviewsComplete = totalReviewers > 0 && completedReviews === totalReviewers
 
       return {

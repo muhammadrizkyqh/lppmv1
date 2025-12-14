@@ -72,14 +72,16 @@ export default function AdminMonitoringPage() {
         search: searchValue || undefined,
       });
 
-      if (response.success) {
-        setProposals(response.data || []);
-        setStats(response.stats || {
-          total: 0,
-          berjalan: 0,
-          selesai: 0,
-          belumMonitoring: 0,
-        });
+      if (response.success && Array.isArray(response.data)) {
+        setProposals(response.data);
+        // Stats are embedded in the response data object
+        const stats = {
+          total: response.data.length,
+          berjalan: response.data.filter((p: any) => p.status === 'BERJALAN').length,
+          selesai: response.data.filter((p: any) => p.status === 'SELESAI').length,
+          belumMonitoring: response.data.filter((p: any) => !p.lastMonitoring).length,
+        };
+        setStats(stats);
       } else {
         toast.error(response.error || "Gagal memuat data monitoring");
       }
@@ -106,7 +108,7 @@ export default function AdminMonitoringPage() {
   };
 
   const getMonitoringStatus = (proposal: MonitoringList) => {
-    if (!proposal.monitorings || proposal.monitorings.length === 0) {
+    if (!proposal.monitoring || proposal.monitoring.length === 0) {
       return {
         icon: <AlertCircle className="w-5 h-5 text-yellow-500" />,
         text: "Belum ada monitoring",
@@ -114,7 +116,7 @@ export default function AdminMonitoringPage() {
       };
     }
 
-    const monitoring = proposal.monitorings[0];
+    const monitoring = proposal.monitoring[0];
     
     if (monitoring.laporanAkhir) {
       return {
@@ -278,7 +280,7 @@ export default function AdminMonitoringPage() {
         ) : (
           <div className="grid gap-4">
             {proposals.map((proposal) => {
-              const monitoring = proposal.monitorings?.[0];
+              const monitoring = proposal.monitoring?.[0];
               const monitoringStatus = getMonitoringStatus(proposal);
               
               return (
@@ -290,7 +292,7 @@ export default function AdminMonitoringPage() {
                         <div>
                           <h3 className="text-lg font-semibold mb-1">{proposal.judul}</h3>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <span>{proposal.ketua?.nama}</span>
+                            <span>{proposal.dosen?.nama}</span>
                             <span>•</span>
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />

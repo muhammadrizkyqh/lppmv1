@@ -41,7 +41,7 @@ export async function GET(
                 tanggalTutup: true
               }
             },
-            members: {
+            proposalmember: {
               include: {
                 dosen: {
                   select: {
@@ -63,14 +63,14 @@ export async function GET(
             }
           }
         },
-        creator: {
+        user_kontrak_createdByTouser: {
           select: {
             id: true,
             username: true,
             email: true
           }
         },
-        uploader: {
+        user_kontrak_uploadedByTouser: {
           select: {
             id: true,
             username: true,

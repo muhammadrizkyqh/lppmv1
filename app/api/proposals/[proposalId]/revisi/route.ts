@@ -66,7 +66,7 @@ export async function POST(
     // Also reset reviewer assignments so they can review again
     const updatedProposal = await prisma.$transaction(async (tx) => {
       // Step 1: Get all ProposalReviewer IDs for this proposal
-      const proposalReviewers = await tx.proposalReviewer.findMany({
+      const proposalReviewers = await tx.proposal_reviewer.findMany({
         where: { proposalId },
         select: { id: true },
       })
@@ -83,7 +83,7 @@ export async function POST(
       }
 
       // Step 3: Reset all reviewer assignments to PENDING
-      await tx.proposalReviewer.updateMany({
+      await tx.proposal_reviewer.updateMany({
         where: { proposalId },
         data: {
           status: 'PENDING',

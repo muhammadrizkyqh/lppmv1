@@ -304,7 +304,7 @@ export default function AdminDashboardPage() {
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={(entry) => `${entry.label}: ${entry.count}`}
+                      label={(entry: any) => `${entry.label}: ${entry.count}`}
                     >
                       {data.proposalsByStatus.map((entry) => (
                         <Cell key={entry.status} fill={COLORS[entry.status as keyof typeof COLORS]} />
@@ -427,7 +427,7 @@ export default function AdminDashboardPage() {
             <CardContent className="space-y-4">
               {data.recentProposals.length > 0 ? (
                 data.recentProposals.slice(0, 5).map((proposal) => {
-                  const statusConfig = {
+                  const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
                     DRAFT: { icon: FileText, color: "slate", label: "Draft" },
                     DIAJUKAN: { icon: Clock, color: "blue", label: "Diajukan" },
                     DIREVIEW: { icon: ClipboardList, color: "amber", label: "Direview" },
@@ -436,19 +436,20 @@ export default function AdminDashboardPage() {
                     DITOLAK: { icon: AlertCircle, color: "red", label: "Ditolak" },
                     BERJALAN: { icon: BarChart3, color: "violet", label: "Berjalan" },
                     SELESAI: { icon: CheckCircle, color: "emerald", label: "Selesai" }
-                  }[proposal.status] || { icon: FileText, color: "slate", label: proposal.status };
+                  };
+                  const config = statusConfig[proposal.status] || { icon: FileText, color: "slate", label: proposal.status };
 
-                  const StatusIcon = statusConfig.icon;
+                  const StatusIcon = config.icon;
 
                   return (
                     <div key={proposal.id} className="flex items-start space-x-3 text-sm">
-                      <div className={`p-2 rounded-lg bg-${statusConfig.color}-100`}>
-                        <StatusIcon className={`w-4 h-4 text-${statusConfig.color}-600`} />
+                      <div className={`p-2 rounded-lg bg-${config.color}-100`}>
+                        <StatusIcon className={`w-4 h-4 text-${config.color}-600`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{proposal.judul}</p>
                         <p className="text-xs text-muted-foreground">
-                          {proposal.dosen.nama} • {statusConfig.label} • {proposal.skema.nama}
+                          {proposal.dosen.nama} • {config.label} • {proposal.skema.nama}
                         </p>
                       </div>
                     </div>

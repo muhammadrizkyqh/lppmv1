@@ -227,7 +227,7 @@ export interface Reviewer {
   bidangKeahlianId?: string
   tipe: 'INTERNAL' | 'EKSTERNAL'
   status: string
-  bidangKeahlian?: {
+  bidangkeahlian?: {
     id: string
     nama: string
   }
@@ -586,18 +586,18 @@ export interface Proposal {
     tipe: string
     dana: number
   }
-  ketua?: {
+  dosen?: {
     id: string
     nidn: string
     nama: string
     email: string
   }
-  bidangKeahlian?: {
+  bidangkeahlian?: {
     id: string
     nama: string
   } | null
   _count?: {
-    members: number
+    proposalmember: number
     reviews: number
   }
 }
@@ -941,7 +941,7 @@ interface ProposalReviewed {
     nama: string
     email: string
   }
-  bidangKeahlian: {
+  bidangkeahlian: {
     id: string
     nama: string
   } | null
@@ -954,8 +954,6 @@ interface ProposalReviewed {
 }
 
 // Alias for compatibility
-export type ProposalList = Proposal
-
 export type ProposalList = Proposal
 
 interface ReviewComparison {
@@ -1070,7 +1068,7 @@ export interface MonitoringDetail {
       nama: string
       nidn: string
     }
-    bidangKeahlian: {
+    bidangkeahlian: {
       id: string
       nama: string
     }
@@ -1095,7 +1093,7 @@ export interface MonitoringList {
     id: string
     nama: string
   }
-  monitorings: Monitoring[]
+  monitoring: Monitoring[]
 }
 
 export interface MonitoringStats {

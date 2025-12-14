@@ -299,12 +299,12 @@ export default function DosenMonitoringDetailPage() {
                       <Award className="w-4 h-4" />
                       {proposal.skema?.nama}
                     </div>
-                    {proposal.bidangKeahlian && (
+                    {proposal.bidangkeahlian && (
                       <>
                         <span>•</span>
                         <div className="flex items-center gap-1">
                           <FileText className="w-4 h-4" />
-                          {proposal.bidangKeahlian.nama}
+                          {proposal.bidangkeahlian.nama}
                         </div>
                       </>
                     )}

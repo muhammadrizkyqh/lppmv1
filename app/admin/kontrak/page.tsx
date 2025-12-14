@@ -305,7 +305,7 @@ export default function AdminKontrakPage() {
                     <TableCell>
                       <div className="space-y-1">
                         <div className="font-medium text-sm">{kontrak.proposal.dosen.nama}</div>
-                        <div className="text-xs text-muted-foreground">{kontrak.proposal.ketua.nidn}</div>
+                        <div className="text-xs text-muted-foreground">{kontrak.proposal.dosen.nidn}</div>
                       </div>
                     </TableCell>
                     <TableCell>

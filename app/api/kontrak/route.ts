@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     const proposal = await prisma.proposal.findUnique({
       where: { id: proposalId },
       include: {
-        ketua: true,
+        dosen: true,
         skema: true
       }
     })
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       include: {
         proposal: {
           include: {
-            ketua: true,
+            dosen: true,
             skema: true,
             periode: true
           }

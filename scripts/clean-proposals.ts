@@ -21,11 +21,11 @@ async function cleanProposals() {
     console.log(`   ✓ Deleted ${reviews.count} reviews`)
 
     console.log('4. Deleting proposal reviewers...')
-    const proposalReviewers = await prisma.proposalReviewer.deleteMany({})
+    const proposalReviewers = await prisma.proposal_reviewer.deleteMany({})
     console.log(`   ✓ Deleted ${proposalReviewers.count} reviewer assignments`)
 
     console.log('5. Deleting proposal team members...')
-    const teamMembers = await prisma.proposalMember.deleteMany({})
+    const teamMembers = await prisma.proposalmember.deleteMany({})
     console.log(`   ✓ Deleted ${teamMembers.count} team members`)
 
     console.log('6. Deleting proposals...')

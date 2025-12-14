@@ -11,9 +11,9 @@ async function main() {
   await prisma.notification.deleteMany()
   await prisma.monitoring.deleteMany()
   await prisma.review.deleteMany()
-  await prisma.proposalReviewer.deleteMany()
-  await prisma.proposalRevision.deleteMany()
-  await prisma.proposalMember.deleteMany()
+  await prisma.proposal_reviewer.deleteMany()
+  await prisma.proposalrevision.deleteMany()
+  await prisma.proposalmember.deleteMany()
   await prisma.proposal.deleteMany()
   await prisma.dosen.deleteMany()
   await prisma.mahasiswa.deleteMany()
@@ -21,28 +21,28 @@ async function main() {
   await prisma.user.deleteMany()
   await prisma.periode.deleteMany()
   await prisma.skema.deleteMany()
-  await prisma.bidangKeahlian.deleteMany()
+  await prisma.bidangkeahlian.deleteMany()
 
   // Hash password default
   const hashedPassword = await bcrypt.hash('password123', 10)
 
   // 1. Bidang Keahlian
   console.log('📚 Creating Bidang Keahlian...')
-  const bidangPBA = await prisma.bidangKeahlian.create({
+  const bidangPBA = await prisma.bidangkeahlian.create({
     data: {
       nama: 'Pendidikan Bahasa Arab',
       deskripsi: 'Bidang keahlian pendidikan bahasa Arab',
     },
   })
 
-  const bidangPI = await prisma.bidangKeahlian.create({
+  const bidangPI = await prisma.bidangkeahlian.create({
     data: {
       nama: 'Pendidikan Islam',
       deskripsi: 'Bidang keahlian pendidikan Islam',
     },
   })
 
-  const bidangHES = await prisma.bidangKeahlian.create({
+  const bidangHES = await prisma.bidangkeahlian.create({
     data: {
       nama: 'Hukum Ekonomi Syariah',
       deskripsi: 'Bidang keahlian hukum ekonomi syariah',
@@ -293,7 +293,7 @@ async function main() {
       },
     })
 
-    await prisma.proposalMember.createMany({
+    await prisma.proposalmember.createMany({
       data: [
         { proposalId: proposal1.id, dosenId: dosen1.id, role: 'Ketua' },
         { proposalId: proposal1.id, mahasiswaId: mhs1.id, role: 'Mahasiswa' },
@@ -315,7 +315,7 @@ async function main() {
       },
     })
 
-    await prisma.proposalMember.createMany({
+    await prisma.proposalmember.createMany({
       data: [
         { proposalId: proposal2.id, dosenId: dosen2.id, role: 'Ketua' },
         { proposalId: proposal2.id, dosenId: dosen3.id, role: 'Anggota' },

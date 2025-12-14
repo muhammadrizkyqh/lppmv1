@@ -42,7 +42,7 @@ interface ProposalReviewer {
       tahun: string;
       nama: string;
     };
-    bidangKeahlian?: {
+    bidangkeahlian?: {
       nama: string;
     };
   };
@@ -258,7 +258,7 @@ export default function ReviewerDashboardPage() {
                           <div>
                             <p className="text-xs text-muted-foreground">Bidang</p>
                             <p className="font-medium">
-                              {assignment.proposal.bidangKeahlian?.nama || '-'}
+                              {assignment.proposal.bidangkeahlian?.nama || '-'}
                             </p>
                           </div>
                         </div>
@@ -335,7 +335,7 @@ export default function ReviewerDashboardPage() {
                         <User className="w-4 h-4 text-muted-foreground" />
                         <div>
                           <p className="text-xs text-muted-foreground">Ketua</p>
-                          <p className="font-medium">{assignment.proposal.ketua.nama}</p>
+                          <p className="font-medium">{assignment.proposal.dosen.nama}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

@@ -15,7 +15,7 @@ export async function GET(
     const dosen = await prisma.dosen.findUnique({
       where: { id },
       include: {
-        bidangKeahlian: true,
+        bidangkeahlian: true,
         user: {
           select: {
             id: true,
@@ -25,7 +25,7 @@ export async function GET(
             lastLogin: true,
           },
         },
-        proposals: {
+        proposal: {
           include: {
             periode: true,
             skema: true,
@@ -117,7 +117,7 @@ export async function PUT(
           status,
         },
         include: {
-          bidangKeahlian: true,
+          bidangkeahlian: true,
           user: {
             select: {
               id: true,
@@ -167,7 +167,7 @@ export async function DELETE(
     const existingDosen = await prisma.dosen.findUnique({
       where: { id },
       include: {
-        proposals: true,
+        proposal: true,
       },
     })
 
@@ -179,7 +179,7 @@ export async function DELETE(
     }
 
     // Check if dosen has proposals
-    if (existingDosen.proposals.length > 0) {
+    if (existingDosen.proposal.length > 0) {
       return NextResponse.json(
         { 
           success: false, 

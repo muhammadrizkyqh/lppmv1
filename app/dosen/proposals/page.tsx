@@ -234,8 +234,8 @@ export default function ProposalsPage() {
     tanggalPengajuan: p.createdAt || new Date().toISOString(),
     tanggalDeadline: "-", // Would come from periode settings
     dana: Number(p.skema?.dana || 0),
-    bidangKeahlian: p.bidangKeahlian?.nama || "-",
-    anggota: p._count?.members || 0,
+    bidangKeahlian: p.bidangkeahlian?.nama || "-",
+    anggota: p._count?.proposalmember || 0,
     reviewer: [], // Would come from reviews relation
     _original: p // Keep original data for actions
   })) || [];

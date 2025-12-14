@@ -446,7 +446,7 @@ export default function ProposalDetailPage() {
                       Bidang Keahlian
                     </label>
                     <p className="mt-1 font-medium">
-                      {proposal.bidangKeahlian?.nama || "-"}
+                      {proposal.bidangkeahlian?.nama || "-"}
                     </p>
                   </div>
 
@@ -814,10 +814,10 @@ export default function ProposalDetailPage() {
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">Email: {reviewer.email}</p>
-                      {reviewer.bidangKeahlian && (
-                        <p className="text-sm text-muted-foreground">
-                          Bidang: {reviewer.bidangKeahlian.nama}
-                        </p>
+                      {reviewer.bidangkeahlian && (
+                        <span className="text-xs text-muted-foreground">
+                          Bidang: {reviewer.bidangkeahlian.nama}
+                        </span>
                       )}
                     </div>
                     {isSelected && (

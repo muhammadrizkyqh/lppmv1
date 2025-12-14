@@ -5,13 +5,14 @@ import { requireAuth } from '@/lib/auth'
 // GET /api/luaran/[id] - Get luaran detail
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
+    const { id } = await params
 
     const luaran = await prisma.luaran.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         proposal: {
           select: {
@@ -81,7 +82,7 @@ export async function GET(
 // PATCH /api/luaran/[id] - Update luaran (Dosen only)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireAuth()
@@ -94,10 +95,11 @@ export async function PATCH(
 
     const body = await request.json()
     const { jenis, judul, penerbit, tahunTerbit, url, keterangan } = body
+    const { id } = await params
 
     // Get luaran
     const luaran = await prisma.luaran.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         proposal: true
       }
@@ -131,7 +133,7 @@ export async function PATCH(
 
     // Update luaran
     const updated = await prisma.luaran.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         jenis,
         judul,

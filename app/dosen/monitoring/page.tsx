@@ -25,7 +25,7 @@ interface ProposalWithMonitoring {
     id: string;
     nama: string;
   };
-  monitorings: Array<{
+  monitoring: Array<{
     id: string;
     persentaseKemajuan: number;
     status: string;
@@ -75,7 +75,7 @@ export default function DosenMonitoringPage() {
   };
 
   const getMonitoringStatus = (proposal: ProposalWithMonitoring) => {
-    if (!proposal.monitorings || proposal.monitorings.length === 0) {
+    if (!proposal.monitoring || proposal.monitoring.length === 0) {
       return {
         icon: <AlertCircle className="w-5 h-5 text-yellow-500" />,
         text: "Belum ada monitoring",
@@ -83,7 +83,7 @@ export default function DosenMonitoringPage() {
       };
     }
 
-    const monitoring = proposal.monitorings[0];
+    const monitoring = proposal.monitoring[0];
     
     if (monitoring.laporanAkhir) {
       return {
@@ -116,7 +116,7 @@ export default function DosenMonitoringPage() {
 
   const stats = {
     total: proposals.length,
-    belumMonitoring: proposals.filter(p => !p.monitorings || p.monitorings.length === 0).length,
+    belumMonitoring: proposals.filter(p => !p.monitoring || p.monitoring.length === 0).length,
     berjalan: proposals.filter(p => p.status === 'BERJALAN').length,
     selesai: proposals.filter(p => p.status === 'SELESAI').length,
   };
@@ -228,7 +228,7 @@ export default function DosenMonitoringPage() {
         ) : (
           <div className="grid gap-4">
             {filteredProposals.map((proposal) => {
-              const monitoring = proposal.monitorings?.[0];
+              const monitoring = proposal.monitoring?.[0];
               const monitoringStatus = getMonitoringStatus(proposal);
               
               return (

@@ -5,12 +5,12 @@ import { requireAuth } from '@/lib/auth'
 // GET /api/pencairan/proposal/[proposalId] - Get all pencairan by proposal
 export async function GET(
   request: NextRequest,
-  { params }: { params: { proposalId: string } }
+  { params }: { params: Promise<{ proposalId: string }> }
 ) {
   try {
     const session = await requireAuth()
 
-    const { proposalId } = params
+    const { proposalId } = await params
 
     const proposal = await prisma.proposal.findUnique({
       where: { id: proposalId },

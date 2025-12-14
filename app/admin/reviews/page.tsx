@@ -36,7 +36,7 @@ interface ProposalReviewed {
     nama: string
     email: string
   }
-  bidangKeahlian: {
+  bidangkeahlian: {
     id: string
     nama: string
   } | null
@@ -135,12 +135,12 @@ export default function AdminReviewsPage() {
           <div className="space-y-1 min-w-0">
             <p className="text-xs text-muted-foreground">Pengusul</p>
             <p className="text-sm font-medium truncate">{proposal.dosen.nama}</p>
-            <p className="text-xs text-muted-foreground truncate">{proposal.ketua.nidn}</p>
+            <p className="text-xs text-muted-foreground truncate">{proposal.dosen.nidn}</p>
           </div>
           <div className="space-y-1 min-w-0">
             <p className="text-xs text-muted-foreground">Bidang Keahlian</p>
             <p className="text-sm font-medium truncate">
-              {proposal.bidangKeahlian?.nama || '-'}
+              {proposal.bidangkeahlian?.nama || '-'}
             </p>
           </div>
           <div className="space-y-1 min-w-0">
