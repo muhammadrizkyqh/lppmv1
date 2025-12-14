@@ -11,28 +11,79 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Deploy to VPS
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      
+      - name: Build Next.js (on GitHub runner)
+        run: npm run build
+        env:
+          NODE_ENV: production
+      
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy-package
+          cp -r .next deploy-package/
+          cp -r public deploy-package/
+          cp -r node_modules/.prisma deploy-package/node_modules/
+          cp -r node_modules/@prisma deploy-package/node_modules/
+          cp package.json deploy-package/
+          cp prisma/schema.prisma deploy-package/
+          tar -czf deploy.tar.gz deploy-package/
+      
+      - name: Upload build to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "deploy.tar.gz"
+          target: "/home/deploy/"
+      
+      - name: Deploy and restart on VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          command_timeout: 30m
+          command_timeout: 10m
           script: |
             export PATH=$PATH:/home/deploy/.nvm/versions/node/v24.11.1/bin
-
+            
             cd /home/deploy/lppmv1
             
-            # Reset any local changes to prevent merge conflicts
-            git fetch origin
-            git reset --hard origin/master
+            # Backup current deployment
+            if [ -d ".next" ]; then
+              mv .next .next.backup
+            fi
             
-            npm install
-            npx prisma generate
+            # Extract new build
+            cd /home/deploy
+            tar -xzf deploy.tar.gz
+            cp -r deploy-package/.next lppmv1/
+            cp -r deploy-package/public lppmv1/
+            mkdir -p lppmv1/node_modules
+            cp -r deploy-package/node_modules/.prisma lppmv1/node_modules/
+            cp -r deploy-package/node_modules/@prisma lppmv1/node_modules/
+            rm -rf deploy-package deploy.tar.gz
+            
+            cd /home/deploy/lppmv1
+            
+            # Run migrations
             npx prisma db push --skip-generate --accept-data-loss
             
-            # Build with increased memory limit
-            NODE_OPTIONS='--max-old-space-size=4096' npm run build
+            # Restart application
+            pm2 restart lppmv1 || pm2 start npm --name lppmv1 -- start
             
-            pm2 restart lppmv1
+            # Cleanup old backup after successful restart
+            sleep 5
+            pm2 status lppmv1 && rm -rf .next.backup || echo "Warning: PM2 status check failed"
