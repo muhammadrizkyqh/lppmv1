@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:memory": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:turbo": "next build --turbopack",
     "start": "next start",
     "db:generate": "prisma generate",
