@@ -18,13 +18,21 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 30m
           script: |
             export PATH=$PATH:/home/deploy/.nvm/versions/node/v24.11.1/bin
 
             cd /home/deploy/lppmv1
-            git pull origin master
+            
+            # Reset any local changes to prevent merge conflicts
+            git fetch origin
+            git reset --hard origin/master
+            
             npm install
             npx prisma generate
             npx prisma db push --skip-generate --accept-data-loss
-            npm run build
+            
+            # Build with increased memory limit
+            NODE_OPTIONS='--max-old-space-size=4096' npm run build
+            
             pm2 restart lppmv1
