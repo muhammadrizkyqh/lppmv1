@@ -1,0 +1,30 @@
+# === COPY-PASTE DI VPS (sudah login ssh deploy@195.88.211.123) ===
+
+# 1. Bunuh semua proses crypto miner yang masih jalan
+pkill -9 XDZE2WW
+pkill -9 nuYXkHDN
+ps aux | grep "/dev/shm" | grep -v grep | awk '{print $2}' | xargs -r kill -9
+
+# 2. Hapus semua file di /dev/shm
+sudo rm -rf /dev/shm/*
+
+# 3. Remount /dev/shm dengan noexec (block execution)
+sudo mount -o remount,noexec,nosuid,nodev /dev/shm
+
+# 4. Verify remount berhasil
+mount | grep /dev/shm
+
+# 5. Tambahkan ke /etc/fstab untuk permanent (survive reboot)
+echo "tmpfs /dev/shm tmpfs defaults,noexec,nosuid,nodev,size=512M 0 0" | sudo tee -a /etc/fstab
+
+# 6. Cek aplikasi Next.js masih jalan
+ps aux | grep next-server
+
+# 7. Test website masih bisa diakses
+curl -I http://localhost:3000
+
+# 8. Monitor CPU (harusnya turun drastis)
+top -bn1 | head -15
+
+# SELESAI!
+# /dev/shm sekarang tidak bisa execute binary, crypto miner tidak bisa jalan lagi
