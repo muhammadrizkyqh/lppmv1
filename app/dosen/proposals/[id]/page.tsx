@@ -19,6 +19,7 @@ import {
   AlertCircle,
   UserPlus,
   X,
+  Upload,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useProposalById, useProposalMembers, useDosen, useMahasiswa, useReviewer } from "@/hooks/use-data";
-import { proposalApi } from "@/lib/api-client";
+import { proposalApi, uploadApi } from "@/lib/api-client";
 import { toast } from "sonner";
 import PencairanSection from "@/components/proposal/pencairan-section";
 import LuaranSection from "@/components/proposal/luaran-section";
@@ -135,6 +136,8 @@ export default function ProposalDetailPage() {
   const [assignReviewerDialog, setAssignReviewerDialog] = useState(false);
   const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<string>("");
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   useEffect(() => {
     // Get user role from localStorage
@@ -187,17 +190,23 @@ export default function ProposalDetailPage() {
   const StatusIcon = statusInfo.icon;
 
   // Debug logging
-  console.log("=== DEBUG ASSIGN REVIEWER ===");
+  console.log("=== DEBUG PROPOSAL FILE ===");
+  console.log("Proposal ID:", proposal.id);
+  console.log("Status:", status);
+  console.log("Status (original):", proposal.status);
   console.log("isAdmin:", isAdmin);
-  console.log("status:", status);
-  console.log("status === 'diajukan':", status === "diajukan");
-  console.log("Condition result:", isAdmin && status === "diajukan");
+  console.log("Show Assign Reviewer?:", isAdmin && status === "lulus_administratif");
+  console.log("filePath:", proposal.filePath);
+  console.log("fileName:", proposal.fileName);
+  console.log("fileSize:", proposal.fileSize);
+  console.log("Has file?:", !!proposal.filePath);
+  console.log("canSubmit?:", status === "draft");
   console.log("===========================");
 
   const canEdit = status === "draft";
   const canDelete = status === "draft";
   const canAddMember = status === "draft";
-  const canSubmit = status === "draft" && proposal.filePath; // Can submit if draft and has file
+  const canSubmit = status === "draft"; // Can submit if draft (validation inside handler)
 
   const handleDelete = async () => {
     try {
@@ -253,6 +262,58 @@ export default function ProposalDetailPage() {
       toast.error(error.message || "Gagal menghapus anggota");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (selectedFile.type !== 'application/pdf') {
+        toast.error("File harus berformat PDF");
+        return;
+      }
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error("Ukuran file maksimal 10MB");
+        return;
+      }
+      setUploadFile(selectedFile);
+      toast.success("File berhasil dipilih, klik Upload untuk menyimpan");
+    }
+  };
+
+  const handleUploadFile = async () => {
+    if (!uploadFile) {
+      toast.error("Pilih file terlebih dahulu");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      // Upload file
+      const uploadResult = await uploadApi.uploadFile(uploadFile, proposal.periodeId, proposal.id);
+      if (!uploadResult.success) {
+        toast.error("Gagal upload file");
+        return;
+      }
+
+      // Update proposal with file info
+      const updateResult = await proposalApi.update(id, {
+        filePath: uploadResult.data.filePath,
+        fileName: uploadResult.data.fileName,
+        fileSize: uploadResult.data.fileSize
+      });
+
+      if (updateResult.success) {
+        toast.success("File berhasil diupload!");
+        setUploadFile(null);
+        refetch(); // Refresh proposal data
+      } else {
+        toast.error(updateResult.error || "Gagal update proposal");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Gagal upload file");
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -341,8 +402,8 @@ export default function ProposalDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Admin: Assign Reviewer (untuk proposal DIAJUKAN) */}
-            {isAdmin && status === "diajukan" && (
+            {/* Admin: Assign Reviewer (untuk proposal LULUS_ADMINISTRATIF) */}
+            {isAdmin && status === "lulus_administratif" && (
               <Button 
                 onClick={() => setAssignReviewerDialog(true)}
                 className="bg-purple-600 hover:bg-purple-700"
@@ -472,9 +533,71 @@ export default function ProposalDetailPage() {
                   <p className="mt-1 text-sm whitespace-pre-wrap">{proposal.abstrak}</p>
                 </div>
 
+                <Separator />
+
+                {/* File Upload Section - Only for DRAFT without file */}
+                {canEdit && !proposal.filePath && (
+                  <div className="p-4 border-2 border-dashed border-primary/20 rounded-lg bg-primary/5">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Upload className="w-5 h-5" />
+                        <label className="text-sm font-medium">
+                          Upload File Proposal (PDF)
+                        </label>
+                      </div>
+                      
+                      <input
+                        id="file-upload-detail"
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      
+                      {uploadFile ? (
+                        <div className="flex items-center gap-2 p-3 bg-white rounded border">
+                          <FileText className="w-5 h-5 text-primary" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{uploadFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={handleUploadFile}
+                            disabled={uploadingFile}
+                          >
+                            {uploadingFile ? "Uploading..." : "Upload"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setUploadFile(null)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => document.getElementById('file-upload-detail')?.click()}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Pilih File PDF
+                        </Button>
+                      )}
+                      
+                      <p className="text-xs text-muted-foreground">
+                        Format: PDF • Ukuran maksimal: 10MB
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {proposal.filePath && (
                   <>
-                    <Separator />
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">
                         File Proposal
@@ -498,6 +621,24 @@ export default function ProposalDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Catatan Administratif - Jika proposal perlu revisi */}
+            {proposal.catatanAdministrasi && status === "revisi" && (
+              <Card className="border-red-200 bg-red-50">
+                <CardHeader>
+                  <CardTitle className="text-red-600 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Catatan Revisi dari Admin
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm whitespace-pre-wrap">{proposal.catatanAdministrasi}</p>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Silakan perbaiki proposal sesuai catatan di atas dan upload kembali.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Seminar Section */}
             {(status === "diajukan" || status === "direview" || status === "diterima" || status === "berjalan" || status === "selesai") && (

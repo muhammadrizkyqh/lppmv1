@@ -220,15 +220,15 @@ export default function SeminarSection({ proposalId, isAdmin = false }: SeminarS
                   <div className="flex-1">
                     <p className="text-sm font-medium">Materi Presentasi</p>
                     <p className="text-xs text-muted-foreground">
-                      {seminar.fileMateriPresentasi ? "File tersedia" : "Belum diupload"}
+                      {seminar.fileMateri ? "File tersedia" : "Belum diupload"}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    {seminar.fileMateriPresentasi ? (
+                    {seminar.fileMateri ? (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => window.open(seminar.fileMateriPresentasi!, "_blank")}
+                        onClick={() => window.open(seminar.fileMateri!, "_blank")}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         Download
@@ -311,15 +311,15 @@ export default function SeminarSection({ proposalId, isAdmin = false }: SeminarS
                       <div className="flex-1">
                         <p className="text-sm font-medium">Daftar Hadir</p>
                         <p className="text-xs text-muted-foreground">
-                          {seminar.fileDaftarHadir ? "File tersedia" : "Belum diupload"}
+                          {seminar.fileUndangan ? "File tersedia" : "Belum diupload"}
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        {seminar.fileDaftarHadir && (
+                        {seminar.fileUndangan && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => window.open(seminar.fileDaftarHadir!, "_blank")}
+                            onClick={() => window.open(seminar.fileUndangan!, "_blank")}
                           >
                             <Download className="w-4 h-4 mr-1" />
                             Download

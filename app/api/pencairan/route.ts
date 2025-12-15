@@ -170,10 +170,18 @@ export async function POST(request: NextRequest) {
         )
       }
     } else if (termin === 'TERMIN_2') {
-      // Termin 2: Requires 2 verified monitoring
-      if (proposal.monitoring.length < 2) {
+      // Termin 2: Requires approved laporan kemajuan
+      const monitoring = proposal.monitoring[0]
+      if (!monitoring || !monitoring.laporanKemajuan) {
         return NextResponse.json(
-          { success: false, error: 'Minimal 2 monitoring kemajuan harus diverifikasi' },
+          { success: false, error: 'Laporan kemajuan harus diupload terlebih dahulu' },
+          { status: 400 }
+        )
+      }
+
+      if (monitoring.verifikasiKemajuanStatus !== 'APPROVED') {
+        return NextResponse.json(
+          { success: false, error: 'Laporan kemajuan harus diverifikasi dan disetujui admin terlebih dahulu' },
           { status: 400 }
         )
       }

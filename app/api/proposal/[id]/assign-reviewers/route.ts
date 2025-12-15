@@ -57,10 +57,10 @@ export async function POST(
       )
     }
 
-    // Validate proposal status
-    if (proposal.status !== 'DIAJUKAN') {
+    // Validate proposal status - must be DIREVIEW (after seminar proposal)
+    if (proposal.status !== 'DIREVIEW') {
       return NextResponse.json(
-        { success: false, error: 'Hanya proposal dengan status DIAJUKAN yang dapat direview' },
+        { success: false, error: 'Hanya proposal dengan status DIREVIEW yang dapat di-assign reviewer. Status saat ini: ' + proposal.status },
         { status: 400 }
       )
     }

@@ -91,6 +91,7 @@ export default function CreateProposalPage() {
         toast.error("Ukuran file maksimal 10MB");
         return;
       }
+      console.log("✅ File selected:", selectedFile.name, selectedFile.size, "bytes");
       setFile(selectedFile);
       toast.success("File berhasil dipilih");
     }
@@ -182,6 +183,8 @@ export default function CreateProposalPage() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
+    console.log("🔍 Submit check - file:", file ? `${file.name} (${file.size} bytes)` : "NO FILE");
+    
     if (!file) {
       toast.error("Upload file proposal terlebih dahulu");
       return;
@@ -190,13 +193,22 @@ export default function CreateProposalPage() {
     setSubmitting(true);
     try {
       // 1. Upload file first
+      console.log("📤 Uploading file...");
       const uploadResult = await uploadApi.uploadFile(file, formData.periodeId);
+      console.log("📤 Upload result:", uploadResult);
+      
       if (!uploadResult.success) {
         toast.error("Gagal upload file");
         return;
       }
 
       // 2. Create proposal with file info
+      console.log("📝 Creating proposal with file data:", {
+        filePath: uploadResult.data.filePath,
+        fileName: uploadResult.data.fileName,
+        fileSize: uploadResult.data.fileSize
+      });
+      
       const createResult = await proposalApi.create({
         periodeId: formData.periodeId,
         skemaId: formData.skemaId,
@@ -208,6 +220,8 @@ export default function CreateProposalPage() {
         fileSize: uploadResult.data.fileSize
       });
 
+      console.log("📝 Create result:", createResult);
+
       if (!createResult.success || !createResult.data) {
         toast.error(createResult.error || "Gagal membuat proposal");
         return;
@@ -216,7 +230,10 @@ export default function CreateProposalPage() {
       const proposalId = createResult.data.id;
 
       // 3. Submit proposal
+      console.log("✅ Submitting proposal ID:", proposalId);
       const submitResult = await proposalApi.submit(proposalId);
+      console.log("✅ Submit result:", submitResult);
+      
       if (submitResult.success) {
         toast.success("Proposal berhasil diajukan!");
         router.push("/dosen/proposals");
@@ -224,6 +241,7 @@ export default function CreateProposalPage() {
         toast.error(submitResult.error || "Gagal submit proposal");
       }
     } catch (error: any) {
+      console.error("❌ Submit error:", error);
       toast.error(error.message || "Gagal mengajukan proposal");
     } finally {
       setSubmitting(false);

@@ -1,0 +1,60 @@
+# === SETUP NGINX REVERSE PROXY ===
+# Copy-paste di VPS (sudah login ssh deploy@195.88.211.123)
+
+# 1. Install Nginx
+sudo apt update
+sudo apt install -y nginx
+
+# 2. Start Nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+# 3. Buat config Nginx untuk Next.js
+sudo tee /etc/nginx/sites-available/nextjs << 'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+
+    location /_next/static {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_cache_valid 60m;
+        add_header Cache-Control "public, immutable";
+    }
+}
+EOF
+
+# 4. Enable config
+sudo ln -sf /etc/nginx/sites-available/nextjs /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# 5. Test config
+sudo nginx -t
+
+# 6. Restart Nginx
+sudo systemctl restart nginx
+
+# 7. Verify Nginx status
+sudo systemctl status nginx
+
+# 8. Test website dari luar (ganti dengan IP VPS Anda)
+# Buka browser: http://195.88.211.123
+
+# SELESAI!
+# Website sekarang accessible via port 80
+# Port 3000 protected (hanya localhost)
+# Crypto miner tidak bisa akses port 3000 dari luar

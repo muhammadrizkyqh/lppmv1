@@ -88,11 +88,11 @@ export async function POST(
     // Update database
     const updateData: any = {};
     if (field === "materiPresentasi") {
-      updateData.fileMateriPresentasi = publicUrl;
+      updateData.fileMateri = publicUrl; // Sesuai schema: fileMateri
     } else if (field === "notulensi") {
       updateData.fileNotulensi = publicUrl;
     } else if (field === "daftarHadir") {
-      updateData.fileDaftarHadir = publicUrl;
+      updateData.fileUndangan = publicUrl; // Sesuai schema: fileUndangan (untuk daftar hadir)
     } else if (field === "dokumentasi") {
       updateData.fileDokumentasi = publicUrl;
     }

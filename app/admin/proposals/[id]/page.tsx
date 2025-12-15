@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import SeminarSection from "@/components/proposal/seminar-section";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -338,8 +339,8 @@ export default function ProposalDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Admin: Assign Reviewer (untuk proposal DIAJUKAN) */}
-            {isAdmin && status === "diajukan" && (
+            {/* Admin: Assign Reviewer (untuk proposal DIREVIEW - setelah seminar selesai) */}
+            {isAdmin && status === "direview" && (
               <Button 
                 onClick={() => setAssignReviewerDialog(true)}
                 className="bg-purple-600 hover:bg-purple-700"
@@ -495,6 +496,41 @@ export default function ProposalDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Catatan Revisi dari Dosen - Jika ada revisi yang diupload */}
+            {proposal.catatanRevisi && proposal.revisiCount > 0 && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardHeader>
+                  <CardTitle className="text-blue-600 flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Catatan Revisi dari Dosen
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Revisi ke-{proposal.revisiCount}
+                    </p>
+                    <p className="text-sm whitespace-pre-wrap">{proposal.catatanRevisi}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Catatan Administratif yang diberikan - Jika tidak lolos */}
+            {proposal.catatanAdministrasi && (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardHeader>
+                  <CardTitle className="text-orange-600 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Catatan Penilaian Administratif
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm whitespace-pre-wrap">{proposal.catatanAdministrasi}</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -614,6 +650,9 @@ export default function ProposalDetailPage() {
             </Card>
           </div>
         </div>
+
+        {/* Seminar Section */}
+        <SeminarSection proposalId={proposal.id} isAdmin={true} />
       </div>
 
       {/* Delete Confirmation Dialog */}

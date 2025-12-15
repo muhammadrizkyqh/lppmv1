@@ -109,6 +109,14 @@ export async function PATCH(
       )
     }
 
+    // Validasi: jika mau mark SELESAI, cek apakah materi sudah diupload (untuk seminar PROPOSAL)
+    if (status === 'SELESAI' && seminar.jenis === 'PROPOSAL' && !seminar.fileMateri) {
+      return NextResponse.json(
+        { success: false, error: 'Dosen harus upload materi presentasi terlebih dahulu sebelum seminar bisa ditandai selesai' },
+        { status: 400 }
+      )
+    }
+
     // Prepare update data
     const updateData: any = {}
     

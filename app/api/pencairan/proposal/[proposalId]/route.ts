@@ -17,6 +17,11 @@ export async function GET(
       select: {
         id: true,
         ketuaId: true,
+        dosen: {
+          select: {
+            userId: true
+          }
+        }
       }
     })
 
@@ -27,10 +32,10 @@ export async function GET(
       )
     }
 
-    // Authorization: admin or proposal owner
+    // Authorization: admin or proposal owner (compare userId, not dosenId)
     if (
       session.role !== 'ADMIN' &&
-      proposal.ketuaId !== session.id
+      proposal.dosen.userId !== session.id
     ) {
       return NextResponse.json(
         { success: false, error: 'Forbidden' },

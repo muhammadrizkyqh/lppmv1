@@ -89,9 +89,9 @@ export async function POST(
         checkDaftarPustaka: checklist?.checkDaftarPustaka || false,
         checkLampiran: checklist?.checkLampiran || false,
         
-        // Jika LOLOS, siap dijadwalkan seminar proposal
-        // Jika TIDAK_LOLOS, dosen harus revisi
-        status: statusAdministrasi === 'TIDAK_LOLOS' ? 'REVISI' : proposal.status,
+        // Jika LOLOS, tetap DIAJUKAN (admin lanjut jadwalkan seminar proposal)
+        // Jika TIDAK_LOLOS, status berubah ke REVISI (dosen harus revisi)
+        status: statusAdministrasi === 'LOLOS' ? 'DIAJUKAN' : 'REVISI',
       },
       include: {
         dosen: {
@@ -119,8 +119,8 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: statusAdministrasi === 'LOLOS' 
-        ? 'Penilaian administratif selesai. Proposal siap dijadwalkan untuk seminar proposal.'
-        : 'Proposal dikembalikan untuk revisi administratif.',
+        ? 'Penilaian administratif LOLOS. Silakan jadwalkan seminar proposal untuk proposal ini.'
+        : 'Proposal dikembalikan untuk revisi administratif. Dosen harus upload file revisi.',
       data: updated,
     })
 

@@ -89,6 +89,8 @@ export default function ProposalsPage() {
   }>({ open: false, proposalId: null, title: null });
   const [revisionForm, setRevisionForm] = useState({
     filePath: "",
+    fileName: "",
+    fileSize: 0,
     catatanRevisi: "",
   });
   const [uploading, setUploading] = useState(false);
@@ -188,7 +190,12 @@ export default function ProposalsPage() {
       if (!response.ok) throw new Error("Upload failed");
 
       const result = await response.json();
-      setRevisionForm(prev => ({ ...prev, filePath: result.data.filePath }));
+      setRevisionForm(prev => ({ 
+        ...prev, 
+        filePath: result.data.filePath,
+        fileName: result.data.fileName,
+        fileSize: result.data.fileSize,
+      }));
       toast.success("File berhasil diupload");
     } catch (error) {
       toast.error("Gagal upload file");
@@ -210,10 +217,10 @@ export default function ProposalsPage() {
       const result = await proposalApi.uploadRevision(revisionDialog.proposalId, revisionForm);
       
       if (result.success) {
-        toast.success("Revisi berhasil diupload! Proposal akan direview kembali.");
+        toast.success("Revisi berhasil diupload! Proposal akan dicek ulang oleh admin.");
         refetch();
         setRevisionDialog({ open: false, proposalId: null, title: null });
-        setRevisionForm({ filePath: "", catatanRevisi: "" });
+        setRevisionForm({ filePath: "", fileName: "", fileSize: 0, catatanRevisi: "" });
       } else {
         toast.error(result.error || "Gagal upload revisi");
       }
@@ -609,7 +616,7 @@ export default function ProposalsPage() {
                             proposalId: proposal.id,
                             title: proposal.title 
                           });
-                          setRevisionForm({ filePath: "", catatanRevisi: "" });
+                          setRevisionForm({ filePath: "", fileName: "", fileSize: 0, catatanRevisi: "" });
                         }}
                       >
                         Upload Revisi
@@ -706,7 +713,7 @@ export default function ProposalsPage() {
       {/* Upload Revision Dialog */}
       <Dialog open={revisionDialog.open} onOpenChange={(open) => {
         setRevisionDialog({ ...revisionDialog, open });
-        if (!open) setRevisionForm({ filePath: "", catatanRevisi: "" });
+        if (!open) setRevisionForm({ filePath: "", fileName: "", fileSize: 0, catatanRevisi: "" });
       }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

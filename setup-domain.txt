@@ -1,0 +1,102 @@
+# === SETUP DOMAIN KE VPS ===
+
+## BAGIAN 1: Setup DNS (di provider domain Anda)
+# Login ke dashboard domain provider (Niagahoster, Cloudflare, dll)
+# Tambahkan A Record:
+#   Type: A
+#   Name: @ (untuk domain.com) atau subdomain (untuk sub.domain.com)
+#   Value: 195.88.211.123
+#   TTL: Automatic atau 3600
+#
+# Tunggu 5-15 menit untuk DNS propagation
+# Test dengan: ping namadomain.com (harusnya resolve ke 195.88.211.123)
+
+## BAGIAN 2: Install Nginx di VPS
+# Login VPS dan jalankan:
+
+sudo apt update
+sudo apt install -y nginx
+
+# Start Nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+# Allow Nginx di firewall
+sudo ufw allow 'Nginx Full'
+sudo ufw reload
+
+## BAGIAN 3: Configure Nginx sebagai Reverse Proxy
+# Ganti "domain.com" dengan domain Anda yang sebenarnya
+
+cat > /tmp/nginx-nextjs.conf << 'EOF'
+server {
+    listen 80;
+    server_name domain.com www.domain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Next.js specific
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+
+    # Static files cache
+    location /_next/static {
+        proxy_pass http://localhost:3000;
+        proxy_cache_valid 60m;
+        add_header Cache-Control "public, immutable";
+    }
+}
+EOF
+
+# Copy config ke Nginx
+sudo mv /tmp/nginx-nextjs.conf /etc/nginx/sites-available/domain.com
+sudo ln -s /etc/nginx/sites-available/domain.com /etc/nginx/sites-enabled/
+
+# Test config
+sudo nginx -t
+
+# Restart Nginx
+sudo systemctl restart nginx
+
+## BAGIAN 4: Install SSL dengan Certbot (Let's Encrypt)
+
+# Install Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# Generate SSL certificate (ganti domain.com dengan domain Anda)
+sudo certbot --nginx -d domain.com -d www.domain.com
+
+# Certbot akan tanya email dan agreement, jawab:
+# - Email: email@anda.com
+# - Terms: Yes (A)
+# - Share email: No (N)
+
+# Auto-renewal SSL sudah disetup otomatis oleh certbot
+
+## BAGIAN 5: Test
+# Buka browser: https://domain.com
+# Seharusnya website Next.js Anda muncul dengan SSL (https)
+
+## TROUBLESHOOTING:
+# Cek Nginx status:
+sudo systemctl status nginx
+
+# Cek Nginx error log:
+sudo tail -50 /var/log/nginx/error.log
+
+# Cek SSL certificate:
+sudo certbot certificates
+
+# Test SSL renewal:
+sudo certbot renew --dry-run

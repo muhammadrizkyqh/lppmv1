@@ -540,9 +540,22 @@ export default function ProposalsPage() {
                         size="sm" 
                         variant="outline" 
                         className="text-green-700 border-green-300"
-                        onClick={() => toast.success(`Membuka kontrak ${proposal.id}`, {
-                          description: "Downloading kontrak penelitian..."
-                        })}
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/api/kontrak/proposal/${proposal.id}`, {
+                              credentials: "include"
+                            });
+                            const result = await response.json();
+                            
+                            if (result.success && result.data) {
+                              router.push(`/admin/kontrak/${result.data.id}`);
+                            } else {
+                              toast.error(result.error || "Kontrak belum dibuat");
+                            }
+                          } catch (error) {
+                            toast.error("Gagal memuat kontrak");
+                          }
+                        }}
                       >
                         Lihat Kontrak
                       </Button>

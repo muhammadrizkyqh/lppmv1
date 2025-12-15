@@ -67,10 +67,10 @@ export async function POST(
       )
     }
 
-    // Check proposal status - must be BERJALAN (after kontrak signed)
-    if (proposal.status !== 'BERJALAN') {
+    // Check proposal status - must be DITERIMA or BERJALAN (after approval)
+    if (!['DITERIMA', 'BERJALAN'].includes(proposal.status)) {
       return NextResponse.json(
-        { success: false, error: 'Monitoring hanya untuk proposal yang sudah BERJALAN (kontrak sudah ditandatangani)' },
+        { success: false, error: 'Monitoring hanya untuk proposal yang sudah DITERIMA atau BERJALAN' },
         { status: 400 }
       )
     }

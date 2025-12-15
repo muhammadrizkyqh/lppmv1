@@ -572,6 +572,7 @@ export interface Proposal {
   revisiCount: number
   catatan: string | null
   catatanRevisi: string | null
+  catatanAdministrasi: string | null
   createdAt: string
   updatedAt: string
   periode?: {
@@ -787,6 +788,8 @@ export const proposalApi = {
   // Upload revision (Dosen only, when status = REVISI)
   uploadRevision: (proposalId: string, data: {
     filePath: string
+    fileName: string
+    fileSize: number
     catatanRevisi?: string
   }) => {
     return fetchApi(`/api/proposals/${proposalId}/revisi`, {
@@ -1506,10 +1509,8 @@ export interface Seminar {
   hasilKeputusan?: string
   fileUndangan?: string
   fileMateri?: string
-  fileMateriPresentasi?: string
   fileDokumentasi?: string
   fileNotulensi?: string
-  fileDaftarHadir?: string
   status: string  // SCHEDULED, SELESAI, DIBATALKAN
   createdAt: string
   updatedAt: string

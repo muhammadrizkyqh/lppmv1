@@ -4,7 +4,7 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -72,6 +72,7 @@ export default function PenilaianAdministratifPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [statusAdministrasi, setStatusAdministrasi] = useState<"LOLOS" | "TIDAK_LOLOS">("LOLOS");
+  const [catatanAdministrasi, setCatatanAdministrasi] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -107,6 +108,7 @@ export default function PenilaianAdministratifPage() {
         });
         setChecklist(checklistData);
         setStatusAdministrasi(data.statusAdministrasi as "LOLOS" | "TIDAK_LOLOS");
+        setCatatanAdministrasi(data.catatanAdministrasi || "");
       } else {
         // Initialize empty checklist
         const checklistData: Record<string, boolean> = {};
@@ -115,6 +117,7 @@ export default function PenilaianAdministratifPage() {
         });
         setChecklist(checklistData);
         setStatusAdministrasi("LOLOS");
+        setCatatanAdministrasi("");
       }
     } catch (error) {
       // Initialize empty checklist on error
@@ -124,6 +127,7 @@ export default function PenilaianAdministratifPage() {
       });
       setChecklist(checklistData);
       setStatusAdministrasi("LOLOS");
+      setCatatanAdministrasi("");
     }
   };
 
@@ -142,12 +146,19 @@ export default function PenilaianAdministratifPage() {
   const handleSubmit = async () => {
     if (!selectedProposal) return;
 
+    // Validasi: jika TIDAK_LOLOS, catatan wajib diisi
+    if (statusAdministrasi === "TIDAK_LOLOS" && !catatanAdministrasi.trim()) {
+      toast.error("Catatan wajib diisi untuk proposal yang tidak lolos");
+      return;
+    }
+
     try {
       setSubmitting(true);
       
       // Merge statusAdministrasi with checklist
       const submitData = {
         statusAdministrasi,
+        catatanAdministrasi: statusAdministrasi === "TIDAK_LOLOS" ? catatanAdministrasi : undefined,
         ...checklist,  // Spread checklist fields directly
       };
       
@@ -439,6 +450,26 @@ export default function PenilaianAdministratifPage() {
                     </div>
                   </RadioGroup>
                 </div>
+
+                {/* Catatan untuk TIDAK_LOLOS */}
+                {statusAdministrasi === "TIDAK_LOLOS" && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <Label htmlFor="catatan" className="font-semibold text-red-600">
+                      Catatan Revisi <span className="text-red-500">*</span>
+                    </Label>
+                    <Textarea
+                      id="catatan"
+                      value={catatanAdministrasi}
+                      onChange={(e) => setCatatanAdministrasi(e.target.value)}
+                      placeholder="Jelaskan poin-poin yang perlu diperbaiki..."
+                      className="min-h-[100px]"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Catatan ini akan dikirimkan kepada dosen untuk perbaikan proposal
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

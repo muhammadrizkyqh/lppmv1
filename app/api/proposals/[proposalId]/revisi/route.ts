@@ -18,7 +18,7 @@ export async function POST(
 
     const { proposalId } = await params
     const body = await request.json()
-    const { filePath, catatanRevisi } = body
+    const { filePath, fileName, fileSize, catatanRevisi } = body
 
     // Validation
     if (!filePath || filePath.trim() === '') {
@@ -62,43 +62,20 @@ export async function POST(
       )
     }
 
-    // Update proposal with revision file and change status back to DIREVIEW
-    // Also reset reviewer assignments so they can review again
+    // Update proposal with revision file and change status back to DIAJUKAN
+    // Proposal needs to be checked by admin again before being assigned to reviewers
     const updatedProposal = await prisma.$transaction(async (tx) => {
-      // Step 1: Get all ProposalReviewer IDs for this proposal
-      const proposalReviewers = await tx.proposal_reviewer.findMany({
-        where: { proposalId },
-        select: { id: true },
-      })
-
-      // Step 2: Delete all reviews for these assignments
-      if (proposalReviewers.length > 0) {
-        await tx.review.deleteMany({
-          where: {
-            proposalReviewerId: {
-              in: proposalReviewers.map(pr => pr.id),
-            },
-          },
-        })
-      }
-
-      // Step 3: Reset all reviewer assignments to PENDING
-      await tx.proposal_reviewer.updateMany({
-        where: { proposalId },
-        data: {
-          status: 'PENDING',
-        },
-      })
-
-      // Step 4: Update proposal with new revision file
+      // Update proposal with new revision file
       return await tx.proposal.update({
         where: { id: proposalId },
         data: {
           filePath, // Update with new revision file
+          fileName, // Update file name
+          fileSize, // Update file size
           catatanRevisi, // Save revision notes from dosen
-          status: 'DIREVIEW', // Back to review status
+          status: 'DIAJUKAN', // Back to submitted status for admin re-check
+          statusAdministrasi: 'BELUM_DICEK', // Reset admin check status
           revisiCount: { increment: 1 }, // Track revision count
-          nilaiTotal: null, // Reset total score
           updatedAt: new Date(),
         },
       })
@@ -115,7 +92,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: 'Revisi berhasil diupload. Proposal akan direview kembali oleh reviewer.',
+      message: 'Revisi berhasil diupload. Proposal akan dicek ulang oleh admin.',
       data: updatedProposal,
     })
   } catch (error) {

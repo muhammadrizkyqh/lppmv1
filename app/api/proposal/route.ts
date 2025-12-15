@@ -97,6 +97,20 @@ export async function GET(request: NextRequest) {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
+        pencairan_dana: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            termin: true,
+            nominal: true,
+            persentase: true,
+            status: true,
+            tanggalPencairan: true,
+            keterangan: true,
+            fileBukti: true,
+            createdAt: true,
+          },
+        },
       },
     })
 

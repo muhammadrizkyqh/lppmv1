@@ -180,7 +180,7 @@ export default function DataMasterPage() {
       render: (_: any, row: any) => (
         <div className="flex items-center">
           <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
-          {row.bidangKeahlian?.nama || '-'}
+          {row.bidangkeahlian?.nama || '-'}
         </div>
       ),
     },
@@ -303,7 +303,7 @@ export default function DataMasterPage() {
       render: (_: any, row: any) => (
         <div className="flex items-center">
           <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
-          {row.bidangKeahlian?.nama || '-'}
+          {row.bidangkeahlian?.nama || '-'}
         </div>
       ),
     },
@@ -369,7 +369,7 @@ export default function DataMasterPage() {
             d.email,
             `"${d.prodi?.nama || ''}"`,
             `"${d.prodi?.fakultas?.nama || ''}"`,
-            `"${d.bidangKeahlian?.nama || ''}"`,
+            `"${d.bidangkeahlian?.nama || ''}"`,
             d.jenjang,
             d.status
           ].join(','))
@@ -406,7 +406,7 @@ export default function DataMasterPage() {
             r.nidn,
             `"${r.nama}"`,
             r.email,
-            `"${r.bidangKeahlian?.nama || ''}"`,
+            `"${r.bidangkeahlian?.nama || ''}"`,
             `"${r.institusi}"`,
             r.status
           ].join(','))

@@ -367,6 +367,8 @@ model seminar {
   waktu           String            @db.VarChar(20)
   tempat          String            @db.VarChar(200)
   moderator       String?           @db.VarChar(200)
+  linkOnline      String?           @db.VarChar(500)
+  keterangan      String?           @db.Text
   notulensi       String?           @db.Text
   hasilKeputusan  String?           @db.Text
   fileUndangan    String?
@@ -527,6 +529,7 @@ enum luaran_statusVerifikasi {
 enum proposal_status {
   DRAFT
   DIAJUKAN
+  LULUS_ADMINISTRATIF
   DIREVIEW
   REVISI
   DITERIMA

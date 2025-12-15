@@ -125,17 +125,18 @@ export async function POST(request: NextRequest) {
     const {
       proposalId,
       jenis, // PROPOSAL, INTERNAL, PUBLIK
-      judul,
       tanggal,
       waktu,
       tempat,
       moderator,
+      linkOnline,
+      keterangan,
     } = body
 
-    // Validate required
-    if (!proposalId || !jenis || !judul || !tanggal || !waktu || !tempat) {
+    // Validate required fields only
+    if (!proposalId || !jenis || !tanggal || !waktu) {
       return NextResponse.json(
-        { success: false, error: 'Semua field wajib diisi' },
+        { success: false, error: 'Proposal, jenis, tanggal, dan waktu wajib diisi' },
         { status: 400 }
       )
     }
@@ -205,11 +206,13 @@ export async function POST(request: NextRequest) {
       data: {
         proposalId,
         jenis,
-        judul: proposal.judul,
+        judul: proposal.judul, // Otomatis dari proposal
         tanggal: new Date(tanggal),
         waktu,
-        tempat: tempat || '',
-        moderator,
+        tempat: tempat || '', // Optional
+        moderator: moderator || null, // Optional
+        linkOnline: linkOnline || null, // Optional
+        keterangan: keterangan || null, // Optional
         status: 'SCHEDULED',
       },
       include: {

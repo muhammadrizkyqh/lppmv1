@@ -34,7 +34,8 @@ import {
   HelpCircle,
   GraduationCap,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  DollarSign
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -172,6 +173,12 @@ const getNavigationByRole = (role: string) => {
             title: "Monitoring & Laporan",
             icon: BarChart3,
             href: "/dosen/monitoring",
+            badge: null,
+          },
+          {
+            title: "Pencairan Dana",
+            icon: DollarSign,
+            href: "/dosen/pencairan",
             badge: null,
           },
         ],
