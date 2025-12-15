@@ -49,8 +49,11 @@ jobs:
       - name: Add known hosts
         run: ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
       
+      - name: Test SSH connection
+        run: ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "echo 'SSH connection successful'"
+      
       - name: Upload build to VPS
-        run: scp -o StrictHostKeyChecking=no deploy.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/deploy/
+        run: rsync -avz -e "ssh -o StrictHostKeyChecking=no" deploy.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/deploy/
       
       - name: Deploy and restart on VPS
         uses: appleboy/ssh-action@v1.2.0
