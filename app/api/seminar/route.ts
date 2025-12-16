@@ -257,10 +257,12 @@ export async function POST(request: NextRequest) {
       data: seminar,
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create seminar error:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error message:', error.message)
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: error.message || 'Internal server error' },
       { status: 500 }
     )
   }
