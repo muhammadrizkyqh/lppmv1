@@ -145,6 +145,76 @@ export default function DosenPencairanPage() {
     });
   };
 
+  // Cek termin mana yang bisa diajukan berikutnya
+  const getNextTermin = (proposal: ProposalWithPencairan): string | null => {
+    if (!proposal.pencairan_dana) return 'TERMIN_1';
+    
+    const existingTermins = proposal.pencairan_dana.map(p => p.termin);
+    const dicairkanTermins = proposal.pencairan_dana
+      .filter(p => p.status === 'DICAIRKAN')
+      .map(p => p.termin);
+    
+    // Termin 1: jika belum ada pencairan sama sekali
+    if (!existingTermins.includes('TERMIN_1')) {
+      return 'TERMIN_1';
+    }
+    
+    // Termin 2: jika Termin 1 sudah dicairkan dan belum ada Termin 2
+    if (dicairkanTermins.includes('TERMIN_1') && !existingTermins.includes('TERMIN_2')) {
+      return 'TERMIN_2';
+    }
+    
+    // Termin 3: jika Termin 2 sudah dicairkan dan belum ada Termin 3
+    if (dicairkanTermins.includes('TERMIN_2') && !existingTermins.includes('TERMIN_3')) {
+      return 'TERMIN_3';
+    }
+    
+    return null;
+  };
+
+  const getNextTerminLabel = (termin: string) => {
+    return termin.replace('TERMIN_', 'Termin ');
+  };
+
+  const getNextTerminRequirement = (termin: string) => {
+    switch (termin) {
+      case 'TERMIN_1':
+        return 'Kontrak sudah ditandatangani, dapat mencairkan 50% dana';
+      case 'TERMIN_2':
+        return 'Termin 1 sudah dicairkan, upload dan verifikasi laporan kemajuan dulu';
+      case 'TERMIN_3':
+        return 'Termin 2 sudah dicairkan, upload dan verifikasi luaran dulu';
+      default:
+        return '';
+    }
+  };
+
+  const handleAjukanPencairan = async (proposalId: string, termin: string) => {
+    if (!confirm(`Apakah Anda yakin ingin mengajukan pencairan ${getNextTerminLabel(termin)}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetchApi('/api/pencairan', {
+        method: 'POST',
+        body: JSON.stringify({
+          proposalId,
+          termin,
+          keterangan: `Pengajuan ${getNextTerminLabel(termin)} oleh dosen`
+        })
+      });
+
+      if (response.success) {
+        toast.success(`Pencairan ${getNextTerminLabel(termin)} berhasil diajukan`);
+        fetchData(); // Refresh data
+      } else {
+        toast.error(response.error || 'Gagal mengajukan pencairan');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Terjadi kesalahan');
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -270,15 +340,40 @@ export default function DosenPencairanPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {!proposal.pencairan_dana || proposal.pencairan_dana.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Belum ada pencairan untuk proposal ini</p>
-                      <p className="text-xs mt-1">Pencairan akan dibuat setelah kontrak ditandatangani</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {proposal.pencairan_dana.map((item) => (
+                  <div className="space-y-4">
+                    {/* Tombol Ajukan Pencairan */}
+                    {proposal.status === 'BERJALAN' && getNextTermin(proposal) && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="font-medium text-blue-900 mb-1">
+                              Anda bisa mengajukan {getNextTerminLabel(getNextTermin(proposal)!)}
+                            </p>
+                            <p className="text-sm text-blue-700">
+                              {getNextTerminRequirement(getNextTermin(proposal)!)}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => handleAjukanPencairan(proposal.id, getNextTermin(proposal)!)}
+                            className="shrink-0"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Ajukan
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* List Pencairan */}
+                    {!proposal.pencairan_dana || proposal.pencairan_dana.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Belum ada pencairan untuk proposal ini</p>
+                        <p className="text-xs mt-1">Ajukan pencairan setelah kontrak ditandatangani</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {proposal.pencairan_dana.map((item) => (
                         <div
                           key={item.id}
                           className="border rounded-lg p-4 space-y-3 hover:shadow-sm transition-shadow"
@@ -329,9 +424,10 @@ export default function DosenPencairanPage() {
                             </div>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}

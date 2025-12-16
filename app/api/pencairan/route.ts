@@ -109,11 +109,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/pencairan - Create new pencairan (Admin only)
+// POST /api/pencairan - Create new pencairan (Dosen ajukan, Admin bisa buat manual)
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth()
-    if (session.role !== 'ADMIN') {
+    
+    // Both ADMIN and DOSEN can create pencairan
+    if (!['ADMIN', 'DOSEN'].includes(session.role)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -150,6 +152,19 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Proposal tidak ditemukan' },
         { status: 404 }
       )
+    }
+
+    // Dosen hanya bisa ajukan pencairan untuk proposal sendiri
+    if (session.role === 'DOSEN') {
+      const dosen = await prisma.dosen.findFirst({
+        where: { userId: session.id }
+      })
+      if (!dosen || proposal.ketuaId !== dosen.id) {
+        return NextResponse.json(
+          { success: false, error: 'Anda hanya bisa mengajukan pencairan untuk proposal Anda sendiri' },
+          { status: 403 }
+        )
+      }
     }
 
     // Validate proposal status
