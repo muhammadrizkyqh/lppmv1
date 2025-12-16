@@ -107,6 +107,12 @@ const getNavigationByRole = (role: string) => {
             href: "/admin/monitoring",
             badge: null,
           },
+          {
+            title: "Pencairan Dana",
+            icon: DollarSign,
+            href: "/admin/pencairan",
+            badge: null,
+          },
         ],
       },
       {

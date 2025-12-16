@@ -94,6 +94,25 @@ export async function PATCH(
       )
     }
 
+    // SECURITY: Status DICAIRKAN tidak bisa diubah lagi (immutable)
+    if (pencairan.status === 'DICAIRKAN') {
+      return NextResponse.json(
+        { success: false, error: 'Pencairan yang sudah dicairkan tidak dapat diubah' },
+        { status: 400 }
+      )
+    }
+
+    // SECURITY: Tidak bisa ubah status ke DICAIRKAN tanpa bukti transfer
+    if (status === 'DICAIRKAN') {
+      const hasBukti = fileBukti || pencairan.fileBukti
+      if (!hasBukti) {
+        return NextResponse.json(
+          { success: false, error: 'Harus upload bukti transfer terlebih dahulu' },
+          { status: 400 }
+        )
+      }
+    }
+
     const updateData: any = {}
 
     if (status) {

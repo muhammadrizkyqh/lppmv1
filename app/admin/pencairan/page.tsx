@@ -99,8 +99,8 @@ export default function AdminPencairanPage() {
       });
 
       if (response.success && response.data) {
-        setPencairan(response.data.data || []);
-        setStats(response.data.stats || {
+        setPencairan(response.data || []);
+        setStats(response.stats || {
           total: 0,
           pending: 0,
           dicairkan: 0,
@@ -432,6 +432,8 @@ export default function AdminPencairanPage() {
                         size="sm"
                         onClick={() => openUpdateDialog(item)}
                         className="w-full"
+                        disabled={item.status === 'DICAIRKAN'}
+                        title={item.status === 'DICAIRKAN' ? 'Pencairan yang sudah dicairkan tidak dapat diubah' : 'Update status pencairan'}
                       >
                         <FileText className="w-4 h-4 mr-2" />
                         Update Status
@@ -442,6 +444,8 @@ export default function AdminPencairanPage() {
                         size="sm"
                         onClick={() => openUploadDialog(item)}
                         className="w-full"
+                        disabled={item.status === 'DICAIRKAN'}
+                        title={item.status === 'DICAIRKAN' ? 'Pencairan sudah dicairkan' : (item.fileBukti ? 'Ganti bukti transfer' : 'Upload bukti transfer')}
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         {item.fileBukti ? 'Ganti Bukti' : 'Upload Bukti'}
@@ -509,6 +513,12 @@ export default function AdminPencairanPage() {
             </DialogHeader>
 
             <div className="space-y-4">
+              {!selectedPencairan?.fileBukti && (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md text-sm">
+                  <strong>Perhatian:</strong> Upload bukti transfer terlebih dahulu sebelum mengubah status ke "Dicairkan"
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select value={newStatus} onValueChange={setNewStatus}>
@@ -517,7 +527,9 @@ export default function AdminPencairanPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="DICAIRKAN">Dicairkan</SelectItem>
+                    <SelectItem value="DICAIRKAN" disabled={!selectedPencairan?.fileBukti}>
+                      Dicairkan {!selectedPencairan?.fileBukti && '(Upload bukti dulu)'}
+                    </SelectItem>
                     <SelectItem value="DITOLAK">Ditolak</SelectItem>
                   </SelectContent>
                 </Select>

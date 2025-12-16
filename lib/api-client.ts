@@ -1261,10 +1261,7 @@ export const pencairanApi = {
     if (params?.periodeId) searchParams.set('periodeId', params.periodeId)
     if (params?.search) searchParams.set('search', params.search)
 
-    return fetchApi<{
-      data: PencairanList[]
-      stats: PencairanStats
-    }>(`/api/pencairan?${searchParams}`)
+    return fetchApi<PencairanList[]>(`/api/pencairan?${searchParams}`) as Promise<ApiResponse<PencairanList[]> & { stats: PencairanStats }>
   },
 
   // Get pencairan by proposal ID
