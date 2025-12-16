@@ -201,26 +201,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create seminar
-    const seminarData: any = {
-      proposalId,
-      jenis,
-      judul: proposal.judul, // Otomatis dari proposal
-      tanggal: new Date(tanggal),
-      waktu,
-      tempat: tempat || '', // Optional
-      moderator: moderator || null, // Optional
-      keterangan: keterangan || null, // Optional
-      status: 'SCHEDULED',
-    }
-
-    // Add linkOnline if field exists (untuk compatibility dengan VPS)
-    if (linkOnline) {
-      seminarData.linkOnline = linkOnline
-    }
-
+    // Create seminar - hanya field yang pasti ada untuk compatibility VPS
     const seminar = await prisma.seminar.create({
-      data: seminarData,
+      data: {
+        proposalId,
+        jenis,
+        judul: proposal.judul,
+        tanggal: new Date(tanggal),
+        waktu,
+        tempat: tempat || '',
+        status: 'SCHEDULED',
+      },
       include: {
         proposal: {
           select: {
