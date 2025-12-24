@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -53,10 +54,22 @@ export default function AdminMonitoringDetailPage() {
   });
   const [catatan, setCatatan] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'kemajuan' | 'akhir'>('kemajuan');
 
   useEffect(() => {
     loadMonitoring();
   }, [proposalId]);
+
+  useEffect(() => {
+    // Set default tab based on file availability
+    if (data?.monitoring) {
+      if (data.monitoring.fileAkhir) {
+        setActiveTab('akhir');
+      } else if (data.monitoring.fileKemajuan) {
+        setActiveTab('kemajuan');
+      }
+    }
+  }, [data]);
 
   const loadMonitoring = async () => {
     try {
@@ -148,10 +161,15 @@ export default function AdminMonitoringDetailPage() {
     );
   }
 
-  const { proposal, monitoring } = data;
+  const { proposal, monitoring, periode, skema, dosen, bidangkeahlian } = data;
   const hasKemajuan = !!monitoring?.laporanKemajuan;
   const hasAkhir = !!monitoring?.laporanAkhir;
   const progress = monitoring?.persentaseKemajuan || 0;
+
+  // Determine which PDF to show
+  const showPdfViewer = (activeTab === 'kemajuan' && monitoring?.fileKemajuan) || 
+                       (activeTab === 'akhir' && monitoring?.fileAkhir);
+  const pdfUrl = activeTab === 'kemajuan' ? monitoring?.fileKemajuan : monitoring?.fileAkhir;
 
   return (
     <DashboardLayout>
@@ -181,25 +199,25 @@ export default function AdminMonitoringDetailPage() {
                 <CardTitle className="text-xl">{proposal.judul}</CardTitle>
                 <CardDescription>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className="font-medium">{proposal.dosen?.nama}</span>
+                    <span className="font-medium">{dosen?.nama}</span>
                     <span>•</span>
-                    <span>{proposal.dosen?.nidn}</span>
+                    <span>{dosen?.nidn}</span>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {proposal.periode?.nama} ({proposal.periode?.tahun})
+                      {periode?.nama} ({periode?.tahun})
                     </div>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Award className="w-4 h-4" />
-                      {proposal.skema?.nama}
+                      {skema?.nama}
                     </div>
-                    {proposal.bidangkeahlian && (
+                    {bidangkeahlian && (
                       <>
                         <span>•</span>
                         <div className="flex items-center gap-1">
                           <FileText className="w-4 h-4" />
-                          {proposal.bidangkeahlian.nama}
+                          {bidangkeahlian.nama}
                         </div>
                       </>
                     )}
@@ -250,44 +268,26 @@ export default function AdminMonitoringDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Laporan Kemajuan Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Laporan Kemajuan</CardTitle>
-                <CardDescription>
-                  Review dan verifikasi laporan progress penelitian
-                </CardDescription>
-              </div>
-              {hasKemajuan && !monitoring?.verifikasiKemajuanAt && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setVerifyDialog({ open: true, type: 'kemajuan', approved: false });
-                      setCatatan("");
-                    }}
-                  >
-                    <ThumbsDown className="w-4 h-4 mr-2" />
-                    Tolak
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setVerifyDialog({ open: true, type: 'kemajuan', approved: true });
-                      setCatatan("");
-                    }}
-                  >
-                    <ThumbsUp className="w-4 h-4 mr-2" />
-                    Setujui
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        {/* Tabs for Kemajuan & Akhir */}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'kemajuan' | 'akhir')} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="kemajuan">Laporan Kemajuan</TabsTrigger>
+            <TabsTrigger value="akhir">Laporan Akhir</TabsTrigger>
+          </TabsList>
+
+          {/* Tab Content Kemajuan */}
+          <TabsContent value="kemajuan">
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+              {/* Left - Form (30%) */}
+              <div className="lg:col-span-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Laporan Kemajuan</CardTitle>
+                    <CardDescription>
+                      Review dan verifikasi laporan progress penelitian
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
             {!hasKemajuan ? (
               <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <AlertCircle className="w-5 h-5 text-yellow-600" />
@@ -299,35 +299,21 @@ export default function AdminMonitoringDetailPage() {
               <>
                 <div className="space-y-2">
                   <Label>Isi Laporan Kemajuan</Label>
-                  <div className="p-4 bg-muted rounded-lg">
+                  <div className="p-4 bg-muted rounded-lg max-h-40 overflow-y-auto">
                     <p className="text-sm whitespace-pre-wrap">{monitoring?.laporanKemajuan}</p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Persentase Kemajuan</Label>
-                    <div className="flex items-center gap-2">
-                      <Progress value={monitoring?.persentaseKemajuan || 0} className="flex-1" />
-                      <span className="font-medium text-sm">{monitoring?.persentaseKemajuan}%</span>
-                    </div>
+                <div className="space-y-2">
+                  <Label>Persentase Kemajuan</Label>
+                  <div className="flex items-center gap-2">
+                    <Progress value={monitoring?.persentaseKemajuan || 0} className="flex-1" />
+                    <span className="font-medium text-sm">{monitoring?.persentaseKemajuan}%</span>
                   </div>
-
-                  {monitoring?.fileKemajuan && (
-                    <div className="space-y-2">
-                      <Label>File Laporan</Label>
-                      <Button variant="outline" asChild className="w-full">
-                        <a href={monitoring.fileKemajuan} target="_blank" rel="noopener noreferrer">
-                          <Download className="w-4 h-4 mr-2" />
-                          Download PDF
-                        </a>
-                      </Button>
-                    </div>
-                  )}
                 </div>
                 
                 {/* Verification Status */}
-                {monitoring?.verifikasiKemajuanAt && (
+                {monitoring?.verifikasiKemajuanAt ? (
                   <div className={`p-3 rounded-lg border ${
                     monitoring.verifikasiKemajuanStatus === 'APPROVED' 
                       ? 'bg-green-50 border-green-200' 
@@ -366,50 +352,81 @@ export default function AdminMonitoringDetailPage() {
                       </div>
                     </div>
                   </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setVerifyDialog({ open: true, type: 'kemajuan', approved: false });
+                        setCatatan("");
+                      }}
+                    >
+                      <ThumbsDown className="w-4 h-4 mr-2" />
+                      Tolak
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        setVerifyDialog({ open: true, type: 'kemajuan', approved: true });
+                        setCatatan("");
+                      }}
+                    >
+                      <ThumbsUp className="w-4 h-4 mr-2" />
+                      Setujui
+                    </Button>
+                  </div>
                 )}
               </>
             )}
           </CardContent>
-        </Card>
-
-        {/* Laporan Akhir Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Laporan Akhir</CardTitle>
-                <CardDescription>
-                  Review dan verifikasi laporan akhir penelitian
-                </CardDescription>
+                </Card>
               </div>
-              {hasAkhir && !monitoring?.verifikasiAkhirAt && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setVerifyDialog({ open: true, type: 'akhir', approved: false });
-                      setCatatan("");
-                    }}
-                  >
-                    <ThumbsDown className="w-4 h-4 mr-2" />
-                    Tolak
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setVerifyDialog({ open: true, type: 'akhir', approved: true });
-                      setCatatan("");
-                    }}
-                  >
-                    <ThumbsUp className="w-4 h-4 mr-2" />
-                    Setujui
-                  </Button>
+
+              {/* Right - PDF Viewer (70%) */}
+              {monitoring?.fileKemajuan && (
+                <div className="lg:col-span-7">
+                  <Card className="h-full">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">File Laporan Kemajuan</CardTitle>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={monitoring.fileKemajuan} target="_blank" rel="noopener noreferrer">
+                            <Download className="w-4 h-4 mr-2" />
+                            Download PDF
+                          </a>
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="border-t">
+                        <iframe
+                          src={monitoring.fileKemajuan}
+                          className="w-full border-0"
+                          style={{ height: 'calc(100vh - 300px)', minHeight: '700px' }}
+                          title="PDF Laporan Kemajuan"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          </TabsContent>
+
+          {/* Tab Content Akhir */}
+          <TabsContent value="akhir">
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+              {/* Left - Form (30%) */}
+              <div className="lg:col-span-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Laporan Akhir</CardTitle>
+                    <CardDescription>
+                      Review dan verifikasi laporan akhir penelitian
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
             {!hasKemajuan ? (
               <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                 <AlertCircle className="w-5 h-5 text-gray-600" />
@@ -428,25 +445,13 @@ export default function AdminMonitoringDetailPage() {
               <>
                 <div className="space-y-2">
                   <Label>Isi Laporan Akhir</Label>
-                  <div className="p-4 bg-muted rounded-lg">
+                  <div className="p-4 bg-muted rounded-lg max-h-40 overflow-y-auto">
                     <p className="text-sm whitespace-pre-wrap">{monitoring?.laporanAkhir}</p>
                   </div>
                 </div>
-
-                {monitoring?.fileAkhir && (
-                  <div className="space-y-2">
-                    <Label>File Laporan</Label>
-                    <Button variant="outline" asChild className="w-full md:w-auto">
-                      <a href={monitoring.fileAkhir} target="_blank" rel="noopener noreferrer">
-                        <Download className="w-4 h-4 mr-2" />
-                        Download PDF
-                      </a>
-                    </Button>
-                  </div>
-                )}
                 
                 {/* Verification Status */}
-                {monitoring?.verifikasiAkhirAt && (
+                {monitoring?.verifikasiAkhirAt ? (
                   <div className={`p-3 rounded-lg border ${
                     monitoring.verifikasiAkhirStatus === 'APPROVED' 
                       ? 'bg-green-50 border-green-200' 
@@ -485,11 +490,68 @@ export default function AdminMonitoringDetailPage() {
                       </div>
                     </div>
                   </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setVerifyDialog({ open: true, type: 'akhir', approved: false });
+                        setCatatan("");
+                      }}
+                    >
+                      <ThumbsDown className="w-4 h-4 mr-2" />
+                      Tolak
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        setVerifyDialog({ open: true, type: 'akhir', approved: true });
+                        setCatatan("");
+                      }}
+                    >
+                      <ThumbsUp className="w-4 h-4 mr-2" />
+                      Setujui
+                    </Button>
+                  </div>
                 )}
               </>
             )}
           </CardContent>
-        </Card>
+                </Card>
+              </div>
+
+              {/* Right - PDF Viewer (70%) */}
+              {monitoring?.fileAkhir && (
+                <div className="lg:col-span-7">
+                  <Card className="h-full">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">File Laporan Akhir</CardTitle>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={monitoring.fileAkhir} target="_blank" rel="noopener noreferrer">
+                            <Download className="w-4 h-4 mr-2" />
+                            Download PDF
+                          </a>
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="border-t">
+                        <iframe
+                          src={monitoring.fileAkhir}
+                          className="w-full border-0"
+                          style={{ height: 'calc(100vh - 300px)', minHeight: '700px' }}
+                          title="PDF Laporan Akhir"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Verification Dialog */}
         <Dialog open={verifyDialog.open} onOpenChange={(open) => setVerifyDialog(prev => ({ ...prev, open }))}>

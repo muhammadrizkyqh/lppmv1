@@ -271,7 +271,7 @@ export default function DosenKontrakPage() {
                         <div>
                           <Label className="text-muted-foreground text-xs">Dana Penelitian</Label>
                           <p className="font-medium text-lg">
-                            {formatRupiah(kontrak.proposal.skema.dana)}
+                            {formatRupiah(kontrak.proposal.danaDiajukan || 0)}
                           </p>
                         </div>
                         <div>

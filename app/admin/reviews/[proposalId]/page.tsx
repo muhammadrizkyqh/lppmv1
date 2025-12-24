@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, User, FileText, Calendar, DollarSign } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, User, FileText, Calendar, DollarSign, Download, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ReviewDetailPage({ params }: { params: Promise<{ proposalId: string }> }) {
@@ -33,6 +33,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
   const [showRevisionDialog, setShowRevisionDialog] = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
   const [catatan, setCatatan] = useState('')
+  const [showPdf, setShowPdf] = useState(true)
 
   useEffect(() => {
     loadData()
@@ -183,7 +184,61 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
               Perbandingan hasil review dan keputusan
             </p>
           </div>
+          {proposal.filePath && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPdf(!showPdf)}
+              >
+                {showPdf ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-2" />
+                    Sembunyikan PDF
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Tampilkan PDF
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href={proposal.filePath} target="_blank" rel="noopener noreferrer">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </a>
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Split Layout: PDF Viewer + Content */}
+        <div className={`grid gap-6 ${showPdf && proposal.filePath ? 'lg:grid-cols-2' : ''}`}>
+          {/* PDF Viewer - 50% */}
+          {showPdf && proposal.filePath && (
+            <div className="order-1 lg:order-1">
+              <div className="sticky top-6">
+                <Card className="border-0 shadow-lg overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Dokumen Proposal</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="w-full bg-gray-100" style={{ height: 'calc(100vh - 200px)' }}>
+                      <iframe
+                        src={proposal.filePath}
+                        className="w-full h-full border-0"
+                        title="PDF Proposal"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content - 50% or full width if PDF hidden */}
+          <div className={`order-2 lg:order-2 space-y-6 ${showPdf && proposal.filePath ? '' : ''}`}>
 
         {/* Review Status Alert */}
         {!reviewStatus.allComplete && (
@@ -240,10 +295,10 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Dana</label>
+                <label className="text-xs text-muted-foreground">Dana Diajukan</label>
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <p className="font-medium text-sm md:text-base">{formatCurrency(proposal.skema.dana)}</p>
+                  <p className="font-medium text-sm md:text-base">{formatCurrency(proposal.danaDiajukan || 0)}</p>
                 </div>
               </div>
               <div className="space-y-1">
@@ -450,6 +505,8 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
           </CardContent>
         </Card>
       )}
+      </div>
+      </div>
 
       {/* Approve Dialog */}
       <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>

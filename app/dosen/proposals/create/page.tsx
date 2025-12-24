@@ -50,7 +50,8 @@ export default function CreateProposalPage() {
     skemaId: "",
     bidangKeahlianId: "",
     judul: "",
-    abstrak: ""
+    abstrak: "",
+    danaDiajukan: ""
   });
   
   const [file, setFile] = useState<File | null>(null);
@@ -133,6 +134,14 @@ export default function CreateProposalPage() {
       toast.error("Abstrak maksimal 500 karakter");
       return false;
     }
+    if (formData.danaDiajukan && parseFloat(formData.danaDiajukan) < 0) {
+      toast.error("Dana yang diajukan tidak boleh negatif");
+      return false;
+    }
+    if (formData.danaDiajukan && parseFloat(formData.danaDiajukan) > 10000000) {
+      toast.error("Dana yang diajukan maksimal Rp 10.000.000");
+      return false;
+    }
     return true;
   };
 
@@ -164,6 +173,7 @@ export default function CreateProposalPage() {
         bidangKeahlianId: formData.bidangKeahlianId,
         judul: formData.judul,
         abstrak: formData.abstrak,
+        danaDiajukan: formData.danaDiajukan ? parseFloat(formData.danaDiajukan) : null,
         ...fileData
       });
 
@@ -215,6 +225,7 @@ export default function CreateProposalPage() {
         bidangKeahlianId: formData.bidangKeahlianId,
         judul: formData.judul,
         abstrak: formData.abstrak,
+        danaDiajukan: formData.danaDiajukan ? parseFloat(formData.danaDiajukan) : null,
         filePath: uploadResult.data.filePath,
         fileName: uploadResult.data.fileName,
         fileSize: uploadResult.data.fileSize
@@ -347,17 +358,30 @@ export default function CreateProposalPage() {
                       <SelectContent>
                         {skema?.map((s) => (
                           <SelectItem key={s.id} value={s.id}>
-                            <div>
-                              <div className="font-medium">{s.nama}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {Number(s.dana) > 0 ? `Rp ${Number(s.dana).toLocaleString('id-ID')}` : "Mandiri"}
-                              </div>
-                            </div>
+                            {s.nama}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="danaDiajukan">Dana yang Diajukan (Rp)</Label>
+                  <Input
+                    id="danaDiajukan"
+                    type="number"
+                    placeholder="Contoh: 5000000"
+                    className="text-base"
+                    value={formData.danaDiajukan}
+                    onChange={(e) => handleInputChange('danaDiajukan', e.target.value)}
+                    min="0"
+                    max="10000000"
+                    step="100000"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Isi Rp 0 untuk penelitian mandiri. Maksimal Rp 10.000.000
+                  </p>
                 </div>
 
                 <div className="space-y-2">

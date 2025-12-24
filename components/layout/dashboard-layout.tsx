@@ -454,9 +454,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </h3>
                   <div className="space-y-1">
                     {section.items.map((item, itemIndex) => {
-                      const isActive = pathname === item.href || 
-                        (item.href !== '/dashboard' && pathname.startsWith(item.href + '/')) ||
-                        (item.href === '/dashboard' && pathname === '/dashboard');
+                      // More precise active state check
+                      const isActive = pathname === item.href;
                       
                       return (
                         <Link key={itemIndex} href={item.href}>

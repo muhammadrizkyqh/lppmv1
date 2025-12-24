@@ -19,6 +19,7 @@ interface ProposalReviewed {
   jenis: string
   status: string
   submittedAt: string | null
+  danaDiajukan: number | null
   periode: {
     id: string
     tahun: number
@@ -144,9 +145,9 @@ export default function AdminReviewsPage() {
             </p>
           </div>
           <div className="space-y-1 min-w-0">
-            <p className="text-xs text-muted-foreground">Dana Hibah</p>
+            <p className="text-xs text-muted-foreground">Dana Diajukan</p>
             <p className="text-sm font-medium truncate">
-              {formatCurrency(proposal.skema.dana)}
+              {formatCurrency(proposal.danaDiajukan || 0)}
             </p>
           </div>
           <div className="space-y-1 min-w-0">

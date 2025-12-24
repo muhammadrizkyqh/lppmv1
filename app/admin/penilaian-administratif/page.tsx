@@ -31,6 +31,7 @@ import {
   Download,
   ClipboardCheck,
   AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -43,24 +44,23 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface ChecklistItem {
   key: string;
   label: string;
-  field: string;
+  checkField: string;
+  catatanField: string;
 }
 
 const CHECKLIST_ITEMS: ChecklistItem[] = [
-  { key: "judul", label: "Judul Penelitian", field: "checkJudul" },
-  { key: "abstrak", label: "Abstrak", field: "checkAbstrak" },
-  { key: "pendahuluan", label: "Bab I: Pendahuluan", field: "checkPendahuluan" },
-  { key: "tinjauan", label: "Bab II: Tinjauan Pustaka", field: "checkTinjauanPustaka" },
-  { key: "metode", label: "Bab III: Metode Penelitian", field: "checkMetode" },
-  { key: "biaya", label: "Rencana Anggaran Biaya", field: "checkBiaya" },
-  { key: "jadwal", label: "Jadwal Kegiatan", field: "checkJadwal" },
-  { key: "daftarPustaka", label: "Daftar Pustaka", field: "checkDaftarPustaka" },
-  { key: "cv", label: "CV Peneliti", field: "checkCV" },
-  { key: "biodata", label: "Biodata Peneliti", field: "checkBiodata" },
-  { key: "suratPernyataan", label: "Surat Pernyataan", field: "checkSuratPernyataan" },
-  { key: "suratTugas", label: "Surat Tugas (jika ada)", field: "checkSuratTugas" },
-  { key: "dokumenPendukung", label: "Dokumen Pendukung Lainnya", field: "checkDokumenPendukung" },
-  { key: "lampiran", label: "Lampiran-lampiran", field: "checkLampiran" },
+  { 
+    key: "teknikPenulisan", 
+    label: "Kesesuaian teknik penulisan dengan panduan", 
+    checkField: "checkKesesuaianTeknikPenulisan",
+    catatanField: "catatanKesesuaianTeknikPenulisan"
+  },
+  { 
+    key: "kelengkapanKomponen", 
+    label: "Kelengkapan komponen proposal", 
+    checkField: "checkKelengkapanKomponen",
+    catatanField: "catatanKelengkapanKomponen"
+  },
 ];
 
 export default function PenilaianAdministratifPage() {
@@ -71,6 +71,7 @@ export default function PenilaianAdministratifPage() {
   const [selectedProposal, setSelectedProposal] = useState<ProposalList | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [catatan, setCatatan] = useState<Record<string, string>>({});
   const [statusAdministrasi, setStatusAdministrasi] = useState<"LOLOS" | "TIDAK_LOLOS">("LOLOS");
   const [catatanAdministrasi, setCatatanAdministrasi] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -94,6 +95,10 @@ export default function PenilaianAdministratifPage() {
   };
 
   const handleOpenDialog = async (proposal: ProposalList) => {
+    console.log("Selected proposal:", proposal);
+    console.log("File path:", proposal.filePath);
+    console.log("File name:", proposal.fileName);
+    
     setSelectedProposal(proposal);
     setDialogOpen(true);
     
@@ -103,44 +108,51 @@ export default function PenilaianAdministratifPage() {
       if (response.success && response.data) {
         const data = response.data;
         const checklistData: Record<string, boolean> = {};
+        const catatanData: Record<string, string> = {};
+        
         CHECKLIST_ITEMS.forEach(item => {
-          checklistData[item.field] = (data as any)[item.field] || false;
+          checklistData[item.checkField] = (data as any)[item.checkField] || false;
+          catatanData[item.catatanField] = (data as any)[item.catatanField] || "";
         });
+        
         setChecklist(checklistData);
+        setCatatan(catatanData);
         setStatusAdministrasi(data.statusAdministrasi as "LOLOS" | "TIDAK_LOLOS");
         setCatatanAdministrasi(data.catatanAdministrasi || "");
       } else {
-        // Initialize empty checklist
+        // Initialize empty
         const checklistData: Record<string, boolean> = {};
+        const catatanData: Record<string, string> = {};
         CHECKLIST_ITEMS.forEach(item => {
-          checklistData[item.field] = false;
+          checklistData[item.checkField] = false;
+          catatanData[item.catatanField] = "";
         });
         setChecklist(checklistData);
+        setCatatan(catatanData);
         setStatusAdministrasi("LOLOS");
         setCatatanAdministrasi("");
       }
     } catch (error) {
-      // Initialize empty checklist on error
+      // Initialize empty on error
       const checklistData: Record<string, boolean> = {};
+      const catatanData: Record<string, string> = {};
       CHECKLIST_ITEMS.forEach(item => {
-        checklistData[item.field] = false;
+        checklistData[item.checkField] = false;
+        catatanData[item.catatanField] = "";
       });
       setChecklist(checklistData);
+      setCatatan(catatanData);
       setStatusAdministrasi("LOLOS");
       setCatatanAdministrasi("");
     }
   };
 
-  const handleCheckAll = (checked: boolean) => {
-    const newChecklist: Record<string, boolean> = {};
-    CHECKLIST_ITEMS.forEach(item => {
-      newChecklist[item.field] = checked;
-    });
-    setChecklist(newChecklist);
-  };
-
   const handleCheckItem = (field: string, checked: boolean) => {
     setChecklist(prev => ({ ...prev, [field]: checked }));
+  };
+
+  const handleCatatanItem = (field: string, value: string) => {
+    setCatatan(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async () => {
@@ -155,11 +167,12 @@ export default function PenilaianAdministratifPage() {
     try {
       setSubmitting(true);
       
-      // Merge statusAdministrasi with checklist
+      // Merge data
       const submitData = {
         statusAdministrasi,
-        catatanAdministrasi: statusAdministrasi === "TIDAK_LOLOS" ? catatanAdministrasi : undefined,
-        ...checklist,  // Spread checklist fields directly
+        catatanAdministrasi: catatanAdministrasi.trim() || undefined,
+        ...checklist,  // Spread checklist checkboxes
+        ...catatan,    // Spread catatan fields
       };
       
       const response = await penilaianAdministratifApi.submit(selectedProposal.id, submitData);
@@ -189,7 +202,6 @@ export default function PenilaianAdministratifPage() {
   );
 
   const checkedCount = Object.values(checklist).filter(Boolean).length;
-  const allChecked = checkedCount === CHECKLIST_ITEMS.length;
 
   const stats = [
     { 
@@ -336,151 +348,204 @@ export default function PenilaianAdministratifPage() {
           </CardContent>
         </Card>
 
-        {/* Penilaian Dialog */}
+        {/* Penilaian Dialog with Split Screen PDF Viewer */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Penilaian Administratif</DialogTitle>
+          <DialogContent 
+            className="p-0 gap-0"
+            style={{
+              maxWidth: '96vw',
+              width: '96vw',
+              height: '94vh',
+              maxHeight: '94vh',
+            }}
+          >
+            <DialogHeader className="px-6 py-4 border-b bg-white shrink-0">
+              <DialogTitle className="text-xl">Penilaian Administratif</DialogTitle>
               <DialogDescription>
-                Periksa kelengkapan 14 komponen administratif proposal
+                Periksa kelengkapan komponen administratif proposal
               </DialogDescription>
             </DialogHeader>
 
             {selectedProposal && (
-              <div className="space-y-4">
-                {/* Proposal Info */}
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4 space-y-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Judul</p>
-                      <p className="font-medium">{selectedProposal.judul}</p>
+              <div className="flex flex-1 overflow-hidden">
+                {/* PDF Viewer - Left Side (70%) */}
+                <div className="w-[70%] border-r overflow-hidden bg-gray-900 flex flex-col">
+                  <div className="p-3 border-b bg-white flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">File Proposal</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {selectedProposal.fileName || "proposal.pdf"}
+                      </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Ketua</p>
-                        <p className="font-medium">{(selectedProposal as any).dosen?.nama}</p>
+                    {selectedProposal.filePath && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(selectedProposal.filePath!, '_blank')}
+                        className="ml-2"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        Buka di Tab Baru
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    {selectedProposal.filePath ? (
+                      <div className="relative w-full h-full bg-gray-900">
+                        <iframe
+                          src={`${selectedProposal.filePath}#view=FitH&toolbar=1&navpanes=1&scrollbar=1`}
+                          className="w-full h-full"
+                          title="PDF Proposal"
+                          onError={() => {
+                            console.error("Failed to load PDF:", selectedProposal.filePath);
+                          }}
+                        />
                       </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                          <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">File proposal tidak tersedia</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Form - Right Side (30%) */}
+                <div className="w-[30%] overflow-y-auto bg-gray-50">
+                  <div className="p-5 space-y-4">
+                    {/* Proposal Info */}
+                    <Card className="bg-muted/50 border-0 shadow-none">
+                      <CardContent className="p-4 space-y-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Judul</p>
+                          <p className="font-medium text-sm">{selectedProposal.judul}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Ketua</p>
+                            <p className="font-medium text-sm">{(selectedProposal as any).dosen?.nama}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Skema</p>
+                            <p className="font-medium text-sm">{selectedProposal.skema?.nama}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Progress */}
+                    <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg">
                       <div>
-                        <p className="text-sm text-muted-foreground">Skema</p>
-                        <p className="font-medium">{selectedProposal.skema?.nama}</p>
+                        <p className="text-sm font-medium">Progress Pengecekan</p>
+                        <p className="text-xs text-muted-foreground">
+                          {checkedCount} dari {CHECKLIST_ITEMS.length} komponen sesuai
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold text-primary">
+                        {CHECKLIST_ITEMS.length > 0 ? Math.round((checkedCount / CHECKLIST_ITEMS.length) * 100) : 0}%
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
 
-                {/* Checklist Progress */}
-                <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">Progress Pengecekan</p>
-                    <p className="text-xs text-muted-foreground">
-                      {checkedCount} dari {CHECKLIST_ITEMS.length} komponen lengkap
-                    </p>
-                  </div>
-                  <div className="text-2xl font-bold text-primary">
-                    {Math.round((checkedCount / CHECKLIST_ITEMS.length) * 100)}%
-                  </div>
-                </div>
-
-                {/* Check All */}
-                <div className="flex items-center space-x-2 p-3 bg-muted/30 rounded-lg">
-                  <Checkbox
-                    id="checkAll"
-                    checked={allChecked}
-                    onCheckedChange={handleCheckAll}
-                  />
-                  <Label htmlFor="checkAll" className="font-medium cursor-pointer">
-                    Centang Semua Komponen
-                  </Label>
-                </div>
-
-                {/* Checklist Items */}
-                <div className="space-y-2">
-                  {CHECKLIST_ITEMS.map((item, index) => (
-                    <div
-                      key={item.key}
-                      className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                    >
-                      <Checkbox
-                        id={item.field}
-                        checked={checklist[item.field] || false}
-                        onCheckedChange={(checked) => handleCheckItem(item.field, checked as boolean)}
-                      />
-                      <Label htmlFor={item.field} className="flex-1 cursor-pointer">
-                        <span className="font-medium">
-                          {index + 1}. {item.label}
-                        </span>
-                      </Label>
-                      {checklist[item.field] && (
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Status Administratif */}
-                <div className="space-y-3 pt-4 border-t">
-                  <Label className="font-semibold">Hasil Penilaian Administratif</Label>
-                  <RadioGroup 
-                    value={statusAdministrasi} 
-                    onValueChange={(value: string) => setStatusAdministrasi(value as "LOLOS" | "TIDAK_LOLOS")}
-                  >
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-green-50 transition-colors">
-                      <RadioGroupItem value="LOLOS" id="lolos" />
-                      <Label htmlFor="lolos" className="flex-1 cursor-pointer">
-                        <div className="flex items-center">
-                          <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                          <span className="font-medium">LOLOS</span>
+                    {/* 2 Komponen Checklist */}
+                    <div className="space-y-4">
+                      <Label className="font-semibold">Komponen Penilaian</Label>
+                      {CHECKLIST_ITEMS.map((item, index) => (
+                        <div key={item.key} className="space-y-2 p-4 rounded-lg border bg-card">
+                          <div className="flex items-start space-x-3">
+                            <Checkbox
+                              id={item.checkField}
+                              checked={checklist[item.checkField] || false}
+                              onCheckedChange={(checked) => handleCheckItem(item.checkField, checked as boolean)}
+                              className="mt-1"
+                            />
+                            <div className="flex-1">
+                              <Label htmlFor={item.checkField} className="cursor-pointer font-medium">
+                                {index + 1}. {item.label}
+                              </Label>
+                              {checklist[item.checkField] && (
+                                <CheckCircle className="w-4 h-4 text-green-600 inline-block ml-2" />
+                              )}
+                            </div>
+                          </div>
+                          <Textarea
+                            placeholder="Catatan untuk komponen ini (opsional)..."
+                            value={catatan[item.catatanField] || ""}
+                            onChange={(e) => handleCatatanItem(item.catatanField, e.target.value)}
+                            className="text-sm min-h-[60px]"
+                          />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Proposal siap untuk seminar proposal
-                        </p>
-                      </Label>
+                      ))}
                     </div>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-red-50 transition-colors">
-                      <RadioGroupItem value="TIDAK_LOLOS" id="tidak-lolos" />
-                      <Label htmlFor="tidak-lolos" className="flex-1 cursor-pointer">
-                        <div className="flex items-center">
-                          <XCircle className="w-4 h-4 mr-2 text-red-600" />
-                          <span className="font-medium">TIDAK LOLOS</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Proposal perlu revisi (status akan berubah menjadi REVISI)
-                        </p>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
 
-                {/* Catatan untuk TIDAK_LOLOS */}
-                {statusAdministrasi === "TIDAK_LOLOS" && (
-                  <div className="space-y-2 pt-4 border-t">
-                    <Label htmlFor="catatan" className="font-semibold text-red-600">
-                      Catatan Revisi <span className="text-red-500">*</span>
-                    </Label>
-                    <Textarea
-                      id="catatan"
-                      value={catatanAdministrasi}
-                      onChange={(e) => setCatatanAdministrasi(e.target.value)}
-                      placeholder="Jelaskan poin-poin yang perlu diperbaiki..."
-                      className="min-h-[100px]"
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Catatan ini akan dikirimkan kepada dosen untuk perbaikan proposal
-                    </p>
+                    {/* Status Administratif */}
+                    <div className="space-y-3 pt-4 border-t">
+                      <Label className="font-semibold">Hasil Penilaian Administratif</Label>
+                      <RadioGroup 
+                        value={statusAdministrasi} 
+                        onValueChange={(value: string) => setStatusAdministrasi(value as "LOLOS" | "TIDAK_LOLOS")}
+                      >
+                        <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-green-50 transition-colors">
+                          <RadioGroupItem value="LOLOS" id="lolos" />
+                          <Label htmlFor="lolos" className="flex-1 cursor-pointer">
+                            <div className="flex items-center">
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                              <span className="font-medium">LOLOS</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Proposal siap untuk tahap selanjutnya
+                            </p>
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-red-50 transition-colors">
+                          <RadioGroupItem value="TIDAK_LOLOS" id="tidak-lolos" />
+                          <Label htmlFor="tidak-lolos" className="flex-1 cursor-pointer">
+                            <div className="flex items-center">
+                              <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                              <span className="font-medium">TIDAK LOLOS</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Proposal perlu revisi
+                            </p>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {/* Catatan Global untuk TIDAK_LOLOS */}
+                    {statusAdministrasi === "TIDAK_LOLOS" && (
+                      <div className="space-y-2 pt-4 border-t">
+                        <Label htmlFor="catatan-global" className="font-semibold text-red-600">
+                          Catatan/Alasan <span className="text-red-500">*</span>
+                        </Label>
+                        <Textarea
+                          id="catatan-global"
+                          value={catatanAdministrasi}
+                          onChange={(e) => setCatatanAdministrasi(e.target.value)}
+                          placeholder="Jelaskan secara keseluruhan poin-poin yang perlu diperbaiki..."
+                          className="min-h-[100px]"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Catatan ini akan dikirimkan kepada dosen untuk perbaikan proposal
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end gap-2 pt-4 border-t sticky bottom-0 bg-white pb-2">
+                      <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
+                        Batal
+                      </Button>
+                      <Button onClick={handleSubmit} disabled={submitting}>
+                        {submitting ? "Menyimpan..." : "Simpan Penilaian"}
+                      </Button>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
-                Batal
-              </Button>
-              <Button onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Menyimpan..." : "Simpan Penilaian"}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

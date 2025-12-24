@@ -278,8 +278,8 @@ export default function ProposalDetailPage() {
   };
 
   const handleAssignReviewer = async () => {
-    if (selectedReviewers.length !== 2) {
-      toast.error("Pilih 2 reviewer untuk proposal ini");
+    if (selectedReviewers.length < 1) {
+      toast.error("Pilih minimal 1 reviewer untuk proposal ini");
       return;
     }
 
@@ -451,11 +451,11 @@ export default function ProposalDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                       <FileText className="w-4 h-4" />
-                      Dana Hibah
+                      Dana Diajukan
                     </label>
                     <p className="mt-1 font-medium">
-                      {proposal.skema?.dana
-                        ? `Rp ${proposal.skema.dana.toLocaleString("id-ID")}`
+                      {proposal.danaDiajukan
+                        ? `Rp ${Number(proposal.danaDiajukan).toLocaleString("id-ID")}`
                         : "-"}
                     </p>
                   </div>
@@ -802,14 +802,14 @@ export default function ProposalDetailPage() {
           <DialogHeader>
             <DialogTitle>Assign Reviewer</DialogTitle>
             <DialogDescription>
-              Pilih 2 reviewer untuk menilai proposal ini. Reviewer akan mendapat notifikasi
+              Pilih minimal 1 reviewer untuk menilai proposal ini. Reviewer akan mendapat notifikasi
               untuk melakukan penilaian.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              Dipilih: {selectedReviewers.length}/2 reviewer
+              Dipilih: {selectedReviewers.length} reviewer (max: 2)
             </div>
 
             <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
@@ -861,7 +861,7 @@ export default function ProposalDetailPage() {
             </Button>
             <Button 
               onClick={handleAssignReviewer} 
-              disabled={submitting || selectedReviewers.length !== 2}
+              disabled={submitting || selectedReviewers.length < 1}
               className="bg-purple-600 hover:bg-purple-700"
             >
               {submitting ? "Menugaskan..." : "Assign Reviewer"}

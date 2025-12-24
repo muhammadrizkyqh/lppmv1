@@ -80,11 +80,7 @@ export async function PATCH(
           status: 'SIGNED'
         },
         include: {
-          proposal: {
-            include: {
-              skema: true,
-            }
-          }
+          proposal: true
         }
       })
 
@@ -99,7 +95,7 @@ export async function PATCH(
       }
 
       // 3. Auto-create Termin 1 (50%) after kontrak signed
-      const danaHibah = Number(updated.proposal.skema.dana)
+      const danaHibah = Number((updated.proposal as any).danaDiajukan || 0)
       const nominalTermin1 = danaHibah * 0.5
 
       await tx.pencairan_dana.create({

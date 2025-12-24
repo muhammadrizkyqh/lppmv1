@@ -326,7 +326,7 @@ export default function DosenPencairanPage() {
                         </span>
                         <span className="flex items-center gap-1 font-semibold text-primary">
                           <DollarSign className="h-3 w-3" />
-                          {formatCurrency(Number(proposal.skema.dana))}
+                          {formatCurrency(Number(proposal.danaDiajukan || 0))}
                         </span>
                       </CardDescription>
                     </div>

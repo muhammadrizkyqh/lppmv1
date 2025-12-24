@@ -29,10 +29,10 @@ export async function POST(
     const body = await request.json()
     const { reviewerIds } = body
 
-    // Validate input
-    if (!Array.isArray(reviewerIds) || reviewerIds.length !== 2) {
+    // Validate input - minimal 1, maksimal 2 reviewer
+    if (!Array.isArray(reviewerIds) || reviewerIds.length < 1 || reviewerIds.length > 2) {
       return NextResponse.json(
-        { success: false, error: 'Harus memilih 2 reviewer' },
+        { success: false, error: 'Harus memilih minimal 1 reviewer (maksimal 2)' },
         { status: 400 }
       )
     }
@@ -74,15 +74,15 @@ export async function POST(
       },
     })
 
-    if (reviewers.length !== 2) {
+    if (reviewers.length !== reviewerIds.length) {
       return NextResponse.json(
-        { success: false, error: 'Reviewer tidak valid' },
+        { success: false, error: 'Reviewer tidak valid atau tidak ditemukan' },
         { status: 400 }
       )
     }
 
-    // Check for duplicate reviewers
-    if (reviewerIds[0] === reviewerIds[1]) {
+    // Check for duplicate reviewers (only if 2 selected)
+    if (reviewerIds.length === 2 && reviewerIds[0] === reviewerIds[1]) {
       return NextResponse.json(
         { success: false, error: 'Tidak boleh memilih reviewer yang sama dua kali' },
         { status: 400 }

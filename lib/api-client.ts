@@ -927,6 +927,7 @@ interface ProposalReviewed {
   jenis: string
   status: string
   submittedAt: string | null
+  danaDiajukan: number | null
   periode: {
     id: string
     tahun: number
@@ -1494,7 +1495,7 @@ export const luaranApi = {
 export interface Seminar {
   id: string
   proposalId: string
-  jenis: string  // PROPOSAL, INTERNAL, PUBLIK
+  jenis: string  // Only PROPOSAL (seminar proposal)
   judul: string
   tanggal: string
   waktu: string
@@ -1612,20 +1613,12 @@ export interface PenilaianAdministratif {
   catatanAdministrasi?: string
   checkedAdminBy?: string
   checkedAdminAt?: string
-  checkJudul: boolean
-  checkLatarBelakang: boolean
-  checkRumusanMasalah: boolean
-  checkTujuan: boolean
-  checkManfaat: boolean
-  checkKajianTerdahulu: boolean
-  checkTinjauanPustaka: boolean
-  checkKonsepTeori: boolean
-  checkMetodologi: boolean
-  checkRencanaPembahasan: boolean
-  checkWaktuPelaksanaan: boolean
-  checkRencanaPublikasi: boolean
-  checkDaftarPustaka: boolean
-  checkLampiran: boolean
+  
+  // 2 Komponen Penilaian
+  checkKesesuaianTeknikPenulisan: boolean
+  catatanKesesuaianTeknikPenulisan?: string
+  checkKelengkapanKomponen: boolean
+  catatanKelengkapanKomponen?: string
 }
 
 export const penilaianAdministratifApi = {

@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
               select: {
                 id: true,
                 nama: true,
-                dana: true
               }
             },
             periode: {

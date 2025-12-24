@@ -26,7 +26,6 @@ export function SkemaFormDialog({
   const [formData, setFormData] = useState({
     nama: "",
     tipe: "DASAR" as "DASAR" | "TERAPAN" | "PENGEMBANGAN" | "MANDIRI",
-    dana: "",
     deskripsi: "",
     status: "AKTIF" as "AKTIF" | "NONAKTIF",
   })
@@ -37,7 +36,6 @@ export function SkemaFormDialog({
       setFormData({
         nama: skema.nama,
         tipe: skema.tipe,
-        dana: skema.dana.toString(),
         deskripsi: skema.deskripsi || "",
         status: skema.status as "AKTIF" | "NONAKTIF",
       })
@@ -45,7 +43,6 @@ export function SkemaFormDialog({
       setFormData({
         nama: "",
         tipe: "DASAR",
-        dana: "",
         deskripsi: "",
         status: "AKTIF",
       })
@@ -60,7 +57,6 @@ export function SkemaFormDialog({
       const data = {
         nama: formData.nama,
         tipe: formData.tipe,
-        dana: parseFloat(formData.dana) || 0,
         deskripsi: formData.deskripsi || undefined,
         status: formData.status,
       }
@@ -127,23 +123,6 @@ export function SkemaFormDialog({
                   <SelectItem value="MANDIRI">Mandiri</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dana" className="text-right">
-                Dana (Rp)
-              </Label>
-              <Input
-                id="dana"
-                type="number"
-                value={formData.dana}
-                onChange={(e) => setFormData({ ...formData, dana: e.target.value })}
-                className="col-span-3"
-                placeholder="5000000"
-                min="0"
-                step="100000"
-                required
-              />
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">

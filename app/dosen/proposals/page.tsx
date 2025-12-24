@@ -548,7 +548,7 @@ export default function ProposalsPage() {
                     )}
                     {proposal.status === "draft" && (
                       <>
-                        {proposal._original?.filePath && (
+                        {proposal._original?.filePath && proposal.anggota >= 1 ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -558,7 +558,18 @@ export default function ProposalsPage() {
                             <CheckCircle className="w-4 h-4 sm:mr-2" />
                             <span className="hidden sm:inline">Submit Proposal</span>
                           </Button>
-                        )}
+                        ) : proposal._original?.filePath && proposal.anggota < 1 ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled
+                            className="text-gray-400 border-gray-300 flex-1 sm:flex-none"
+                            title="Tambahkan anggota tim terlebih dahulu (minimal ketua)"
+                          >
+                            <AlertCircle className="w-4 h-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Tambah Anggota Dulu</span>
+                          </Button>
+                        ) : null}
                         <Button
                           variant="outline"
                           size="sm"

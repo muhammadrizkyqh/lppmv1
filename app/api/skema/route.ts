@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
     await requireRole(['ADMIN'])
 
     const body = await request.json()
-    const { nama, tipe, dana, deskripsi } = body
+    const { nama, tipe, deskripsi } = body
 
-    if (!nama || !tipe || dana === undefined) {
+    if (!nama || !tipe) {
       return NextResponse.json(
-        { success: false, error: 'Nama, tipe, dan dana harus diisi' },
+        { success: false, error: 'Nama dan tipe harus diisi' },
         { status: 400 }
       )
     }
@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
       data: {
         nama,
         tipe,
-        dana,
         deskripsi,
         status: 'AKTIF',
       },

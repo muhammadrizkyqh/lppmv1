@@ -23,7 +23,10 @@ export async function POST(
     const {
       statusAdministrasi, // LOLOS | TIDAK_LOLOS
       catatanAdministrasi,
-      checklist, // Object berisi 14 checkbox
+      checkKesesuaianTeknikPenulisan,
+      catatanKesesuaianTeknikPenulisan,
+      checkKelengkapanKomponen,
+      catatanKelengkapanKomponen,
     } = body
 
     // Validate required
@@ -73,21 +76,11 @@ export async function POST(
         checkedAdminBy: session.id,
         checkedAdminAt: new Date(),
         
-        // Update checklist (14 komponen sesuai buku panduan)
-        checkJudul: checklist?.checkJudul || false,
-        checkLatarBelakang: checklist?.checkLatarBelakang || false,
-        checkRumusanMasalah: checklist?.checkRumusanMasalah || false,
-        checkTujuan: checklist?.checkTujuan || false,
-        checkManfaat: checklist?.checkManfaat || false,
-        checkKajianTerdahulu: checklist?.checkKajianTerdahulu || false,
-        checkTinjauanPustaka: checklist?.checkTinjauanPustaka || false,
-        checkKonsepTeori: checklist?.checkKonsepTeori || false,
-        checkMetodologi: checklist?.checkMetodologi || false,
-        checkRencanaPembahasan: checklist?.checkRencanaPembahasan || false,
-        checkWaktuPelaksanaan: checklist?.checkWaktuPelaksanaan || false,
-        checkRencanaPublikasi: checklist?.checkRencanaPublikasi || false,
-        checkDaftarPustaka: checklist?.checkDaftarPustaka || false,
-        checkLampiran: checklist?.checkLampiran || false,
+        // 2 Komponen Penilaian Administratif
+        checkKesesuaianTeknikPenulisan: checkKesesuaianTeknikPenulisan || false,
+        catatanKesesuaianTeknikPenulisan: catatanKesesuaianTeknikPenulisan || null,
+        checkKelengkapanKomponen: checkKelengkapanKomponen || false,
+        catatanKelengkapanKomponen: catatanKelengkapanKomponen || null,
         
         // Jika LOLOS, tetap DIAJUKAN (admin lanjut jadwalkan seminar proposal)
         // Jika TIDAK_LOLOS, status berubah ke REVISI (dosen harus revisi)
@@ -151,20 +144,10 @@ export async function GET(
         catatanAdministrasi: true,
         checkedAdminBy: true,
         checkedAdminAt: true,
-        checkJudul: true,
-        checkLatarBelakang: true,
-        checkRumusanMasalah: true,
-        checkTujuan: true,
-        checkManfaat: true,
-        checkKajianTerdahulu: true,
-        checkTinjauanPustaka: true,
-        checkKonsepTeori: true,
-        checkMetodologi: true,
-        checkRencanaPembahasan: true,
-        checkWaktuPelaksanaan: true,
-        checkRencanaPublikasi: true,
-        checkDaftarPustaka: true,
-        checkLampiran: true,
+        checkKesesuaianTeknikPenulisan: true,
+        catatanKesesuaianTeknikPenulisan: true,
+        checkKelengkapanKomponen: true,
+        catatanKelengkapanKomponen: true,
       }
     })
 

@@ -74,7 +74,7 @@ export async function PUT(
     const { id } = await params
 
     const body = await request.json()
-    const { nama, tipe, dana, deskripsi, status } = body
+    const { nama, tipe, deskripsi, status } = body
 
     // Check if skema exists
     const existingSkema = await prisma.skema.findUnique({
@@ -106,7 +106,6 @@ export async function PUT(
       data: {
         ...(nama && { nama }),
         ...(tipe && { tipe }),
-        ...(dana !== undefined && { dana }),
         ...(deskripsi !== undefined && { deskripsi }),
         ...(status && { status }),
       },

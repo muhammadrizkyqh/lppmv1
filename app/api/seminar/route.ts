@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       proposalId,
-      jenis, // PROPOSAL, INTERNAL, PUBLIK
+      jenis, // Only PROPOSAL allowed now
       tanggal,
       waktu,
       tempat,
@@ -137,6 +137,14 @@ export async function POST(request: NextRequest) {
     if (!proposalId || !jenis || !tanggal || !waktu) {
       return NextResponse.json(
         { success: false, error: 'Proposal, jenis, tanggal, dan waktu wajib diisi' },
+        { status: 400 }
+      )
+    }
+
+    // Validate jenis - only PROPOSAL allowed
+    if (jenis !== 'PROPOSAL') {
+      return NextResponse.json(
+        { success: false, error: 'Hanya seminar proposal yang diperbolehkan' },
         { status: 400 }
       )
     }
@@ -156,49 +164,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Business logic validation based on jenis seminar
-    if (jenis === 'PROPOSAL') {
-      // Seminar proposal: harus sudah LOLOS penilaian administratif
-      if (proposal.statusAdministrasi !== 'LOLOS') {
-        return NextResponse.json({
-          success: false,
-          error: 'Seminar proposal hanya bisa dijadwalkan setelah lolos penilaian administratif'
-        }, { status: 400 })
-      }
-    }
-
-    if (jenis === 'INTERNAL') {
-      // Seminar internal: harus sudah upload Bab IV (monitoring 2)
-      const monitoring = await prisma.monitoring.findFirst({
-        where: {
-          proposalId,
-          verifikasiAkhirStatus: 'APPROVED' // Bab IV approved
-        }
-      })
-
-      if (!monitoring) {
-        return NextResponse.json({
-          success: false,
-          error: 'Seminar internal hanya bisa dijadwalkan setelah Bab IV (Monitoring 2) diverifikasi'
-        }, { status: 400 })
-      }
-    }
-
-    if (jenis === 'PUBLIK') {
-      // Seminar publik: harus ada luaran yang sudah verified
-      const luaran = await prisma.luaran.findFirst({
-        where: {
-          proposalId,
-          statusVerifikasi: 'DIVERIFIKASI'
-        }
-      })
-
-      if (!luaran) {
-        return NextResponse.json({
-          success: false,
-          error: 'Seminar publik hanya bisa dijadwalkan setelah luaran diverifikasi'
-        }, { status: 400 })
-      }
+    // Business logic validation: harus sudah LOLOS penilaian administratif
+    if (proposal.statusAdministrasi !== 'LOLOS') {
+      return NextResponse.json({
+        success: false,
+        error: 'Seminar proposal hanya bisa dijadwalkan setelah lolos penilaian administratif'
+      }, { status: 400 })
     }
 
     // Create seminar - hanya field yang pasti ada untuk compatibility VPS

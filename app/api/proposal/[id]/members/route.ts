@@ -159,6 +159,29 @@ export async function POST(
       )
     }
 
+    // Validate max 2 as member per periode (for Dosen only, exclude DITOLAK & SELESAI)
+    if (dosenId) {
+      const memberCount = await prisma.proposalmember.count({
+        where: {
+          dosenId,
+          proposal: {
+            periodeId: proposal.periodeId,
+            status: {
+              notIn: ['DITOLAK', 'SELESAI']
+            }
+          },
+          role: { not: 'Ketua' } // Only count as member, not as ketua
+        }
+      })
+
+      if (memberCount >= 2) {
+        return NextResponse.json(
+          { success: false, error: 'Dosen sudah menjadi anggota di 2 penelitian pada periode ini (maksimal 2 sebagai anggota per periode)' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Create member
     const member = await prisma.proposalmember.create({
       data: {

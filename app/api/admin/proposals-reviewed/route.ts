@@ -26,7 +26,12 @@ export async function GET(request: NextRequest) {
       where: {
         status: 'DIREVIEW'
       },
-      include: {
+      select: {
+        id: true,
+        judul: true,
+        status: true,
+        submittedAt: true,
+        danaDiajukan: true,
         periode: {
           select: {
             id: true,
@@ -39,7 +44,6 @@ export async function GET(request: NextRequest) {
             id: true,
             nama: true,
             tipe: true,
-            dana: true,
           }
         },
         dosen: {

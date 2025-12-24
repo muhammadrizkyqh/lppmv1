@@ -310,7 +310,7 @@ export default function AdminKontrakPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-sm">
-                        {formatRupiah(kontrak.proposal.skema.dana)}
+                        {formatRupiah(kontrak.proposal.danaDiajukan || 0)}
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(kontrak.status)}</TableCell>

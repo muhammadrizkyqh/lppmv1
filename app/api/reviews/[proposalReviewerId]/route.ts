@@ -49,7 +49,6 @@ export async function GET(
                 id: true,
                 nama: true,
                 tipe: true,
-                dana: true,
               }
             },
             periode: {

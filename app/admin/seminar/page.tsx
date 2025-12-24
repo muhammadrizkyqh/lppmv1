@@ -50,7 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type JenisSeminar = "PROPOSAL" | "INTERNAL" | "PUBLIK";
+type JenisSeminar = "PROPOSAL";
 type StatusSeminar = "SCHEDULED" | "SELESAI" | "DIBATALKAN";
 
 export default function SeminarPage() {
@@ -285,9 +285,9 @@ export default function SeminarPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Jadwal Seminar</h1>
+            <h1 className="text-3xl font-bold text-foreground">Jadwal Seminar Proposal</h1>
             <p className="text-muted-foreground mt-2">
-              Kelola jadwal seminar proposal, internal, dan publik
+              Kelola jadwal seminar proposal penelitian
             </p>
           </div>
           <Button onClick={() => handleOpenDialog()}>
@@ -296,26 +296,11 @@ export default function SeminarPage() {
           </Button>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as JenisSeminar)}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="PROPOSAL">
-              <Presentation className="w-4 h-4 mr-2" />
-              Seminar Proposal
-            </TabsTrigger>
-            <TabsTrigger value="INTERNAL">
-              <Users className="w-4 h-4 mr-2" />
-              Seminar Internal
-            </TabsTrigger>
-            <TabsTrigger value="PUBLIK">
-              <Calendar className="w-4 h-4 mr-2" />
-              Seminar Publik
-            </TabsTrigger>
-          </TabsList>
+        {/* Content */}
+        <div className="space-y-4">
 
-          <TabsContent value={activeTab} className="space-y-4">
-            {/* Stats Card */}
-            <Card className="border-0 shadow-sm">
+          {/* Stats Card */}
+          <Card className="border-0 shadow-sm">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4">
                   <div className="p-3 rounded-lg bg-primary/10">
@@ -417,6 +402,8 @@ export default function SeminarPage() {
                                     variant="outline"
                                     className="text-green-600"
                                     onClick={() => handleMarkSelesai(seminar.id)}
+                                    disabled={!seminar.fileMateri}
+                                    title={!seminar.fileMateri ? "Menunggu upload materi PPT dari dosen" : "Tandai selesai"}
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                   </Button>
@@ -446,8 +433,7 @@ export default function SeminarPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+        </div>
 
         {/* Dialog Form */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

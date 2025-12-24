@@ -56,26 +56,22 @@ async function main() {
       {
         nama: 'Penelitian Dasar',
         tipe: 'DASAR',
-        dana: 5000000,
-        deskripsi: 'Penelitian dasar dengan dana Rp 5.000.000',
+        deskripsi: 'Penelitian dasar untuk pengembangan ilmu pengetahuan',
       },
       {
         nama: 'Penelitian Terapan',
         tipe: 'TERAPAN',
-        dana: 5000000,
-        deskripsi: 'Penelitian terapan dengan dana Rp 5.000.000',
+        deskripsi: 'Penelitian terapan untuk solusi praktis',
       },
       {
         nama: 'Penelitian Pengembangan',
         tipe: 'PENGEMBANGAN',
-        dana: 7000000,
-        deskripsi: 'Penelitian pengembangan dengan dana Rp 7.000.000',
+        deskripsi: 'Penelitian pengembangan produk atau metode baru',
       },
       {
         nama: 'Penelitian Mandiri',
         tipe: 'MANDIRI',
-        dana: 0,
-        deskripsi: 'Penelitian mandiri tanpa dana',
+        deskripsi: 'Penelitian mandiri tanpa dana hibah',
       },
     ],
   })

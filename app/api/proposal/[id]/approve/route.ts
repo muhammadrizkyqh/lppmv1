@@ -56,24 +56,26 @@ export async function POST(
       )
     }
 
-    // Validate exactly 2 reviewers assigned
-    if (proposal.proposal_reviewer.length !== 2) {
+    // Validate minimal 1 reviewer assigned
+    if (proposal.proposal_reviewer.length < 1) {
       return NextResponse.json(
-        { success: false, error: 'Proposal harus direview oleh 2 reviewer' },
+        { success: false, error: 'Proposal harus direview oleh minimal 1 reviewer' },
         { status: 400 }
       )
     }
 
-    // Validate all reviews are complete (check review data exists)
+    // Validate all assigned reviewers have completed their reviews
     const reviews = proposal.proposal_reviewer.map(r => r.review).filter(Boolean)
-    if (reviews.length !== 2) {
+    if (reviews.length !== proposal.proposal_reviewer.length) {
       return NextResponse.json(
         { success: false, error: 'Belum semua reviewer menyelesaikan review' },
         { status: 400 }
       )
     }
 
-    // Calculate average score (use parseFloat with toString for proper Decimal conversion)
+    // Calculate average score
+    // If 1 reviewer: use that score
+    // If 2 reviewers: use average
     const averageScore = reviews.reduce((sum, r) => sum + parseFloat(r!.nilaiTotal.toString()), 0) / reviews.length
 
     // Generate nomor kontrak and SK

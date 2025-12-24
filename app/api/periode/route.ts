@@ -27,9 +27,15 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    // Map to match TypeScript interface (_count.proposals instead of _count.proposal)
+    const mappedPeriode = periode.map(p => ({
+      ...p,
+      _count: p._count ? { proposals: p._count.proposal } : undefined
+    }))
+
     return NextResponse.json({
       success: true,
-      data: periode,
+      data: mappedPeriode,
     })
   } catch (error: any) {
     console.error('Get periode error:', error)
@@ -73,12 +79,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If creating periode with status AKTIF, deactivate all other active periodes
+    // Check for overlapping active periods (for warning only)
+    let overlapWarning = null
     if (status === 'AKTIF') {
-      await prisma.periode.updateMany({
-        where: { status: 'AKTIF' },
-        data: { status: 'NONAKTIF' },
+      const overlappingPeriodes = await prisma.periode.findMany({
+        where: {
+          status: 'AKTIF',
+          OR: [
+            {
+              AND: [
+                { tanggalBuka: { lte: tutup } },
+                { tanggalTutup: { gte: buka } }
+              ]
+            }
+          ]
+        },
+        select: {
+          nama: true,
+          tanggalBuka: true,
+          tanggalTutup: true
+        }
       })
+
+      if (overlappingPeriodes.length > 0) {
+        const overlapList = overlappingPeriodes.map(p => 
+          `${p.nama} (${new Date(p.tanggalBuka).toLocaleDateString('id-ID')} - ${new Date(p.tanggalTutup).toLocaleDateString('id-ID')})`
+        ).join(', ')
+        overlapWarning = `Overlap dengan periode aktif: ${overlapList}`
+      }
     }
 
     const periode = await prisma.periode.create({
@@ -97,6 +125,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: periode,
       message: 'Periode berhasil ditambahkan',
+      warning: overlapWarning
     }, { status: 201 })
   } catch (error: any) {
     console.error('Create periode error:', error)

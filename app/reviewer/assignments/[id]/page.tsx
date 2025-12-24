@@ -117,11 +117,11 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
     scores.kriteria4 * 0.25
   );
   const formProgress = (
-    (scores.kriteria1 > 0 ? 25 : 0) +
-    (scores.kriteria2 > 0 ? 25 : 0) +
-    (scores.kriteria3 > 0 ? 25 : 0) +
-    (scores.kriteria4 > 0 ? 25 : 0) +
-    (rekomendasi ? 25 : 0)
+    (scores.kriteria1 > 0 ? 20 : 0) +
+    (scores.kriteria2 > 0 ? 20 : 0) +
+    (scores.kriteria3 > 0 ? 20 : 0) +
+    (scores.kriteria4 > 0 ? 20 : 0) +
+    (rekomendasi ? 20 : 0)
   );
 
   const handleScoreChange = (key: string, value: string) => {
@@ -258,27 +258,49 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* Split Screen Layout: PDF Viewer (70%) + Content (30%) */}
+        <div className="grid gap-6 lg:grid-cols-10">
+          {/* PDF Viewer - 70% */}
+          {proposal.filePath && (
+            <div className="lg:col-span-7">
+              <div className="sticky top-6">
+                <Card className="border-0 shadow-lg overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Dokumen Proposal</CardTitle>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={proposal.filePath} target="_blank" rel="noopener noreferrer">
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </a>
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="w-full bg-gray-100" style={{ height: 'calc(100vh - 200px)' }}>
+                      <iframe
+                        src={proposal.filePath}
+                        className="w-full h-full border-0"
+                        title="PDF Proposal"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content - 30% (or full width if no PDF) */}
+          <div className={proposal.filePath ? "lg:col-span-3" : "lg:col-span-10"}>
+            <div className="space-y-6">
             {/* Proposal Info */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl">{proposal.judul}</CardTitle>
-                    <CardDescription className="mt-2">
-                      {proposal.skema.nama} • Periode {proposal.periode.tahun}
-                    </CardDescription>
-                  </div>
-                  {proposal.filePath && (
-                    <Button variant="outline" asChild>
-                      <a href={proposal.filePath} target="_blank" rel="noopener noreferrer">
-                        <Download className="w-4 h-4 mr-2" />
-                        Download PDF
-                      </a>
-                    </Button>
-                  )}
+                <div>
+                  <CardTitle className="text-xl">{proposal.judul}</CardTitle>
+                  <CardDescription className="mt-2">
+                    {proposal.skema.nama} • Periode {proposal.periode.tahun}
+                  </CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -295,11 +317,11 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                     <span className="text-sm">{proposal.bidangkeahlian?.nama || '-'}</span>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Dana Hibah</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Dana Diajukan</Label>
                     <div className="flex items-center space-x-2">
                       <DollarSign className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">
-                        Rp {proposal.skema.dana ? Number(proposal.skema.dana).toLocaleString('id-ID') : '0'}
+                        Rp {proposal.danaDiajukan ? Number(proposal.danaDiajukan).toLocaleString('id-ID') : '0'}
                       </span>
                     </div>
                   </div>
@@ -547,7 +569,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
             <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle>Rekomendasi & Catatan</CardTitle>
-                <CardDescription>
+                <CardDescription className="mt-2">
                   Berikan rekomendasi final dan catatan untuk perbaikan
                 </CardDescription>
               </CardHeader>
@@ -591,15 +613,14 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                     value={catatan}
                     onChange={(e) => setCatatan(e.target.value)}
                   />
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mt-2">
                     Berikan feedback konstruktif untuk membantu peneliti memperbaiki proposal
                   </p>
                 </div>
               </CardContent>
             </Card>
-              </>
+            </>
             )}
-          </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
@@ -743,6 +764,8 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                 </Button>
               </CardContent>
             </Card>
+            </div>
+          </div>
           </div>
         </div>
 

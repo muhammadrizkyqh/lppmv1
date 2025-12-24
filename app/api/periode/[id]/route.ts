@@ -99,15 +99,38 @@ export async function PUT(
       }
     }
 
-    // If setting this periode to AKTIF, deactivate all others
-    if (status === 'AKTIF' && existingPeriode.status !== 'AKTIF') {
-      await prisma.periode.updateMany({
-        where: { 
+    // Check for overlapping active periods (for warning only)
+    let overlapWarning = null
+    if (status === 'AKTIF') {
+      const buka = tanggalBuka ? new Date(tanggalBuka) : existingPeriode.tanggalBuka
+      const tutup = tanggalTutup ? new Date(tanggalTutup) : existingPeriode.tanggalTutup
+
+      const overlappingPeriodes = await prisma.periode.findMany({
+        where: {
+          id: { not: id },
           status: 'AKTIF',
-          NOT: { id }
+          OR: [
+            {
+              AND: [
+                { tanggalBuka: { lte: tutup } },
+                { tanggalTutup: { gte: buka } }
+              ]
+            }
+          ]
         },
-        data: { status: 'NONAKTIF' },
+        select: {
+          nama: true,
+          tanggalBuka: true,
+          tanggalTutup: true
+        }
       })
+
+      if (overlappingPeriodes.length > 0) {
+        const overlapList = overlappingPeriodes.map(p => 
+          `${p.nama} (${new Date(p.tanggalBuka).toLocaleDateString('id-ID')} - ${new Date(p.tanggalTutup).toLocaleDateString('id-ID')})`
+        ).join(', ')
+        overlapWarning = `Overlap dengan periode aktif: ${overlapList}`
+      }
     }
 
     const updatedPeriode = await prisma.periode.update({
@@ -133,6 +156,7 @@ export async function PUT(
       success: true,
       data: updatedPeriode,
       message: 'Periode berhasil diupdate',
+      warning: overlapWarning
     })
   } catch (error) {
     console.error('Error updating periode:', error)

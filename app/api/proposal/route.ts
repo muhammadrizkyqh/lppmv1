@@ -44,7 +44,28 @@ export async function GET(request: NextRequest) {
     const proposals = await prisma.proposal.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        judul: true,
+        abstrak: true,
+        danaDiajukan: true,
+        filePath: true,
+        fileName: true,
+        fileSize: true,
+        status: true,
+        submittedAt: true,
+        nilaiTotal: true,
+        catatan: true,
+        catatanRevisi: true,
+        catatanAdministrasi: true,
+        statusAdministrasi: true,
+        createdAt: true,
+        updatedAt: true,
+        periodeId: true,
+        skemaId: true,
+        ketuaId: true,
+        creatorId: true,
+        bidangKeahlianId: true,
         periode: {
           select: {
             id: true,
@@ -58,7 +79,6 @@ export async function GET(request: NextRequest) {
             id: true,
             nama: true,
             tipe: true,
-            dana: true,
           },
         },
         dosen: {
@@ -169,6 +189,7 @@ export async function POST(request: NextRequest) {
       filePath,
       fileName,
       fileSize,
+      danaDiajukan,
     } = body
 
     // Validate required fields
@@ -177,6 +198,22 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Periode, skema, judul, dan abstrak harus diisi' },
         { status: 400 }
       )
+    }
+
+    // Validate danaDiajukan if provided
+    if (danaDiajukan !== undefined && danaDiajukan !== null) {
+      if (danaDiajukan < 0) {
+        return NextResponse.json(
+          { success: false, error: 'Dana yang diajukan tidak boleh negatif' },
+          { status: 400 }
+        )
+      }
+      if (danaDiajukan > 10000000) {
+        return NextResponse.json(
+          { success: false, error: 'Dana yang diajukan maksimal Rp 10.000.000' },
+          { status: 400 }
+        )
+      }
     }
 
     // Validate abstrak length (max 500 characters)
@@ -262,6 +299,7 @@ export async function POST(request: NextRequest) {
         filePath,
         fileName,
         fileSize,
+        danaDiajukan: danaDiajukan !== undefined ? danaDiajukan : null,
         status: 'DRAFT',
       },
       include: {

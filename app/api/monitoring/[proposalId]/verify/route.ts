@@ -112,6 +112,51 @@ export async function POST(
         where: { id: monitoring.proposalId },
         data: { status: 'SELESAI' },
       })
+
+      // Auto-create TERMIN_2 (25%) after laporan akhir approved
+      // Check if TERMIN_1 is already DICAIRKAN
+      const termin1 = await prisma.pencairan_dana.findFirst({
+        where: { 
+          proposalId: monitoring.proposalId, 
+          termin: 'TERMIN_1',
+          status: 'DICAIRKAN'
+        }
+      })
+
+      if (termin1) {
+        // Check if TERMIN_2 doesn't exist yet
+        const existingTermin2 = await prisma.pencairan_dana.findFirst({
+          where: { 
+            proposalId: monitoring.proposalId, 
+            termin: 'TERMIN_2'
+          }
+        })
+
+        if (!existingTermin2) {
+          // Get proposal dana for calculation
+          const proposal = await prisma.proposal.findUnique({
+            where: { id: monitoring.proposalId },
+            select: { danaDiajukan: true }
+          })
+
+          if (proposal) {
+            const danaHibah = Number(proposal.danaDiajukan || 0)
+            const nominalTermin2 = danaHibah * 0.25
+
+            await prisma.pencairan_dana.create({
+              data: {
+                proposalId: monitoring.proposalId,
+                termin: 'TERMIN_2',
+                nominal: nominalTermin2,
+                persentase: 25,
+                status: 'PENDING',
+                keterangan: 'Pencairan otomatis setelah laporan akhir disetujui',
+                createdBy: session.id,
+              }
+            })
+          }
+        }
+      }
     }
     // If rejected, proposal stays BERJALAN (no update needed)
 

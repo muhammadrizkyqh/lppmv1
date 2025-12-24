@@ -69,6 +69,7 @@ interface KontrakDetail {
     judul: string
     abstrak: string
     status: string
+    danaDiajukan: number | null
     dosen: {
       nama: string
       nidn: string
@@ -188,6 +189,27 @@ export default function AdminKontrakDetailPage() {
     return (
       <Badge variant={config.variant} className="gap-1">
         <Icon className="h-3 w-3" />
+        {config.label}
+      </Badge>
+    )
+  }
+
+  const getProposalStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { label: string; className: string }> = {
+      DRAFT: { label: "Draft", className: "bg-gray-100 text-gray-800" },
+      SUBMITTED: { label: "Diajukan", className: "bg-blue-100 text-blue-800" },
+      DIREVIEW: { label: "Direview", className: "bg-yellow-100 text-yellow-800" },
+      DITERIMA: { label: "Diterima", className: "bg-green-100 text-green-800" },
+      DITOLAK: { label: "Ditolak", className: "bg-red-100 text-red-800" },
+      REVISI: { label: "Revisi", className: "bg-orange-100 text-orange-800" },
+      BERJALAN: { label: "Berjalan", className: "bg-emerald-100 text-emerald-800" },
+      SELESAI: { label: "Selesai", className: "bg-purple-100 text-purple-800" },
+    }
+
+    const config = statusConfig[status] || { label: status, className: "bg-gray-100 text-gray-800" }
+
+    return (
+      <Badge className={config.className}>
         {config.label}
       </Badge>
     )
@@ -339,7 +361,7 @@ export default function AdminKontrakDetailPage() {
             <div>
               <Label className="text-muted-foreground">Dana</Label>
               <p className="font-medium text-lg">
-                {formatRupiah(kontrak.proposal.skema.dana)}
+                {formatRupiah(kontrak.proposal.danaDiajukan || 0)}
               </p>
             </div>
             <div>
@@ -350,7 +372,7 @@ export default function AdminKontrakDetailPage() {
             </div>
             <div>
               <Label className="text-muted-foreground">Status Proposal</Label>
-              <div className="mt-1">{getStatusBadge(kontrak.proposal.status)}</div>
+              <div className="mt-1">{getProposalStatusBadge(kontrak.proposal.status)}</div>
             </div>
           </CardContent>
         </Card>

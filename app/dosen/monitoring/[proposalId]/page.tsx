@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { monitoringApi, MonitoringDetail } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -248,7 +249,7 @@ export default function DosenMonitoringDetailPage() {
     );
   }
 
-  const { proposal, monitoring } = data;
+  const { proposal, monitoring, periode, skema, bidangkeahlian } = data;
   const hasKemajuan = !!monitoring?.laporanKemajuan;
   const hasAkhir = !!monitoring?.laporanAkhir;
   const progress = monitoring?.persentaseKemajuan || 0;
@@ -292,19 +293,19 @@ export default function DosenMonitoringDetailPage() {
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {proposal.periode?.nama} ({proposal.periode?.tahun})
+                      {periode?.nama} ({periode?.tahun})
                     </div>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Award className="w-4 h-4" />
-                      {proposal.skema?.nama}
+                      {skema?.nama}
                     </div>
-                    {proposal.bidangkeahlian && (
+                    {bidangkeahlian && (
                       <>
                         <span>•</span>
                         <div className="flex items-center gap-1">
                           <FileText className="w-4 h-4" />
-                          {proposal.bidangkeahlian.nama}
+                          {bidangkeahlian.nama}
                         </div>
                       </>
                     )}
@@ -355,286 +356,298 @@ export default function DosenMonitoringDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Laporan Kemajuan Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Laporan Kemajuan</CardTitle>
-            <CardDescription>
-              Upload laporan progress penelitian Anda. Upload file PDF terlebih dahulu sebelum submit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="laporanKemajuan">Isi Laporan Kemajuan *</Label>
-              <Textarea
-                id="laporanKemajuan"
-                placeholder="Tuliskan laporan kemajuan penelitian..."
-                value={kemajuanForm.laporanKemajuan}
-                onChange={(e) => setKemajuanForm(prev => ({ ...prev, laporanKemajuan: e.target.value }))}
-                rows={6}
-                disabled={kemajuanDisabled}
-              />
-            </div>
+        {/* Laporan Kemajuan & Akhir Tabs */}
+        <Tabs defaultValue="kemajuan" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="kemajuan">Laporan Kemajuan</TabsTrigger>
+            <TabsTrigger value="akhir">Laporan Akhir</TabsTrigger>
+          </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="persentaseKemajuan">Persentase Kemajuan (%) *</Label>
-              <Input
-                id="persentaseKemajuan"
-                type="number"
-                min="1"
-                max="100"
-                placeholder="0-100"
-                value={kemajuanForm.persentaseKemajuan}
-                onChange={(e) => setKemajuanForm(prev => ({ 
-                  ...prev, 
-                  persentaseKemajuan: parseInt(e.target.value) || 0 
-                }))}
-                disabled={kemajuanDisabled}
-              />
-            </div>
+          {/* Tab Laporan Kemajuan */}
+          <TabsContent value="kemajuan">
+            <Card>
+              <CardHeader>
+                <CardTitle>Laporan Kemajuan</CardTitle>
+                <CardDescription>
+                  Upload laporan progress penelitian Anda. Upload file PDF terlebih dahulu sebelum submit.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="laporanKemajuan">Isi Laporan Kemajuan *</Label>
+                  <Textarea
+                    id="laporanKemajuan"
+                    placeholder="Tuliskan laporan kemajuan penelitian..."
+                    value={kemajuanForm.laporanKemajuan}
+                    onChange={(e) => setKemajuanForm(prev => ({ ...prev, laporanKemajuan: e.target.value }))}
+                    rows={6}
+                    disabled={kemajuanDisabled}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fileKemajuan">File Laporan (PDF) *</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="fileKemajuan"
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => handleFileUpload(e, "kemajuan")}
-                  disabled={kemajuanDisabled}
-                />
-                {kemajuanForm.fileKemajuan && (
-                  <Button variant="outline" size="icon" asChild>
-                    <a href={kemajuanForm.fileKemajuan} target="_blank" rel="noopener noreferrer">
-                      <Eye className="w-4 h-4" />
-                    </a>
+                <div className="space-y-2">
+                  <Label htmlFor="persentaseKemajuan">Persentase Kemajuan (%) *</Label>
+                  <Input
+                    id="persentaseKemajuan"
+                    type="number"
+                    min="1"
+                    max="100"
+                    placeholder="0-100"
+                    value={kemajuanForm.persentaseKemajuan}
+                    onChange={(e) => setKemajuanForm(prev => ({ 
+                      ...prev, 
+                      persentaseKemajuan: parseInt(e.target.value) || 0 
+                    }))}
+                    disabled={kemajuanDisabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fileKemajuan">File Laporan (PDF) *</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="fileKemajuan"
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => handleFileUpload(e, "kemajuan")}
+                      disabled={kemajuanDisabled}
+                    />
+                    {kemajuanForm.fileKemajuan && (
+                      <Button variant="outline" size="icon" asChild>
+                        <a href={kemajuanForm.fileKemajuan} target="_blank" rel="noopener noreferrer">
+                          <Eye className="w-4 h-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Format: PDF, Maksimal 10MB (Wajib diupload)
+                  </p>
+                </div>
+
+                {(!hasKemajuan || kemajuanRejected) && (
+                  <Button onClick={handleSubmitKemajuan} disabled={uploading} className="w-full">
+                    <Save className="w-4 h-4 mr-2" />
+                    {uploading ? "Menyimpan..." : kemajuanRejected ? "Submit Ulang Laporan Kemajuan" : "Submit Laporan Kemajuan"}
                   </Button>
                 )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Format: PDF, Maksimal 10MB (Wajib diupload)
-              </p>
-            </div>
 
-            {(!hasKemajuan || kemajuanRejected) && (
-              <Button onClick={handleSubmitKemajuan} disabled={uploading} className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                {uploading ? "Menyimpan..." : kemajuanRejected ? "Submit Ulang Laporan Kemajuan" : "Submit Laporan Kemajuan"}
-              </Button>
-            )}
-
-            {hasKemajuan && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <span className="text-sm text-green-800 font-medium">
-                    Laporan kemajuan sudah disubmit
-                  </span>
-                </div>
-                
-                {/* Verification Status */}
-                {monitoring?.verifikasiKemajuanAt && (
-                  <div className={`p-3 rounded-lg border ${
-                    monitoring.verifikasiKemajuanStatus === 'APPROVED' 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-red-50 border-red-200'
-                  }`}>
-                    <div className="flex items-start gap-2">
-                      {monitoring.verifikasiKemajuanStatus === 'APPROVED' ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                      ) : (
-                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                      )}
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          monitoring.verifikasiKemajuanStatus === 'APPROVED' 
-                            ? 'text-green-800' 
-                            : 'text-red-800'
-                        }`}>
-                          {monitoring.verifikasiKemajuanStatus === 'APPROVED' 
-                            ? '✓ Laporan kemajuan disetujui admin' 
-                            : '✗ Laporan kemajuan ditolak admin'}
-                        </p>
-                        {monitoring.catatanKemajuan && (
-                          <p className="text-xs mt-1 text-muted-foreground">
-                            Catatan: {monitoring.catatanKemajuan}
-                          </p>
-                        )}
-                        <p className="text-xs mt-1 text-muted-foreground">
-                          {new Date(monitoring.verifikasiKemajuanAt).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {!monitoring?.verifikasiKemajuanAt && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-yellow-600" />
-                      <span className="text-sm text-yellow-800">
-                        Menunggu verifikasi dari admin
+                {hasKemajuan && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <span className="text-sm text-green-800 font-medium">
+                        Laporan kemajuan sudah disubmit
                       </span>
                     </div>
+                    
+                    {/* Verification Status */}
+                    {monitoring?.verifikasiKemajuanAt && (
+                      <div className={`p-3 rounded-lg border ${
+                        monitoring.verifikasiKemajuanStatus === 'APPROVED' 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-start gap-2">
+                          {monitoring.verifikasiKemajuanStatus === 'APPROVED' ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${
+                              monitoring.verifikasiKemajuanStatus === 'APPROVED' 
+                                ? 'text-green-800' 
+                                : 'text-red-800'
+                            }`}>
+                              {monitoring.verifikasiKemajuanStatus === 'APPROVED' 
+                                ? '✓ Laporan kemajuan disetujui admin' 
+                                : '✗ Laporan kemajuan ditolak admin'}
+                            </p>
+                            {monitoring.catatanKemajuan && (
+                              <p className="text-xs mt-1 text-muted-foreground">
+                                Catatan: {monitoring.catatanKemajuan}
+                              </p>
+                            )}
+                            <p className="text-xs mt-1 text-muted-foreground">
+                              {new Date(monitoring.verifikasiKemajuanAt).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!monitoring?.verifikasiKemajuanAt && (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-yellow-600" />
+                          <span className="text-sm text-yellow-800">
+                            Menunggu verifikasi dari admin
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Laporan Akhir Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Laporan Akhir</CardTitle>
-            <CardDescription>
-              Upload laporan akhir penelitian setelah selesai. Upload file PDF terlebih dahulu sebelum submit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!hasKemajuan && (
-              <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-yellow-600" />
-                <span className="text-sm text-yellow-800">
-                  Laporan kemajuan harus disubmit terlebih dahulu
-                </span>
-              </div>
-            )}
-            
-            {hasKemajuan && !monitoring?.verifikasiKemajuanAt && (
-              <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <Clock className="w-5 h-5 text-yellow-600" />
-                <span className="text-sm text-yellow-800">
-                  Menunggu laporan kemajuan disetujui admin terlebih dahulu
-                </span>
-              </div>
-            )}
-            
-            {hasKemajuan && monitoring?.verifikasiKemajuanAt && monitoring?.verifikasiKemajuanStatus !== 'APPROVED' && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <span className="text-sm text-red-800">
-                  Laporan kemajuan ditolak. Silakan revisi dan submit ulang laporan kemajuan terlebih dahulu.
-                </span>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="laporanAkhir">Isi Laporan Akhir *</Label>
-              <Textarea
-                id="laporanAkhir"
-                placeholder="Tuliskan laporan akhir penelitian..."
-                value={akhirForm.laporanAkhir}
-                onChange={(e) => setAkhirForm(prev => ({ ...prev, laporanAkhir: e.target.value }))}
-                rows={6}
-                disabled={!hasKemajuan || akhirDisabled || !monitoring?.verifikasiKemajuanAt || monitoring?.verifikasiKemajuanStatus !== 'APPROVED'}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fileAkhir">File Laporan (PDF) *</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="fileAkhir"
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => handleFileUpload(e, "akhir")}
-                  disabled={!hasKemajuan || akhirDisabled || !monitoring?.verifikasiKemajuanAt || monitoring?.verifikasiKemajuanStatus !== 'APPROVED'}
-                />
-                {akhirForm.fileAkhir && (
-                  <Button variant="outline" size="icon" asChild>
-                    <a href={akhirForm.fileAkhir} target="_blank" rel="noopener noreferrer">
-                      <Eye className="w-4 h-4" />
-                    </a>
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Format: PDF, Maksimal 10MB (Wajib diupload)
-              </p>
-            </div>
-
-            {hasKemajuan && (!hasAkhir || akhirRejected) && monitoring?.verifikasiKemajuanAt && monitoring?.verifikasiKemajuanStatus === 'APPROVED' && (
-              <Button onClick={handleSubmitAkhir} disabled={uploading} className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                {uploading ? "Menyimpan..." : akhirRejected ? "Submit Ulang Laporan Akhir" : "Submit Laporan Akhir"}
-              </Button>
-            )}
-
-            {hasAkhir && (
-              <div className="space-y-3">
-                {/* Show success only if approved */}
-                {monitoring?.verifikasiAkhirStatus === 'APPROVED' && (
-                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <span className="text-sm text-green-800 font-medium">
-                      ✓ Laporan akhir disetujui - Penelitian selesai!
+          {/* Tab Laporan Akhir */}
+          <TabsContent value="akhir">
+            <Card>
+              <CardHeader>
+                <CardTitle>Laporan Akhir</CardTitle>
+                <CardDescription>
+                  Upload laporan akhir penelitian setelah selesai. Upload file PDF terlebih dahulu sebelum submit.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!hasKemajuan && (
+                  <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-yellow-600" />
+                    <span className="text-sm text-yellow-800">
+                      Laporan kemajuan harus disubmit terlebih dahulu
                     </span>
                   </div>
                 )}
                 
-                {/* Verification Status for Laporan Akhir */}
-                {monitoring?.verifikasiAkhirAt && (
-                  <div className={`p-3 rounded-lg border ${
-                    monitoring.verifikasiAkhirStatus === 'APPROVED' 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-red-50 border-red-200'
-                  }`}>
-                    <div className="flex items-start gap-2">
-                      {monitoring.verifikasiAkhirStatus === 'APPROVED' ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                      ) : (
-                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                      )}
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          monitoring.verifikasiAkhirStatus === 'APPROVED' 
-                            ? 'text-green-800' 
-                            : 'text-red-800'
-                        }`}>
-                          {monitoring.verifikasiAkhirStatus === 'APPROVED' 
-                            ? '✓ Laporan akhir disetujui admin' 
-                            : '✗ Laporan akhir ditolak admin'}
-                        </p>
-                        {monitoring.catatanAkhir && (
-                          <p className="text-xs mt-1 text-muted-foreground">
-                            Catatan: {monitoring.catatanAkhir}
-                          </p>
-                        )}
-                        <p className="text-xs mt-1 text-muted-foreground">
-                          {new Date(monitoring.verifikasiAkhirAt).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
+                {hasKemajuan && !monitoring?.verifikasiKemajuanAt && (
+                  <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <Clock className="w-5 h-5 text-yellow-600" />
+                    <span className="text-sm text-yellow-800">
+                      Menunggu laporan kemajuan disetujui admin terlebih dahulu
+                    </span>
                   </div>
                 )}
                 
-                {!monitoring?.verifikasiAkhirAt && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-yellow-600" />
-                      <span className="text-sm text-yellow-800">
-                        Menunggu verifikasi dari admin
-                      </span>
-                    </div>
+                {hasKemajuan && monitoring?.verifikasiKemajuanAt && monitoring?.verifikasiKemajuanStatus !== 'APPROVED' && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <span className="text-sm text-red-800">
+                      Laporan kemajuan ditolak. Silakan revisi dan submit ulang laporan kemajuan terlebih dahulu.
+                    </span>
                   </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                <div className="space-y-2">
+                  <Label htmlFor="laporanAkhir">Isi Laporan Akhir *</Label>
+                  <Textarea
+                    id="laporanAkhir"
+                    placeholder="Tuliskan laporan akhir penelitian..."
+                    value={akhirForm.laporanAkhir}
+                    onChange={(e) => setAkhirForm(prev => ({ ...prev, laporanAkhir: e.target.value }))}
+                    rows={6}
+                    disabled={!hasKemajuan || akhirDisabled || !monitoring?.verifikasiKemajuanAt || monitoring?.verifikasiKemajuanStatus !== 'APPROVED'}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fileAkhir">File Laporan (PDF) *</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="fileAkhir"
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => handleFileUpload(e, "akhir")}
+                      disabled={!hasKemajuan || akhirDisabled || !monitoring?.verifikasiKemajuanAt || monitoring?.verifikasiKemajuanStatus !== 'APPROVED'}
+                    />
+                    {akhirForm.fileAkhir && (
+                      <Button variant="outline" size="icon" asChild>
+                        <a href={akhirForm.fileAkhir} target="_blank" rel="noopener noreferrer">
+                          <Eye className="w-4 h-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Format: PDF, Maksimal 10MB (Wajib diupload)
+                  </p>
+                </div>
+
+                {hasKemajuan && (!hasAkhir || akhirRejected) && monitoring?.verifikasiKemajuanAt && monitoring?.verifikasiKemajuanStatus === 'APPROVED' && (
+                  <Button onClick={handleSubmitAkhir} disabled={uploading} className="w-full">
+                    <Save className="w-4 h-4 mr-2" />
+                    {uploading ? "Menyimpan..." : akhirRejected ? "Submit Ulang Laporan Akhir" : "Submit Laporan Akhir"}
+                  </Button>
+                )}
+
+                {hasAkhir && (
+                  <div className="space-y-3">
+                    {/* Show success only if approved */}
+                    {monitoring?.verifikasiAkhirStatus === 'APPROVED' && (
+                      <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        <span className="text-sm text-green-800 font-medium">
+                          ✓ Laporan akhir disetujui - Penelitian selesai!
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Verification Status for Laporan Akhir */}
+                    {monitoring?.verifikasiAkhirAt && (
+                      <div className={`p-3 rounded-lg border ${
+                        monitoring.verifikasiAkhirStatus === 'APPROVED' 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-start gap-2">
+                          {monitoring.verifikasiAkhirStatus === 'APPROVED' ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${
+                              monitoring.verifikasiAkhirStatus === 'APPROVED' 
+                                ? 'text-green-800' 
+                                : 'text-red-800'
+                            }`}>
+                              {monitoring.verifikasiAkhirStatus === 'APPROVED' 
+                                ? '✓ Laporan akhir disetujui admin' 
+                                : '✗ Laporan akhir ditolak admin'}
+                            </p>
+                            {monitoring.catatanAkhir && (
+                              <p className="text-xs mt-1 text-muted-foreground">
+                                Catatan: {monitoring.catatanAkhir}
+                              </p>
+                            )}
+                            <p className="text-xs mt-1 text-muted-foreground">
+                              {new Date(monitoring.verifikasiAkhirAt).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!monitoring?.verifikasiAkhirAt && (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-yellow-600" />
+                          <span className="text-sm text-yellow-800">
+                            Menunggu verifikasi dari admin
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

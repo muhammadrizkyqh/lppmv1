@@ -357,10 +357,11 @@ export default function SettingsPage() {
                               {skema.deskripsi}
                             </p>
                           )}
-                          <p className="text-sm text-muted-foreground">
-                            Dana: Rp {parseFloat(skema.dana).toLocaleString('id-ID')}
-                            {skema._count && ` • Proposal: ${skema._count.proposals}`}
-                          </p>
+                          {skema._count && (
+                            <p className="text-sm text-muted-foreground">
+                              Proposal: {skema._count.proposal || 0}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2 pt-2 border-t">
                           <Button 

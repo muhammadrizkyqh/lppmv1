@@ -294,7 +294,7 @@ export default function EditProposalPage() {
                   <SelectContent>
                     {skemaList?.map((skema) => (
                       <SelectItem key={skema.id} value={skema.id}>
-                        {skema.nama} - Rp {skema.dana.toLocaleString()}
+                        {skema.nama}
                       </SelectItem>
                     ))}
                   </SelectContent>

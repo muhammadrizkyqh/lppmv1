@@ -270,7 +270,7 @@
 - ❌ Non-PDF accepted
 - ❌ File > 10MB accepted
 - ❌ **Termin 1 tidak auto-created** (CRITICAL!)
-- ❌ **Nominal Termin 1 salah (bukan 50% dari skema.dana)**
+- ❌ **Nominal Termin 1 salah (bukan 50% dari proposal.danaDiajukan)**
 - ❌ Status proposal tidak update ke BERJALAN
 
 ---
@@ -285,7 +285,7 @@
 
 **Expected Result:**
 - ✅ Termin 1 auto-created
-- ✅ Nominal = 50% dari skema.dana
+- ✅ Nominal = 50% dari proposal.danaDiajukan
 - ✅ Status PENDING
 - ✅ createdBy = admin yang upload kontrak
 
@@ -323,7 +323,7 @@
 **Expected Result:**
 - ✅ **Reject jika < 2 monitoring verified**
 - ✅ **Reject jika Termin 1 belum DICAIRKAN**
-- ✅ Nominal = 25% dari skema.dana
+- ✅ Nominal = 25% dari proposal.danaDiajukan
 - ✅ Status PENDING
 
 **Kemungkinan Bug:**

@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
               select: {
                 id: true,
                 nama: true,
-                dana: true,
               }
             },
             dosen: {
@@ -139,11 +138,7 @@ export async function POST(request: NextRequest) {
       include: {
         skema: true,
         kontrak: true,
-        monitoring: {
-          where: {
-            verifikasiKemajuanStatus: 'APPROVED'
-          }
-        }
+        monitoring: true
       }
     })
 
@@ -185,18 +180,18 @@ export async function POST(request: NextRequest) {
         )
       }
     } else if (termin === 'TERMIN_2') {
-      // Termin 2: Requires approved laporan kemajuan
+      // Termin 2: Requires approved laporan akhir
       const monitoring = proposal.monitoring[0]
-      if (!monitoring || !monitoring.laporanKemajuan) {
+      if (!monitoring || !monitoring.laporanAkhir) {
         return NextResponse.json(
-          { success: false, error: 'Laporan kemajuan harus diupload terlebih dahulu' },
+          { success: false, error: 'Laporan akhir harus diupload terlebih dahulu' },
           { status: 400 }
         )
       }
 
-      if (monitoring.verifikasiKemajuanStatus !== 'APPROVED') {
+      if (monitoring.verifikasiAkhirStatus !== 'APPROVED') {
         return NextResponse.json(
-          { success: false, error: 'Laporan kemajuan harus diverifikasi dan disetujui admin terlebih dahulu' },
+          { success: false, error: 'Laporan akhir harus diverifikasi dan disetujui admin terlebih dahulu' },
           { status: 400 }
         )
       }
@@ -251,7 +246,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate nominal based on termin
-    const danaHibah = Number(proposal.skema.dana)
+    const danaHibah = Number(proposal.danaDiajukan || 0)
     let persentase: number
     let nominal: number
 

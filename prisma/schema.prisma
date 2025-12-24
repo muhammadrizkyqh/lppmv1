@@ -222,33 +222,25 @@ model proposal {
   catatan                 String?             @db.Text
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
-  catatanRevisi           String?             @db.Text
-  catatanAdministrasi     String?             @db.Text
-  checkDaftarPustaka      Boolean             @default(false)
-  checkJudul              Boolean             @default(false)
-  checkKajianTerdahulu    Boolean             @default(false)
-  checkKonsepTeori        Boolean             @default(false)
-  checkLampiran           Boolean             @default(false)
-  checkLatarBelakang      Boolean             @default(false)
-  checkManfaat            Boolean             @default(false)
-  checkMetodologi         Boolean             @default(false)
-  checkRencanaPembahasan  Boolean             @default(false)
-  checkRencanaPublikasi   Boolean             @default(false)
-  checkRumusanMasalah     Boolean             @default(false)
-  checkTinjauanPustaka    Boolean             @default(false)
-  checkTujuan             Boolean             @default(false)
-  checkWaktuPelaksanaan   Boolean             @default(false)
-  checkedAdminAt          DateTime?
-  checkedAdminBy          String?
+  catatanRevisi                       String?   @db.Text
+  catatanAdministrasi                 String?   @db.Text
+  
+  // Penilaian Administratif - 2 Komponen Utama
+  checkKesesuaianTeknikPenulisan      Boolean   @default(false)
+  catatanKesesuaianTeknikPenulisan    String?   @db.Text
+  checkKelengkapanKomponen            Boolean   @default(false)
+  catatanKelengkapanKomponen          String?   @db.Text
+  
+  checkedAdminAt                      DateTime?
+  checkedAdminBy                      String?
   deadlineLuaran          DateTime?
   deadlineMonitoring1     DateTime?
   deadlineMonitoring2     DateTime?
-  deadlineSeminarInternal DateTime?
   deadlineSeminarProposal DateTime?
-  deadlineSeminarPublik   DateTime?
   statusAdministrasi      String?             @default("BELUM_DICEK")
   tanggalMulai            DateTime?
   tanggalSelesai          DateTime?
+  danaDiajukan            Decimal?            @db.Decimal(15, 2)
   kontrak                 kontrak?
   luaran                  luaran[]
   monitoring              monitoring[]
@@ -405,7 +397,6 @@ model skema {
   id        String       @id @default(cuid())
   nama      String       @unique(map: "Skema_nama_key")
   tipe      skema_tipe
-  dana      Decimal      @db.Decimal(15, 2)
   deskripsi String?      @db.Text
   status    skema_status @default(AKTIF)
   createdAt DateTime     @default(now())
