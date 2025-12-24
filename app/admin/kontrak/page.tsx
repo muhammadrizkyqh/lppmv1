@@ -50,13 +50,13 @@ interface Kontrak {
     id: string
     judul: string
     status: string
+    danaDiajukan: number | null
     dosen: {
       nama: string
       nidn: string
     }
     skema: {
       nama: string
-      dana: number
     }
     periode: {
       nama: string

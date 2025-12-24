@@ -41,6 +41,7 @@ interface KontrakDosen {
     id: string
     judul: string
     status: string
+    danaDiajukan: number | null
     skema: {
       nama: string
       dana: number
@@ -87,6 +88,7 @@ export default function DosenKontrakPage() {
             id: p.id,
             judul: p.judul,
             status: p.status,
+            danaDiajukan: p.danaDiajukan,
             skema: p.skema,
             periode: p.periode,
           },

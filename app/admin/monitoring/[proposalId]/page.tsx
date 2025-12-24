@@ -161,7 +161,7 @@ export default function AdminMonitoringDetailPage() {
     );
   }
 
-  const { proposal, monitoring, periode, skema, dosen, bidangkeahlian } = data;
+  const { proposal, monitoring } = data;
   const hasKemajuan = !!monitoring?.laporanKemajuan;
   const hasAkhir = !!monitoring?.laporanAkhir;
   const progress = monitoring?.persentaseKemajuan || 0;
@@ -199,25 +199,25 @@ export default function AdminMonitoringDetailPage() {
                 <CardTitle className="text-xl">{proposal.judul}</CardTitle>
                 <CardDescription>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className="font-medium">{dosen?.nama}</span>
+                    <span className="font-medium">{proposal.dosen?.nama}</span>
                     <span>•</span>
-                    <span>{dosen?.nidn}</span>
+                    <span>{proposal.dosen?.nidn}</span>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {periode?.nama} ({periode?.tahun})
+                      {proposal.periode?.nama} ({proposal.periode?.tahun})
                     </div>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Award className="w-4 h-4" />
-                      {skema?.nama}
+                      {proposal.skema?.nama}
                     </div>
-                    {bidangkeahlian && (
+                    {proposal.bidangkeahlian && (
                       <>
                         <span>•</span>
                         <div className="flex items-center gap-1">
                           <FileText className="w-4 h-4" />
-                          {bidangkeahlian.nama}
+                          {proposal.bidangkeahlian.nama}
                         </div>
                       </>
                     )}

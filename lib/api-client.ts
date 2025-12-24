@@ -394,7 +394,6 @@ export const skemaApi = {
   create: (data: {
     nama: string
     tipe: 'DASAR' | 'TERAPAN' | 'PENGEMBANGAN' | 'MANDIRI'
-    dana: number
     deskripsi?: string
     status?: string
   }) => {
@@ -407,7 +406,6 @@ export const skemaApi = {
   update: (id: string, data: {
     nama?: string
     tipe?: 'DASAR' | 'TERAPAN' | 'PENGEMBANGAN' | 'MANDIRI'
-    dana?: number
     deskripsi?: string
     status?: string
   }) => {
@@ -561,6 +559,7 @@ export interface Proposal {
   bidangKeahlianId: string | null
   judul: string
   abstrak: string
+  danaDiajukan: number | null
   filePath: string | null
   fileName: string | null
   fileSize: number | null
@@ -712,6 +711,7 @@ export const proposalApi = {
     bidangKeahlianId?: string
     judul: string
     abstrak: string
+    danaDiajukan?: number | null
     filePath?: string
     fileName?: string
     fileSize?: number
@@ -729,6 +729,7 @@ export const proposalApi = {
     bidangKeahlianId?: string
     judul?: string
     abstrak?: string
+    danaDiajukan?: number | null
     filePath?: string
     fileName?: string
     fileSize?: number

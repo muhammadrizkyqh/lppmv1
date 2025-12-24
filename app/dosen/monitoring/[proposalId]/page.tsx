@@ -249,7 +249,7 @@ export default function DosenMonitoringDetailPage() {
     );
   }
 
-  const { proposal, monitoring, periode, skema, bidangkeahlian } = data;
+  const { proposal, monitoring } = data;
   const hasKemajuan = !!monitoring?.laporanKemajuan;
   const hasAkhir = !!monitoring?.laporanAkhir;
   const progress = monitoring?.persentaseKemajuan || 0;
@@ -293,19 +293,19 @@ export default function DosenMonitoringDetailPage() {
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {periode?.nama} ({periode?.tahun})
+                      {proposal.periode?.nama} ({proposal.periode?.tahun})
                     </div>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Award className="w-4 h-4" />
-                      {skema?.nama}
+                      {proposal.skema?.nama}
                     </div>
-                    {bidangkeahlian && (
+                    {proposal.bidangkeahlian && (
                       <>
                         <span>•</span>
                         <div className="flex items-center gap-1">
                           <FileText className="w-4 h-4" />
-                          {bidangkeahlian.nama}
+                          {proposal.bidangkeahlian.nama}
                         </div>
                       </>
                     )}

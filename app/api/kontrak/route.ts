@@ -31,7 +31,11 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         proposal: {
-          include: {
+          select: {
+            id: true,
+            judul: true,
+            status: true,
+            danaDiajukan: true,
             dosen: {
               select: {
                 id: true,
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
             skema: {
               select: {
                 id: true,
-                nama: true,
+                nama: true
               }
             },
             periode: {

@@ -25,6 +25,7 @@ interface ProposalWithPencairan {
   id: string;
   judul: string;
   status: string;
+  danaDiajukan: number | null;
   skema: {
     nama: string;
     dana: number;

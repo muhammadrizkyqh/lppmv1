@@ -359,7 +359,7 @@ export default function SettingsPage() {
                           )}
                           {skema._count && (
                             <p className="text-sm text-muted-foreground">
-                              Proposal: {skema._count.proposal || 0}
+                              Proposal: {skema._count.proposals || 0}
                             </p>
                           )}
                         </div>
