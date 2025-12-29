@@ -43,6 +43,14 @@ export default function DataMasterPage() {
   const [mahasiswaSearch, setMahasiswaSearch] = useState("");
   const [reviewerSearch, setReviewerSearch] = useState("");
 
+  // Pagination states
+  const [dosenPage, setDosenPage] = useState(1);
+  const [dosenPageSize, setDosenPageSize] = useState(10);
+  const [mahasiswaPage, setMahasiswaPage] = useState(1);
+  const [mahasiswaPageSize, setMahasiswaPageSize] = useState(10);
+  const [reviewerPage, setReviewerPage] = useState(1);
+  const [reviewerPageSize, setReviewerPageSize] = useState(10);
+
   // Dialog states
   const [dosenDialogOpen, setDosenDialogOpen] = useState(false);
   const [mahasiswaDialogOpen, setMahasiswaDialogOpen] = useState(false);
@@ -698,7 +706,17 @@ export default function DataMasterPage() {
                 ) : (
                   <DataTable
                     columns={dosenColumns}
-                    data={dosenData || []}
+                    data={(dosenData || []).slice((dosenPage - 1) * dosenPageSize, dosenPage * dosenPageSize)}
+                    pagination={{
+                      page: dosenPage,
+                      pageSize: dosenPageSize,
+                      total: dosenData?.length || 0,
+                      onPageChange: setDosenPage,
+                      onPageSizeChange: (size) => {
+                        setDosenPageSize(size);
+                        setDosenPage(1);
+                      }
+                    }}
                   />
                 )}
               </TabsContent>
@@ -730,7 +748,17 @@ export default function DataMasterPage() {
                 ) : (
                   <DataTable
                     columns={mahasiswaColumns}
-                    data={mahasiswaData || []}
+                    data={(mahasiswaData || []).slice((mahasiswaPage - 1) * mahasiswaPageSize, mahasiswaPage * mahasiswaPageSize)}
+                    pagination={{
+                      page: mahasiswaPage,
+                      pageSize: mahasiswaPageSize,
+                      total: mahasiswaData?.length || 0,
+                      onPageChange: setMahasiswaPage,
+                      onPageSizeChange: (size) => {
+                        setMahasiswaPageSize(size);
+                        setMahasiswaPage(1);
+                      }
+                    }}
                   />
                 )}
               </TabsContent>
@@ -762,7 +790,17 @@ export default function DataMasterPage() {
                 ) : (
                   <DataTable
                     columns={reviewerColumns}
-                    data={reviewerData || []}
+                    data={(reviewerData || []).slice((reviewerPage - 1) * reviewerPageSize, reviewerPage * reviewerPageSize)}
+                    pagination={{
+                      page: reviewerPage,
+                      pageSize: reviewerPageSize,
+                      total: reviewerData?.length || 0,
+                      onPageChange: setReviewerPage,
+                      onPageSizeChange: (size) => {
+                        setReviewerPageSize(size);
+                        setReviewerPage(1);
+                      }
+                    }}
                   />
                 )}
               </TabsContent>
