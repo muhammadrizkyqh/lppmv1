@@ -37,7 +37,9 @@ jobs:
           cp -r node_modules/.prisma deploy-package/node_modules/
           cp -r node_modules/@prisma deploy-package/node_modules/
           cp package.json deploy-package/
-          cp prisma/schema.prisma deploy-package/
+          mkdir -p deploy-package/prisma
+          cp -r prisma/schema.prisma deploy-package/prisma/
+          cp -r prisma/migrations deploy-package/prisma/
           tar -czf deploy.tar.gz deploy-package/
       
       - name: Install SSH Key
@@ -84,8 +86,11 @@ jobs:
             
             cd /home/deploy/lppmv1
             
-            # Run migrations
-            npx prisma db push --skip-generate --accept-data-loss
+            # Copy new prisma files
+            cp -r /home/deploy/deploy-package/prisma/migrations prisma/
+            
+            # Run migrations safely
+            npx prisma migrate deploy
             
             # Restart application
             pm2 restart lppmv1 || pm2 start npm --name lppmv1 -- start
