@@ -6,6 +6,8 @@ import { adminReviewApi } from '@/lib/api-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Separator } from '@/components/ui/separator'
@@ -33,6 +35,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
   const [showRevisionDialog, setShowRevisionDialog] = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
   const [catatan, setCatatan] = useState('')
+  const [danaDisetujui, setDanaDisetujui] = useState('')
   const [showPdf, setShowPdf] = useState(true)
 
   useEffect(() => {
@@ -58,9 +61,14 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
   }
 
   const handleApprove = async () => {
+    if (!danaDisetujui || parseFloat(danaDisetujui) <= 0) {
+      toast.error('Dana yang disetujui wajib diisi dan harus lebih dari 0')
+      return
+    }
+
     try {
       setActionLoading(true)
-      await adminReviewApi.approve(proposalId, catatan || undefined)
+      await adminReviewApi.approve(proposalId, catatan || undefined, parseFloat(danaDisetujui))
       toast.success('Proposal berhasil diterima')
       router.push('/admin/reviews')
     } catch (error: any) {
@@ -298,7 +306,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
                 <label className="text-xs text-muted-foreground">Dana Diajukan</label>
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <p className="font-medium text-sm md:text-base">{formatCurrency(proposal.danaDiajukan || 0)}</p>
+                  <p className="font-medium text-sm md:text-base">{formatCurrency(proposal.danaDisetujui || 0)}</p>
                 </div>
               </div>
               <div className="space-y-1">
@@ -326,109 +334,59 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[160px]">Aspek Penilaian</TableHead>
-                      {reviews.map((reviewerData: any, index: number) => (
-                        <TableHead key={reviewerData.id} className="text-center min-w-[120px]">
-                          <div className="text-sm font-medium">Reviewer {index + 1}</div>
-                          <div className="text-xs font-normal text-muted-foreground truncate max-w-[120px]">
-                            {reviewerData.reviewer.nama}
-                          </div>
-                        </TableHead>
-                      ))}
-                      {averageScores && (
-                        <TableHead className="text-center font-bold min-w-[100px]">Rata-rata</TableHead>
-                      )}
+                      <TableHead className="min-w-[160px]">Reviewer</TableHead>
+                      <TableHead className="text-center min-w-[120px]">Skor Akhir</TableHead>
+                      <TableHead className="text-center min-w-[120px]">Rekomendasi</TableHead>
+                      <TableHead className="text-center min-w-[120px]">File Penilaian</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium text-sm">Kriteria 1</TableCell>
-                  {reviews.map((reviewerData: any) => (
-                    <TableCell key={reviewerData.id} className="text-center">
-                      <Badge variant="outline">{reviewerData.review.nilaiKriteria1}</Badge>
-                    </TableCell>
-                  ))}
-                  {averageScores && (
-                    <TableCell className="text-center">
-                      <Badge className="bg-blue-100 text-blue-800">
-                        {averageScores.kriteria1.toFixed(1)}
-                      </Badge>
-                    </TableCell>
-                  )}
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Kriteria 2</TableCell>
-                  {reviews.map((reviewerData: any) => (
-                    <TableCell key={reviewerData.id} className="text-center">
-                      <Badge variant="outline">{reviewerData.review.nilaiKriteria2}</Badge>
-                    </TableCell>
-                  ))}
-                  {averageScores && (
-                    <TableCell className="text-center">
-                      <Badge className="bg-blue-100 text-blue-800">
-                        {averageScores.kriteria2.toFixed(1)}
-                      </Badge>
-                    </TableCell>
-                  )}
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Kriteria 3</TableCell>
-                  {reviews.map((reviewerData: any) => (
-                    <TableCell key={reviewerData.id} className="text-center">
-                      <Badge variant="outline">{reviewerData.review.nilaiKriteria3}</Badge>
-                    </TableCell>
-                  ))}
-                  {averageScores && (
-                    <TableCell className="text-center">
-                      <Badge className="bg-blue-100 text-blue-800">
-                        {averageScores.kriteria3.toFixed(1)}
-                      </Badge>
-                    </TableCell>
-                  )}
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Kriteria 4</TableCell>
-                  {reviews.map((reviewerData: any) => (
-                    <TableCell key={reviewerData.id} className="text-center">
-                      <Badge variant="outline">{reviewerData.review.nilaiKriteria4}</Badge>
-                    </TableCell>
-                  ))}
-                  {averageScores && (
-                    <TableCell className="text-center">
-                      <Badge className="bg-blue-100 text-blue-800">
-                        {averageScores.kriteria4.toFixed(1)}
-                      </Badge>
-                    </TableCell>
-                  )}
-                </TableRow>
-                <TableRow className="bg-muted/50">
-                  <TableCell className="font-bold">Nilai Total</TableCell>
-                  {reviews.map((reviewerData: any) => (
-                    <TableCell key={reviewerData.id} className="text-center">
-                      <Badge className="font-bold">{Number(reviewerData.review.nilaiTotal).toFixed(2)}</Badge>
-                    </TableCell>
-                  ))}
-                  {averageScores && (
-                    <TableCell className="text-center">
-                      <Badge className="font-bold bg-primary">
-                        {averageScores.total.toFixed(2)}
-                      </Badge>
-                    </TableCell>
-                  )}
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Rekomendasi</TableCell>
-                  {reviews.map((reviewerData: any) => (
-                    <TableCell key={reviewerData.id} className="text-center">
-                      {getRecommendationBadge(reviewerData.review.rekomendasi)}
-                    </TableCell>
-                  ))}
-                  <TableCell></TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          </div>
+                    {reviews.map((reviewerData: any, index: number) => (
+                      <TableRow key={reviewerData.id}>
+                        <TableCell className="font-medium">
+                          <div>
+                            <div className="font-medium">Reviewer {index + 1}</div>
+                            <div className="text-xs text-muted-foreground">{reviewerData.reviewer.nama}</div>
+                            <div className="text-xs text-muted-foreground">{reviewerData.reviewer.institusi}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="font-bold text-lg px-4 py-2">
+                            {reviewerData.review.nilaiTotal}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {getRecommendationBadge(reviewerData.review.rekomendasi)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {reviewerData.review.filePenilaian ? (
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={reviewerData.review.filePenilaian} target="_blank" rel="noopener noreferrer">
+                                <Download className="w-4 h-4 mr-2" />
+                                Download
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {averageScores && (
+                      <TableRow className="bg-muted/50 font-bold">
+                        <TableCell>Rata-rata Skor</TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="font-bold text-lg px-4 py-2 bg-primary">
+                            {averageScores.total.toFixed(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell colSpan={2}></TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
 
           {/* Reviewer Notes */}
           <div className="mt-6 space-y-4">
@@ -514,10 +472,28 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
           <AlertDialogHeader>
             <AlertDialogTitle>Terima Proposal?</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <p>Proposal akan diterima dan berstatus DITERIMA. Dosen akan menerima notifikasi.</p>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Catatan (Opsional)</label>
+                  <Label htmlFor="danaDisetujui" className="text-sm font-medium text-foreground">
+                    Dana yang Disetujui <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="danaDisetujui"
+                    type="number"
+                    placeholder="Contoh: 5000000"
+                    value={danaDisetujui}
+                    onChange={(e) => setDanaDisetujui(e.target.value)}
+                    min="0"
+                    step="100000"
+                    className="text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Masukkan nominal dana dalam Rupiah yang akan disetujui untuk penelitian ini
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Catatan (Opsional)</Label>
                   <Textarea
                     placeholder="Tambahkan catatan untuk dosen..."
                     value={catatan}
@@ -530,7 +506,10 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ proposa
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApprove} disabled={actionLoading}>
+            <AlertDialogAction 
+              onClick={handleApprove} 
+              disabled={actionLoading || !danaDisetujui || parseFloat(danaDisetujui) <= 0}
+            >
               {actionLoading ? 'Memproses...' : 'Terima Proposal'}
             </AlertDialogAction>
           </AlertDialogFooter>

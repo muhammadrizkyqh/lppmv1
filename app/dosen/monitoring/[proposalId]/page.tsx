@@ -60,6 +60,10 @@ export default function DosenMonitoringDetailPage() {
       setLoading(true);
       const response = await monitoringApi.getMonitoring(proposalId);
       
+      console.log('📊 Monitoring Detail API Response:', response);
+      console.log('📝 Proposal data:', response.data?.proposal);
+      console.log('📈 Monitoring data:', response.data?.monitoring);
+      
       if (response.success && response.data) {
         setData(response.data);
         

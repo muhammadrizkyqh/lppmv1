@@ -4,78 +4,133 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   FileText,
   Clock,
   CheckCircle,
-  AlertCircle,
   ClipboardList,
-  TrendingUp,
   ArrowRight,
-  Calendar,
   Star,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { id } from "date-fns/locale";
 
-interface ReviewerDashboardStats {
-  totalAssignments: number;
-  pending: number;
-  completed: number;
-  avgScore: number;
-  totalReviews: number;
+interface ReviewerDashboardData {
+  reviewerName: string;
+  stats: {
+    totalAssignments: number;
+    pending: number;
+    completed: number;
+    avgScore: number;
+    totalReviews: number;
+    completionRate: number;
+    nearestDeadline: number | null;
+  };
+  pendingTasks: Array<{
+    id: string;
+    proposalId: string;
+    judul: string;
+    deadline: string;
+    daysUntilDeadline: number;
+    urgency: 'urgent' | 'normal';
+    skema: string;
+    periode: string;
+    dosen: string;
+  }>;
+  recentReviews: Array<{
+    id: string;
+    proposalId: string;
+    judul: string;
+    nilaiTotal: number;
+    submittedAt: string;
+  }>;
 }
 
 export default function ReviewerDashboardPage() {
-  const [stats, setStats] = useState<ReviewerDashboardStats>({
-    totalAssignments: 0,
-    pending: 0,
-    completed: 0,
-    avgScore: 0,
-    totalReviews: 0,
-  });
+  const [data, setData] = useState<ReviewerDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/dashboard/reviewer');
+      const result = await response.json();
+
+      if (result.success) {
+        setData(result.data);
+      } else {
+        setError(result.error || 'Gagal memuat data');
+        toast.error(result.error || 'Gagal memuat data dashboard');
+      }
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      setError('Terjadi kesalahan koneksi');
+      toast.error('Terjadi kesalahan koneksi');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setStats({
-        totalAssignments: 5,
-        pending: 2,
-        completed: 3,
-        avgScore: 82,
-        totalReviews: 15,
-      });
-      setIsLoading(false);
-    }, 100);
-
-    return () => clearTimeout(timer);
+    fetchDashboardData();
   }, []);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-96 space-y-4">
+          <AlertCircle className="w-12 h-12 text-destructive" />
+          <p className="text-muted-foreground">{error || 'Gagal memuat data'}</p>
+          <Button onClick={fetchDashboardData}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Coba Lagi
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const statCards = [
     {
       title: "Total Tugas",
-      value: stats.totalAssignments,
-      change: "+2",
-      changeType: "positive" as const,
+      value: data.stats.totalAssignments,
+      change: `${data.stats.completionRate}%`,
+      changeType: "neutral" as const,
       icon: ClipboardList,
       description: "Tugas review Anda",
       href: "/reviewer/assignments",
     },
     {
       title: "Pending",
-      value: stats.pending,
-      change: "+1",
-      changeType: "warning" as const,
+      value: data.stats.pending,
+      change: data.stats.nearestDeadline ? `${data.stats.nearestDeadline} hari` : "Tidak ada",
+      changeType: data.stats.pending > 0 ? ("warning" as const) : ("neutral" as const),
       icon: Clock,
-      description: "Belum direview",
+      description: data.stats.nearestDeadline ? "Deadline terdekat" : "Belum direview",
       href: "/reviewer/assignments?status=PENDING",
     },
     {
       title: "Selesai",
-      value: stats.completed,
-      change: "+1",
+      value: data.stats.completed,
+      change: `${data.stats.totalReviews} review`,
       changeType: "positive" as const,
       icon: CheckCircle,
       description: "Review selesai",
@@ -83,18 +138,14 @@ export default function ReviewerDashboardPage() {
     },
     {
       title: "Rata-rata Skor",
-      value: stats.avgScore,
-      change: "+3",
-      changeType: "positive" as const,
+      value: data.stats.avgScore,
+      change: data.stats.completed > 0 ? "Aktif" : "Belum ada",
+      changeType: data.stats.completed > 0 ? ("positive" as const) : ("neutral" as const),
       icon: Star,
       description: "Dari review Anda",
       href: "/reviewer/assignments",
     },
   ];
-
-  if (isLoading) {
-    return <DashboardLayout><div /></DashboardLayout>;
-  }
 
   return (
     <DashboardLayout>
@@ -134,7 +185,7 @@ export default function ReviewerDashboardPage() {
                   </div>
                   <div className="flex items-center space-x-1 mt-1">
                     <span
-                      className={`text-xs ${
+                      className={`text-xs font-medium ${
                         stat.changeType === "positive"
                           ? "text-green-600"
                           : stat.changeType === "warning"
@@ -154,138 +205,95 @@ export default function ReviewerDashboardPage() {
           ))}
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-full bg-primary/10">
-                  <Star className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Review</p>
-                  <p className="text-2xl font-bold text-primary">{stats.totalReviews}</p>
-                  <p className="text-xs text-muted-foreground">Sepanjang waktu</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-full bg-blue-100">
-                  <TrendingUp className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Tingkat Penyelesaian</p>
-                  <p className="text-2xl font-bold text-blue-600">95%</p>
-                  <p className="text-xs text-muted-foreground">Review selesai tepat waktu</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-50 to-amber-100">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-full bg-amber-100">
-                  <Calendar className="w-6 h-6 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Deadline Terdekat</p>
-                  <p className="text-2xl font-bold text-amber-600">2</p>
-                  <p className="text-xs text-muted-foreground">Hari lagi</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions & Pending Reviews */}
+        {/* Pending Tasks & Recent Reviews */}
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Pending Tasks */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle>Tugas Pending</CardTitle>
               <CardDescription>Review yang perlu diselesaikan</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-start space-x-3 text-sm border-l-4 border-orange-500 pl-3 py-2">
-                <div className="flex-1">
-                  <p className="font-medium">Pengembangan Aplikasi Mobile</p>
-                  <p className="text-xs text-muted-foreground">P-2025-001 - Deadline: 2 hari lagi</p>
-                  <div className="mt-2">
-                    <Link href="/reviewer/assignments/1">
-                      <Button size="sm" variant="outline">
-                        Review Sekarang
-                        <ArrowRight className="w-3 h-3 ml-2" />
-                      </Button>
-                    </Link>
+              {data.pendingTasks.length > 0 ? (
+                data.pendingTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`flex items-start space-x-3 text-sm border-l-4 pl-3 py-2 ${
+                      task.urgency === 'urgent' ? 'border-orange-500' : 'border-primary/30'
+                    }`}
+                  >
+                    <div className="flex-1 space-y-1">
+                      <p className="font-medium">{task.judul}</p>
+                      <div className="space-y-0.5 text-xs text-muted-foreground">
+                        <p>Skema: {task.skema} • {task.periode}</p>
+                        <p>Dosen: {task.dosen}</p>
+                        <p className={task.urgency === 'urgent' ? 'text-orange-600 font-medium' : ''}>
+                          Deadline: {task.daysUntilDeadline} hari lagi
+                        </p>
+                      </div>
+                      <div className="mt-2">
+                        <Link href={`/reviewer/assignments/${task.id}`}>
+                          <Button size="sm" variant="outline">
+                            Review Sekarang
+                            <ArrowRight className="w-3 h-3 ml-2" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={
+                        task.urgency === 'urgent'
+                          ? 'text-orange-600 border-orange-200'
+                          : 'text-muted-foreground border-muted'
+                      }
+                    >
+                      {task.urgency === 'urgent' ? 'Urgent' : 'Normal'}
+                    </Badge>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                  <p>Tidak ada tugas pending</p>
                 </div>
-                <Badge variant="outline" className="text-orange-600 border-orange-200">
-                  Urgent
-                </Badge>
-              </div>
-
-              <div className="flex items-start space-x-3 text-sm border-l-4 border-blue-500 pl-3 py-2">
-                <div className="flex-1">
-                  <p className="font-medium">Implementasi Machine Learning</p>
-                  <p className="text-xs text-muted-foreground">P-2025-002 - Deadline: 5 hari lagi</p>
-                  <div className="mt-2">
-                    <Link href="/reviewer/assignments/2">
-                      <Button size="sm" variant="outline">
-                        Review Sekarang
-                        <ArrowRight className="w-3 h-3 ml-2" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-blue-600 border-blue-200">
-                  Normal
-                </Badge>
-              </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Recent Reviews */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle>Review Terakhir</CardTitle>
               <CardDescription>Aktivitas review terbaru</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
+              {data.recentReviews.length > 0 ? (
+                data.recentReviews.map((review) => (
+                  <div key={review.id} className="flex items-start space-x-3 text-sm">
+                    <div className="p-2 rounded-lg bg-green-100">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{review.judul}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Skor: {review.nilaiTotal}/100
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(review.submittedAt), {
+                          addSuffix: true,
+                          locale: id,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                  <p>Belum ada review</p>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">Review selesai</p>
-                  <p className="text-xs text-muted-foreground">P-2025-003 - Skor: 85/100</p>
-                  <p className="text-xs text-muted-foreground">2 jam yang lalu</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Review selesai</p>
-                  <p className="text-xs text-muted-foreground">P-2025-004 - Skor: 78/100</p>
-                  <p className="text-xs text-muted-foreground">1 hari yang lalu</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 text-sm">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Review selesai</p>
-                  <p className="text-xs text-muted-foreground">P-2025-005 - Skor: 92/100</p>
-                  <p className="text-xs text-muted-foreground">2 hari yang lalu</p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>

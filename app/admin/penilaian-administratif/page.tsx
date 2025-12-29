@@ -334,6 +334,7 @@ export default function PenilaianAdministratifPage() {
                           <Button
                             size="sm"
                             onClick={() => handleOpenDialog(proposal)}
+                            disabled={(proposal as any).statusAdministrasi === "LOLOS" || (proposal as any).statusAdministrasi === "TIDAK_LOLOS"}
                           >
                             <ClipboardCheck className="w-4 h-4 mr-1" />
                             Periksa

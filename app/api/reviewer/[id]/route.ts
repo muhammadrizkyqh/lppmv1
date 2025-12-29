@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
+import bcrypt from 'bcryptjs'
 import type { Prisma } from '@prisma/client'
 
 // GET /api/reviewer/:id - Get reviewer by ID
@@ -86,7 +87,7 @@ export async function PUT(
     const { id } = await params
 
     const body = await request.json()
-    const { nama, email, institusi, tipe, bidangKeahlianId, noHp, status } = body
+    const { nama, email, institusi, tipe, bidangKeahlianId, noHp, status, password } = body
 
     // Check if reviewer exists
     const existingReviewer = await prisma.reviewer.findUnique({
@@ -117,14 +118,26 @@ export async function PUT(
 
     // Update reviewer and user in a transaction
     const updatedReviewer = await prisma.$transaction(async (tx: any) => {
-      // Update user data
-      if (email || nama || status) {
+      // Prepare user update data
+      const userUpdateData: any = {}
+      
+      if (email) {
+        userUpdateData.email = email
+        userUpdateData.username = email
+      }
+      if (status) userUpdateData.status = status
+      
+      // Hash password if provided
+      if (password && password.trim() !== '') {
+        const hashedPassword = await bcrypt.hash(password, 10)
+        userUpdateData.password = hashedPassword
+      }
+      
+      // Update user data if there are changes
+      if (Object.keys(userUpdateData).length > 0) {
         await tx.user.update({
           where: { id: existingReviewer.userId },
-          data: {
-            ...(email && { email, username: email }),
-            ...(status && { status }),
-          },
+          data: userUpdateData,
         })
       }
 

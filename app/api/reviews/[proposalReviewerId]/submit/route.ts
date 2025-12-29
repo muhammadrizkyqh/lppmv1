@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { writeFile, mkdir } from 'fs/promises'
+import { join } from 'path'
+import { existsSync } from 'fs'
 
 // POST /api/reviews/:proposalReviewerId/submit - Submit review
 export async function POST(
@@ -65,33 +68,51 @@ export async function POST(
       )
     }
 
-    const body = await request.json()
-    const {
-      nilaiKriteria1,
-      nilaiKriteria2,
-      nilaiKriteria3,
-      nilaiKriteria4,
-      rekomendasi,
-      catatan,
-    } = body
+    // Parse form data
+    const formData = await request.formData()
+    const file = formData.get('file') as File | null
+    const nilaiTotal = formData.get('nilaiTotal') as string
+    const rekomendasi = formData.get('rekomendasi') as string
+    const catatan = formData.get('catatan') as string | null
 
-    // Validate all criteria are provided
-    if (!nilaiKriteria1 || !nilaiKriteria2 || !nilaiKriteria3 || !nilaiKriteria4) {
+    // Validate file upload
+    if (!file) {
       return NextResponse.json(
-        { success: false, error: 'Semua kriteria penilaian harus diisi' },
+        { success: false, error: 'File penilaian wajib diupload' },
         { status: 400 }
       )
     }
 
-    // Validate score range (1-100)
-    const scores = [nilaiKriteria1, nilaiKriteria2, nilaiKriteria3, nilaiKriteria4]
-    for (const score of scores) {
-      if (score < 1 || score > 100) {
-        return NextResponse.json(
-          { success: false, error: 'Nilai harus antara 1-100' },
-          { status: 400 }
-        )
-      }
+    // Validate file type (PDF only)
+    if (file.type !== 'application/pdf') {
+      return NextResponse.json(
+        { success: false, error: 'File harus berformat PDF' },
+        { status: 400 }
+      )
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { success: false, error: 'Ukuran file maksimal 10MB' },
+        { status: 400 }
+      )
+    }
+
+    // Validate nilaiTotal
+    if (!nilaiTotal || isNaN(parseInt(nilaiTotal))) {
+      return NextResponse.json(
+        { success: false, error: 'Nilai total harus diisi' },
+        { status: 400 }
+      )
+    }
+
+    const score = parseInt(nilaiTotal)
+    if (score < 0 || score > 100) {
+      return NextResponse.json(
+        { success: false, error: 'Nilai harus antara 0-100' },
+        { status: 400 }
+      )
     }
 
     // Validate recommendation
@@ -102,26 +123,29 @@ export async function POST(
       )
     }
 
-    // Calculate total score (weighted sum: each criteria 25%)
-    // Formula: K1*25% + K2*25% + K3*25% + K4*25% = Total (max 100)
-    const nilaiTotal = (
-      parseInt(nilaiKriteria1) * 0.25 + 
-      parseInt(nilaiKriteria2) * 0.25 + 
-      parseInt(nilaiKriteria3) * 0.25 + 
-      parseInt(nilaiKriteria4) * 0.25
-    )
+    // Save file
+    const uploadDir = join(process.cwd(), 'public', 'uploads', 'reviews')
+    if (!existsSync(uploadDir)) {
+      await mkdir(uploadDir, { recursive: true })
+    }
+
+    const timestamp = Date.now()
+    const fileName = `review-${proposalReviewerId}-${timestamp}.pdf`
+    const filePath = join(uploadDir, fileName)
+    const publicPath = `/uploads/reviews/${fileName}`
+
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    await writeFile(filePath, buffer)
 
     // Create review
     const review = await prisma.review.create({
       data: {
         proposalReviewerId,
         reviewerId: reviewer.id,
-        nilaiKriteria1: parseInt(nilaiKriteria1),
-        nilaiKriteria2: parseInt(nilaiKriteria2),
-        nilaiKriteria3: parseInt(nilaiKriteria3),
-        nilaiKriteria4: parseInt(nilaiKriteria4),
-        nilaiTotal,
-        rekomendasi,
+        filePenilaian: publicPath,
+        nilaiTotal: score,
+        rekomendasi: rekomendasi as 'DITERIMA' | 'REVISI' | 'DITOLAK',
         catatan: catatan || null,
       }
     })

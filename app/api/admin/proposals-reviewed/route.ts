@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         judul: true,
         status: true,
         submittedAt: true,
-        danaDiajukan: true,
+        danaDisetujui: true,
         periode: {
           select: {
             id: true,

@@ -73,6 +73,7 @@ export function ReviewerFormDialog({ open, onOpenChange, reviewer, bidangKeahlia
           bidangKeahlianId: formData.bidangKeahlianId || undefined,
           noHp: formData.noHp || undefined,
           status: formData.status as "AKTIF" | "NONAKTIF",
+          ...(formData.password && { password: formData.password }),
         });
         toast.success("Reviewer berhasil diupdate!");
       } else {

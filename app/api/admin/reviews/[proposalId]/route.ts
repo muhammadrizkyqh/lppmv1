@@ -106,19 +106,11 @@ export async function GET(
     
     if (completedReviews.length > 0) {
       const sum = completedReviews.reduce((acc, r) => ({
-        kriteria1: acc.kriteria1 + (r.review?.nilaiKriteria1 || 0),
-        kriteria2: acc.kriteria2 + (r.review?.nilaiKriteria2 || 0),
-        kriteria3: acc.kriteria3 + (r.review?.nilaiKriteria3 || 0),
-        kriteria4: acc.kriteria4 + (r.review?.nilaiKriteria4 || 0),
         total: acc.total + (Number(r.review?.nilaiTotal) || 0),
-      }), { kriteria1: 0, kriteria2: 0, kriteria3: 0, kriteria4: 0, total: 0 })
+      }), { total: 0 })
 
       const count = completedReviews.length
       averageScores = {
-        kriteria1: sum.kriteria1 / count,
-        kriteria2: sum.kriteria2 / count,
-        kriteria3: sum.kriteria3 / count,
-        kriteria4: sum.kriteria4 / count,
         total: sum.total / count,
       }
     }

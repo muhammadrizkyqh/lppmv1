@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
+import bcrypt from 'bcryptjs'
 import type { Prisma } from '@prisma/client'
 
 // GET /api/mahasiswa/:id - Get mahasiswa by ID
@@ -77,7 +78,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { nim, nama, email, prodi, angkatan, status } = body
+    const { nim, nama, email, prodi, angkatan, status, password } = body
 
     // Check if mahasiswa exists
     const existingMahasiswa = await prisma.mahasiswa.findUnique({
@@ -122,14 +123,26 @@ export async function PUT(
 
     // Update mahasiswa and user in a transaction
     const updatedMahasiswa = await prisma.$transaction(async (tx: any) => {
-      // Update user data
-      if (email || nama || status) {
+      // Prepare user update data
+      const userUpdateData: any = {}
+      
+      if (email) {
+        userUpdateData.email = email
+        userUpdateData.username = email
+      }
+      if (status) userUpdateData.status = status
+      
+      // Hash password if provided
+      if (password && password.trim() !== '') {
+        const hashedPassword = await bcrypt.hash(password, 10)
+        userUpdateData.password = hashedPassword
+      }
+      
+      // Update user data if there are changes
+      if (Object.keys(userUpdateData).length > 0) {
         await tx.user.update({
           where: { id: existingMahasiswa.userId },
-          data: {
-            ...(email && { email, username: email }),
-            ...(status && { status }),
-          },
+          data: userUpdateData,
         })
       }
 

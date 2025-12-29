@@ -68,6 +68,7 @@ export async function POST(
           select: {
             id: true,
             judul: true,
+            danaDisetujui: true,
             dosen: {
               select: {
                 nama: true,
@@ -83,10 +84,58 @@ export async function POST(
       }
     })
 
+    // ========== AUTO-CREATE TERMIN_3 ==========
+    // When luaran is DIVERIFIKASI, check if TERMIN_2 is DICAIRKAN
+    // If yes, automatically create TERMIN_3 (25%)
+    let termin3Created = false
+    if (statusVerifikasi === 'DIVERIFIKASI') {
+      // Check if TERMIN_2 exists and is DICAIRKAN
+      const termin2 = await prisma.pencairan_dana.findFirst({
+        where: {
+          proposalId: luaran.proposalId,
+          termin: 'TERMIN_2',
+          status: 'DICAIRKAN'
+        }
+      })
+
+      if (termin2) {
+        // Check if TERMIN_3 already exists
+        const existingTermin3 = await prisma.pencairan_dana.findFirst({
+          where: {
+            proposalId: luaran.proposalId,
+            termin: 'TERMIN_3'
+          }
+        })
+
+        if (!existingTermin3 && updated.proposal.danaDisetujui) {
+          // Create TERMIN_3 automatically
+          const termin3Amount = Number(updated.proposal.danaDisetujui) * 0.25
+          
+          await prisma.pencairan_dana.create({
+            data: {
+              proposalId: luaran.proposalId,
+              termin: 'TERMIN_3',
+              nominal: termin3Amount,
+              persentase: 25,
+              status: 'PENDING',
+              keterangan: 'Pencairan otomatis setelah luaran diverifikasi',
+              createdBy: session.id,
+            }
+          })
+          termin3Created = true
+          console.log(`✅ TERMIN_3 created for proposal ${luaran.proposalId} after luaran verification`)
+        }
+      }
+    }
+
+    const message = statusVerifikasi === 'DIVERIFIKASI' 
+      ? 'Luaran berhasil diverifikasi' + (termin3Created ? '. TERMIN_3 otomatis dibuat.' : '')
+      : 'Luaran berhasil ditolak'
+
     return NextResponse.json({
       success: true,
       data: updated,
-      message: `Luaran berhasil ${statusVerifikasi === 'DIVERIFIKASI' ? 'diverifikasi' : 'ditolak'}`
+      message
     })
   } catch (error) {
     console.error('Verify luaran error:', error)

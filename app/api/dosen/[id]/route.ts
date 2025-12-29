@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 import type { Prisma } from '@prisma/client'
 
 // GET - Get single dosen by ID
@@ -72,7 +73,7 @@ export async function PUT(
     await requireRole(['ADMIN'])
 
     const body = await request.json()
-    const { nama, email, noHp, bidangKeahlianId, status } = body
+    const { nama, email, noHp, bidangKeahlianId, status, password } = body
 
     const { id } = await params
     // Check if dosen exists
@@ -90,19 +91,30 @@ export async function PUT(
 
     // Update dosen and user in transaction
     const result = await prisma.$transaction(async (tx: any) => {
+      // Prepare user update data
+      const userUpdateData: any = {}
+
       // Update user email if changed
       if (email && email !== existingDosen.email) {
-        await tx.user.update({
-          where: { id: existingDosen.userId },
-          data: { email },
-        })
+        userUpdateData.email = email
       }
 
       // Update user status if changed
       if (status && status !== existingDosen.status) {
+        userUpdateData.status = status
+      }
+
+      // Update password if provided
+      if (password && password.trim() !== '') {
+        const hashedPassword = await bcrypt.hash(password, 10)
+        userUpdateData.password = hashedPassword
+      }
+
+      // Update user if there are changes
+      if (Object.keys(userUpdateData).length > 0) {
         await tx.user.update({
           where: { id: existingDosen.userId },
-          data: { status },
+          data: userUpdateData,
         })
       }
 

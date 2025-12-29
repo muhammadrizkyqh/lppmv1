@@ -32,6 +32,7 @@ interface KontrakDosen {
   id: string
   nomorKontrak: string
   nomorSK: string
+  danaDisetujui: number
   tanggalKontrak: string
   status: string
   fileKontrak: string | null
@@ -41,7 +42,6 @@ interface KontrakDosen {
     id: string
     judul: string
     status: string
-    danaDiajukan: number | null
     skema: {
       nama: string
       dana: number
@@ -79,6 +79,7 @@ export default function DosenKontrakPage() {
           id: p.kontrak.id,
           nomorKontrak: p.kontrak.nomorKontrak,
           nomorSK: p.kontrak.nomorSK,
+          danaDisetujui: p.kontrak.danaDisetujui,
           tanggalKontrak: p.kontrak.tanggalKontrak,
           status: p.kontrak.status,
           fileKontrak: p.kontrak.fileKontrak,
@@ -88,7 +89,6 @@ export default function DosenKontrakPage() {
             id: p.id,
             judul: p.judul,
             status: p.status,
-            danaDiajukan: p.danaDiajukan,
             skema: p.skema,
             periode: p.periode,
           },
@@ -271,9 +271,9 @@ export default function DosenKontrakPage() {
                       </div>
                       <div className="space-y-3">
                         <div>
-                          <Label className="text-muted-foreground text-xs">Dana Penelitian</Label>
+                          <Label className="text-muted-foreground text-xs">Dana Disetujui</Label>
                           <p className="font-medium text-lg">
-                            {formatRupiah(kontrak.proposal.danaDiajukan || 0)}
+                            {formatRupiah(kontrak.danaDisetujui || 0)}
                           </p>
                         </div>
                         <div>

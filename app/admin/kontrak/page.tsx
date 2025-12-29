@@ -50,7 +50,7 @@ interface Kontrak {
     id: string
     judul: string
     status: string
-    danaDiajukan: number | null
+    danaDisetujui: number | null
     dosen: {
       nama: string
       nidn: string
@@ -310,7 +310,7 @@ export default function AdminKontrakPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-sm">
-                        {formatRupiah(kontrak.proposal.danaDiajukan || 0)}
+                        {formatRupiah(kontrak.proposal.danaDisetujui || 0)}
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(kontrak.status)}</TableCell>

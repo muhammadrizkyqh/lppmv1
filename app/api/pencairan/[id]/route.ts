@@ -142,7 +142,9 @@ export async function PATCH(
       include: {
         proposal: {
           select: {
+            id: true,
             judul: true,
+            danaDisetujui: true,
             dosen: {
               select: {
                 nama: true,
@@ -153,10 +155,107 @@ export async function PATCH(
       }
     })
 
+    // ========== AUTO-CREATE TERMIN_2 WHEN TERMIN_1 DICAIRKAN (RE-CHECK) ==========
+    if (status === 'DICAIRKAN' && pencairan.termin === 'TERMIN_1') {
+      // Check if laporan akhir sudah approved
+      const monitoring = await prisma.monitoring.findFirst({
+        where: { 
+          proposalId: pencairan.proposalId,
+          verifikasiAkhirStatus: 'APPROVED'
+        }
+      })
+
+      if (monitoring) {
+        // Check if TERMIN_2 doesn't exist yet
+        const existingTermin2 = await prisma.pencairan_dana.findFirst({
+          where: {
+            proposalId: pencairan.proposalId,
+            termin: 'TERMIN_2'
+          }
+        })
+
+        if (!existingTermin2) {
+          const totalDana = updated.proposal.danaDisetujui || 0
+          const termin2Amount = Number(totalDana) * 0.25
+
+          await prisma.pencairan_dana.create({
+            data: {
+              proposalId: pencairan.proposalId,
+              termin: 'TERMIN_2',
+              nominal: termin2Amount,
+              persentase: 25,
+              status: 'PENDING',
+              keterangan: 'Pencairan otomatis setelah TERMIN_1 dicairkan dan laporan akhir disetujui',
+              createdBy: session.id,
+            }
+          })
+
+          console.log(`✅ Auto-created TERMIN_2 (25%) for proposal ${pencairan.proposalId} - triggered by TERMIN_1 update`)
+        }
+      }
+    }
+
+    // ========== RE-CHECK TERMIN_3 WHEN TERMIN_2 DICAIRKAN ==========
+    // When TERMIN_2 is approved (DICAIRKAN), check if luaran is already DIVERIFIKASI
+    // If yes, auto-create TERMIN_3 (handles case where admin forgot to pay TERMIN_2 first)
+    if (status === 'DICAIRKAN' && pencairan.termin === 'TERMIN_2') {
+      // Check if luaran already DIVERIFIKASI
+      const luaranVerified = await prisma.luaran.findFirst({
+        where: {
+          proposalId: pencairan.proposalId,
+          statusVerifikasi: 'DIVERIFIKASI'
+        }
+      })
+
+      if (luaranVerified) {
+        // Check if TERMIN_3 already exists
+        const existingTermin3 = await prisma.pencairan_dana.findFirst({
+          where: {
+            proposalId: pencairan.proposalId,
+            termin: 'TERMIN_3'
+          }
+        })
+
+        if (!existingTermin3) {
+          const totalDana = updated.proposal.danaDisetujui || 0
+          const termin3Amount = Number(totalDana) * 0.25
+
+          await prisma.pencairan_dana.create({
+            data: {
+              proposalId: pencairan.proposalId,
+              termin: 'TERMIN_3',
+              nominal: termin3Amount,
+              persentase: 25,
+              status: 'PENDING',
+              keterangan: 'Pencairan otomatis setelah luaran diverifikasi (re-check dari TERMIN_2)',
+              createdBy: session.id,
+            }
+          })
+
+          console.log(`✅ Re-check: Created TERMIN_3 for proposal ${pencairan.proposalId} - luaran already verified`)
+        }
+      }
+    }
+
+    let successMessage = 'Pencairan berhasil diupdate'
+    
+    if (status === 'DICAIRKAN') {
+      if (pencairan.termin === 'TERMIN_1') {
+        const hasTermin2 = await prisma.pencairan_dana.findFirst({
+          where: { proposalId: pencairan.proposalId, termin: 'TERMIN_2' }
+        })
+        if (hasTermin2) {
+          successMessage += '. TERMIN_2 telah dibuat otomatis karena laporan akhir sudah disetujui.'
+        }
+      } else if (pencairan.termin === 'TERMIN_2') {
+        successMessage += '. TERMIN_3 telah dibuat otomatis.'
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: updated,
-      message: 'Pencairan berhasil diupdate'
+      message: successMessage
     })
   } catch (error) {
     console.error('Update pencairan error:', error)

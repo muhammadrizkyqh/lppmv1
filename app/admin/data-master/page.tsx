@@ -359,7 +359,7 @@ export default function DataMasterPage() {
       if (activeTab === 'dosen') {
         data = dosenData || [];
         filename = 'data-dosen.csv';
-        headers = ['NIDN', 'Nama', 'Email', 'Program Studi', 'Fakultas', 'Bidang Keahlian', 'Jenjang', 'Status'];
+        headers = ['NIDN', 'Nama', 'Email', 'NoHP', 'BidangKeahlian', 'Status'];
         
         const csvContent = [
           headers.join(','),
@@ -367,10 +367,8 @@ export default function DataMasterPage() {
             d.nidn,
             `"${d.nama}"`,
             d.email,
-            `"${d.prodi?.nama || ''}"`,
-            `"${d.prodi?.fakultas?.nama || ''}"`,
+            d.noHp || '',
             `"${d.bidangkeahlian?.nama || ''}"`,
-            d.jenjang,
             d.status
           ].join(','))
         ].join('\n');
@@ -379,7 +377,7 @@ export default function DataMasterPage() {
       } else if (activeTab === 'mahasiswa') {
         data = mahasiswaData || [];
         filename = 'data-mahasiswa.csv';
-        headers = ['NIM', 'Nama', 'Email', 'Program Studi', 'Fakultas', 'Angkatan', 'Status'];
+        headers = ['NIM', 'Nama', 'Email', 'Prodi', 'Angkatan', 'Status'];
         
         const csvContent = [
           headers.join(','),
@@ -387,8 +385,7 @@ export default function DataMasterPage() {
             m.nim,
             `"${m.nama}"`,
             m.email,
-            `"${m.prodi?.nama || ''}"`,
-            `"${m.prodi?.fakultas?.nama || ''}"`,
+            `"${m.prodi}"`,
             m.angkatan,
             m.status
           ].join(','))
@@ -398,16 +395,16 @@ export default function DataMasterPage() {
       } else if (activeTab === 'reviewer') {
         data = reviewerData || [];
         filename = 'data-reviewer.csv';
-        headers = ['NIDN', 'Nama', 'Email', 'Bidang Keahlian', 'Institusi', 'Status'];
+        headers = ['Nama', 'Email', 'Institusi', 'BidangKeahlian', 'Tipe', 'Status'];
         
         const csvContent = [
           headers.join(','),
           ...data.map((r: any) => [
-            r.nidn,
             `"${r.nama}"`,
             r.email,
-            `"${r.bidangkeahlian?.nama || ''}"`,
             `"${r.institusi}"`,
+            `"${r.bidangkeahlian?.nama || ''}"`,
+            r.tipe,
             r.status
           ].join(','))
         ].join('\n');
@@ -443,32 +440,139 @@ export default function DataMasterPage() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
+      const loadingToast = toast.loading('Memproses file CSV...');
+
       try {
         const text = await file.text();
-        const lines = text.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const lines = text.split('\n').filter(line => line.trim()); // Remove empty lines
         
-        if (activeTab === 'dosen') {
-          if (!headers.includes('NIDN') || !headers.includes('Nama') || !headers.includes('Email')) {
-            toast.error('Format CSV tidak valid. Header harus: NIDN, Nama, Email, Program Studi, Fakultas, Bidang Keahlian, Jenjang, Status');
-            return;
-          }
-          toast.info('Fitur import sedang dalam pengembangan. Saat ini hanya support export.');
-        } else if (activeTab === 'mahasiswa') {
-          if (!headers.includes('NIM') || !headers.includes('Nama') || !headers.includes('Email')) {
-            toast.error('Format CSV tidak valid. Header harus: NIM, Nama, Email, Program Studi, Fakultas, Angkatan, Status');
-            return;
-          }
-          toast.info('Fitur import sedang dalam pengembangan. Saat ini hanya support export.');
-        } else if (activeTab === 'reviewer') {
-          if (!headers.includes('NIDN') || !headers.includes('Nama') || !headers.includes('Email')) {
-            toast.error('Format CSV tidak valid. Header harus: NIDN, Nama, Email, Bidang Keahlian, Institusi, Status');
-            return;
-          }
-          toast.info('Fitur import sedang dalam pengembangan. Saat ini hanya support export.');
+        if (lines.length < 2) {
+          toast.error('File CSV kosong atau tidak valid', { id: loadingToast });
+          return;
         }
-      } catch (error) {
-        toast.error('Gagal membaca file CSV');
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const rows: any[] = [];
+
+        // Parse CSV rows
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const rowData: any = {};
+          
+          headers.forEach((header, index) => {
+            rowData[header.toLowerCase().replace(/\s+/g, '')] = values[index] || '';
+          });
+          
+          rows.push(rowData);
+        }
+
+        let apiUrl = '';
+        let requiredFields: string[] = [];
+
+        // Validate and set API URL based on active tab
+        if (activeTab === 'dosen') {
+          requiredFields = ['nidn', 'nama', 'email'];
+          apiUrl = '/api/dosen/bulk';
+          
+          // Map CSV fields to API fields
+          const mappedRows = rows.map(row => ({
+            nidn: row.nidn,
+            nama: row.nama,
+            email: row.email,
+            noHp: row.nohp || row.notelp || '',
+            bidangKeahlian: row.bidangkeahlian || '',
+            status: row.status || 'AKTIF'
+          }));
+          
+          toast.loading(`Mengimport ${mappedRows.length} dosen...`, { id: loadingToast });
+          const result = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: mappedRows })
+          });
+          
+          const data = await result.json();
+          
+          if (data.success) {
+            toast.success(data.message, { id: loadingToast });
+            if (data.data.errors.length > 0) {
+              console.log('Import errors:', data.data.errors);
+              toast.warning(`${data.data.errors.length} baris gagal diimport. Lihat console untuk detail.`);
+            }
+            refetchDosen();
+          } else {
+            toast.error(data.error || 'Gagal import data', { id: loadingToast });
+          }
+          
+        } else if (activeTab === 'mahasiswa') {
+          requiredFields = ['nim', 'nama', 'email', 'prodi', 'angkatan'];
+          apiUrl = '/api/mahasiswa/bulk';
+          
+          const mappedRows = rows.map(row => ({
+            nim: row.nim,
+            nama: row.nama,
+            email: row.email,
+            prodi: row.prodi || row.programstudi || '',
+            angkatan: row.angkatan || '',
+            status: row.status || 'AKTIF'
+          }));
+          
+          toast.loading(`Mengimport ${mappedRows.length} mahasiswa...`, { id: loadingToast });
+          const result = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: mappedRows })
+          });
+          
+          const data = await result.json();
+          
+          if (data.success) {
+            toast.success(data.message, { id: loadingToast });
+            if (data.data.errors.length > 0) {
+              console.log('Import errors:', data.data.errors);
+              toast.warning(`${data.data.errors.length} baris gagal diimport. Lihat console untuk detail.`);
+            }
+            refetchMahasiswa();
+          } else {
+            toast.error(data.error || 'Gagal import data', { id: loadingToast });
+          }
+          
+        } else if (activeTab === 'reviewer') {
+          requiredFields = ['nama', 'email', 'institusi', 'tipe'];
+          apiUrl = '/api/reviewer/bulk';
+          
+          const mappedRows = rows.map(row => ({
+            nama: row.nama,
+            email: row.email,
+            institusi: row.institusi,
+            bidangKeahlian: row.bidangkeahlian || '',
+            tipe: row.tipe || 'EKSTERNAL',
+            status: row.status || 'AKTIF'
+          }));
+          
+          toast.loading(`Mengimport ${mappedRows.length} reviewer...`, { id: loadingToast });
+          const result = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: mappedRows })
+          });
+          
+          const data = await result.json();
+          
+          if (data.success) {
+            toast.success(data.message, { id: loadingToast });
+            if (data.data.errors.length > 0) {
+              console.log('Import errors:', data.data.errors);
+              toast.warning(`${data.data.errors.length} baris gagal diimport. Lihat console untuk detail.`);
+            }
+            refetchReviewer();
+          } else {
+            toast.error(data.error || 'Gagal import data', { id: loadingToast });
+          }
+        }
+        
+      } catch (error: any) {
+        toast.error(error.message || 'Gagal membaca file CSV', { id: loadingToast });
         console.error('Import error:', error);
       }
     };

@@ -136,11 +136,11 @@ export async function POST(
           // Get proposal dana for calculation
           const proposal = await prisma.proposal.findUnique({
             where: { id: monitoring.proposalId },
-            select: { danaDiajukan: true }
+            select: { danaDisetujui: true }
           })
 
           if (proposal) {
-            const danaHibah = Number(proposal.danaDiajukan || 0)
+            const danaHibah = Number(proposal.danaDisetujui || 0)
             const nominalTermin2 = danaHibah * 0.25
 
             await prisma.pencairan_dana.create({

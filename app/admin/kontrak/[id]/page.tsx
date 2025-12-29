@@ -69,7 +69,7 @@ interface KontrakDetail {
     judul: string
     abstrak: string
     status: string
-    danaDiajukan: number | null
+    danaDisetujui: number | null
     dosen: {
       nama: string
       nidn: string
@@ -361,7 +361,7 @@ export default function AdminKontrakDetailPage() {
             <div>
               <Label className="text-muted-foreground">Dana</Label>
               <p className="font-medium text-lg">
-                {formatRupiah(kontrak.proposal.danaDiajukan || 0)}
+                {formatRupiah(kontrak.proposal.danaDisetujui || 0)}
               </p>
             </div>
             <div>

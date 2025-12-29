@@ -94,21 +94,30 @@ export async function PATCH(
         })
       }
 
-      // 3. Auto-create Termin 1 (50%) after kontrak signed
-      const danaHibah = Number((updated.proposal as any).danaDiajukan || 0)
-      const nominalTermin1 = danaHibah * 0.5
-
-      await tx.pencairan_dana.create({
-        data: {
+      // 3. Auto-create Termin 1 (50%) after kontrak signed (if not exists)
+      const existingTermin1 = await tx.pencairan_dana.findFirst({
+        where: {
           proposalId: kontrak.proposalId,
-          termin: 'TERMIN_1',
-          nominal: nominalTermin1,
-          persentase: 50,
-          status: 'PENDING',
-          keterangan: 'Pencairan otomatis setelah kontrak ditandatangani',
-          createdBy: session.id,
+          termin: 'TERMIN_1'
         }
       })
+
+      if (!existingTermin1) {
+        const danaHibah = Number((updated.proposal as any).danaDisetujui || 0)
+        const nominalTermin1 = danaHibah * 0.5
+
+        await tx.pencairan_dana.create({
+          data: {
+            proposalId: kontrak.proposalId,
+            termin: 'TERMIN_1',
+            nominal: nominalTermin1,
+            persentase: 50,
+            status: 'PENDING',
+            keterangan: 'Pencairan otomatis setelah kontrak ditandatangani',
+            createdBy: session.id,
+          }
+        })
+      }
 
       return updated
     })

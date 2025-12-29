@@ -128,8 +128,7 @@ export async function PUT(
       abstrak,
       filePath,
       fileName,
-      fileSize,
-      danaDiajukan,
+      fileSize
     } = body
 
     // Check if proposal exists
@@ -168,22 +167,6 @@ export async function PUT(
       )
     }
 
-    // Validate danaDiajukan if provided
-    if (danaDiajukan !== undefined && danaDiajukan !== null) {
-      if (danaDiajukan < 0) {
-        return NextResponse.json(
-          { success: false, error: 'Dana yang diajukan tidak boleh negatif' },
-          { status: 400 }
-        )
-      }
-      if (danaDiajukan > 10000000) {
-        return NextResponse.json(
-          { success: false, error: 'Dana yang diajukan maksimal Rp 10.000.000' },
-          { status: 400 }
-        )
-      }
-    }
-
     // Update proposal
     const updatedProposal = await prisma.proposal.update({
       where: { id },
@@ -195,8 +178,7 @@ export async function PUT(
         ...(abstrak !== undefined && { abstrak }),
         ...(filePath && { filePath }),
         ...(fileName && { fileName }),
-        ...(fileSize !== undefined && { fileSize }),
-        ...(danaDiajukan !== undefined && { danaDiajukan }),
+        ...(fileSize !== undefined && { fileSize })
       },
       include: {
         periode: true,

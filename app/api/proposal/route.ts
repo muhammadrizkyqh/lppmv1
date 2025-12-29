@@ -48,13 +48,13 @@ export async function GET(request: NextRequest) {
         id: true,
         judul: true,
         abstrak: true,
-        danaDiajukan: true,
         filePath: true,
         fileName: true,
         fileSize: true,
         status: true,
         submittedAt: true,
         nilaiTotal: true,
+        danaDisetujui: true,
         catatan: true,
         catatanRevisi: true,
         catatanAdministrasi: true,
@@ -72,6 +72,8 @@ export async function GET(request: NextRequest) {
             tahun: true,
             nama: true,
             status: true,
+            tanggalBuka: true,
+            tanggalTutup: true,
           },
         },
         skema: {
@@ -106,6 +108,7 @@ export async function GET(request: NextRequest) {
             id: true,
             nomorKontrak: true,
             nomorSK: true,
+            danaDisetujui: true,
             tanggalKontrak: true,
             status: true,
             fileKontrak: true,
@@ -116,6 +119,15 @@ export async function GET(request: NextRequest) {
         monitoring: {
           orderBy: { createdAt: 'desc' },
           take: 1,
+          select: {
+            id: true,
+            persentaseKemajuan: true,
+            status: true,
+            laporanKemajuan: true,
+            laporanAkhir: true,
+            updatedAt: true,
+            createdAt: true,
+          },
         },
         pencairan_dana: {
           orderBy: { createdAt: 'asc' },
@@ -188,8 +200,7 @@ export async function POST(request: NextRequest) {
       abstrak,
       filePath,
       fileName,
-      fileSize,
-      danaDiajukan,
+      fileSize
     } = body
 
     // Validate required fields
@@ -198,22 +209,6 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Periode, skema, judul, dan abstrak harus diisi' },
         { status: 400 }
       )
-    }
-
-    // Validate danaDiajukan if provided
-    if (danaDiajukan !== undefined && danaDiajukan !== null) {
-      if (danaDiajukan < 0) {
-        return NextResponse.json(
-          { success: false, error: 'Dana yang diajukan tidak boleh negatif' },
-          { status: 400 }
-        )
-      }
-      if (danaDiajukan > 10000000) {
-        return NextResponse.json(
-          { success: false, error: 'Dana yang diajukan maksimal Rp 10.000.000' },
-          { status: 400 }
-        )
-      }
     }
 
     // Validate abstrak length (max 500 characters)
@@ -299,7 +294,6 @@ export async function POST(request: NextRequest) {
         filePath,
         fileName,
         fileSize,
-        danaDiajukan: danaDiajukan !== undefined ? danaDiajukan : null,
         status: 'DRAFT',
       },
       include: {

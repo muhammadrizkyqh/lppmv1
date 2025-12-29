@@ -25,9 +25,29 @@ export async function POST(
       )
     }
 
+    // Verify user exists in database
+    const user = await prisma.user.findUnique({
+      where: { id: session.id }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'User tidak ditemukan di database' },
+        { status: 404 }
+      )
+    }
+
     const { id } = await params
     const body = await request.json()
-    const { catatan } = body
+    const { catatan, danaDisetujui } = body
+
+    // Validate dana
+    if (!danaDisetujui || danaDisetujui <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Dana yang disetujui wajib diisi dan harus lebih dari 0' },
+        { status: 400 }
+      )
+    }
 
     // Get proposal
     const proposal = await prisma.proposal.findUnique({
@@ -90,6 +110,7 @@ export async function POST(
           status: 'DITERIMA',
           approvedAt: new Date(),
           nilaiTotal: averageScore,
+          danaDisetujui: danaDisetujui,
           catatan: catatan || null,
         }
       })
@@ -101,13 +122,24 @@ export async function POST(
           proposalId: id,
           nomorKontrak,
           nomorSK,
+          danaDisetujui: danaDisetujui,
           createdBy: session.id,
           status: 'DRAFT', // Admin perlu upload file TTD dulu
           updatedAt: new Date()
         }
       })
 
-      return { proposal: updatedProposal, kontrak }
+      // 3. Auto-create monitoring record (initial state)
+      const monitoring = await tx.monitoring.create({
+        data: {
+          proposalId: id,
+          persentaseKemajuan: 0,
+          status: 'BERJALAN',
+          catatanKemajuan: 'Monitoring dimulai setelah proposal diterima',
+        }
+      })
+
+      return { proposal: updatedProposal, kontrak, monitoring }
     })
 
     // TODO: Create notification for dosen
@@ -125,7 +157,7 @@ export async function POST(
       success: true,
       data: result.proposal,
       kontrak: result.kontrak,
-      message: `Proposal berhasil diterima. Kontrak ${nomorKontrak} dan SK ${nomorSK} telah dibuat`
+      message: `Proposal berhasil diterima. Kontrak ${nomorKontrak} dan SK ${nomorSK} telah dibuat. TERMIN_1 akan dibuat saat kontrak ditandatangani.`
     })
   } catch (error: any) {
     console.error('Approve proposal error:', error)

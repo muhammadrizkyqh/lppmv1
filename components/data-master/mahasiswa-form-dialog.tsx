@@ -81,6 +81,7 @@ export function MahasiswaFormDialog({ open, onOpenChange, mahasiswa, onSuccess }
           prodi: formData.prodi,
           angkatan: formData.angkatan,
           status: formData.status as "AKTIF" | "NONAKTIF",
+          ...(formData.password && { password: formData.password }),
         });
         toast.success("Mahasiswa berhasil diupdate!");
       } else {

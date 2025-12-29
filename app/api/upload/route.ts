@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const type = formData.get('type') as string // 'proposal', 'luaran', 'monitoring', etc
     const periodeId = formData.get('periodeId') as string
     const proposalId = formData.get('proposalId') as string
 
@@ -27,10 +28,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type (must be PDF)
-    if (file.type !== 'application/pdf') {
+    // Validate file type based on upload type
+    const allowedTypes: Record<string, string[]> = {
+      proposal: ['application/pdf'],
+      luaran: ['application/pdf', 'image/jpeg', 'image/png'],
+      monitoring: ['application/pdf'],
+      default: ['application/pdf']
+    }
+
+    const validTypes = allowedTypes[type || 'default'] || allowedTypes.default
+    if (!validTypes.includes(file.type)) {
+      const typeNames = validTypes.map(t => {
+        if (t === 'application/pdf') return 'PDF'
+        if (t === 'image/jpeg') return 'JPG'
+        if (t === 'image/png') return 'PNG'
+        return t
+      }).join(', ')
+      
       return NextResponse.json(
-        { success: false, error: 'File harus berformat PDF' },
+        { success: false, error: `File harus berformat ${typeNames}` },
         { status: 400 }
       )
     }
@@ -44,35 +60,67 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create upload directory if not exists
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'proposals', periodeId || 'temp')
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
+    // Determine upload directory based on type
+    let uploadDir: string
+    let fileUrl: string
+    
+    if (type === 'luaran') {
+      uploadDir = path.join(process.cwd(), 'public', 'uploads', 'luaran')
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+      
+      // Generate unique filename
+      const timestamp = Date.now()
+      const fileExt = path.extname(file.name)
+      const sanitizedName = path.basename(file.name, fileExt).replace(/[^a-zA-Z0-9.-]/g, '_')
+      const fileName = `${proposalId || timestamp}_${sanitizedName}${fileExt}`
+      const filePath = path.join(uploadDir, fileName)
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const fileName = `${proposalId || timestamp}_${sanitizedName}`
-    const filePath = path.join(uploadDir, fileName)
+      // Write file to disk
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
 
-    // Write file to disk
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
-
-    // Return file info
-    const fileUrl = `/uploads/proposals/${periodeId || 'temp'}/${fileName}`
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        fileName: file.name,
+      fileUrl = `/uploads/luaran/${fileName}`
+      
+      return NextResponse.json({
+        success: true,
+        fileName: fileName,
         filePath: fileUrl,
         fileSize: file.size,
-      },
-      message: 'File berhasil diupload',
-    })
+        message: 'File berhasil diupload',
+      })
+    } else {
+      // Default: proposal upload
+      uploadDir = path.join(process.cwd(), 'public', 'uploads', 'proposals', periodeId || 'temp')
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now()
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const fileName = `${proposalId || timestamp}_${sanitizedName}`
+      const filePath = path.join(uploadDir, fileName)
+
+      // Write file to disk
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+
+      fileUrl = `/uploads/proposals/${periodeId || 'temp'}/${fileName}`
+      
+      return NextResponse.json({
+        success: true,
+        data: {
+          fileName: file.name,
+          filePath: fileUrl,
+          fileSize: file.size,
+        },
+        message: 'File berhasil diupload',
+      })
+    }
   } catch (error: any) {
     console.error('Upload error:', error)
 

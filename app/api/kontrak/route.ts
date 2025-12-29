@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
             id: true,
             judul: true,
             status: true,
-            danaDiajukan: true,
+            danaDisetujui: true,
             dosen: {
               select: {
                 id: true,
@@ -166,6 +166,7 @@ export async function POST(request: NextRequest) {
         proposalId,
         nomorKontrak,
         nomorSK,
+        danaDisetujui: proposal.danaDisetujui || 0,
         createdBy: session.id,
         status: 'DRAFT'
       },

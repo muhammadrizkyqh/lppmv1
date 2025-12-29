@@ -172,21 +172,13 @@ export default function AdminDashboardPage() {
     <DashboardLayout>
       <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Dashboard Admin
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Overview dan statistik sistem LPPM
-            </p>
-          </div>
-          <Link href="/admin/proposals/create">
-            <Button className="bg-gradient-to-r from-primary to-primary/90">
-              <FileText className="w-4 h-4 mr-2" />
-              Buat Proposal
-            </Button>
-          </Link>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">
+            Dashboard Admin
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Overview dan statistik sistem LPPM
+          </p>
         </div>
 
         {/* Stats Grid */}

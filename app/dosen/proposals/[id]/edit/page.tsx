@@ -32,7 +32,6 @@ interface FormData {
   bidangKeahlianId: string;
   judul: string;
   abstrak: string;
-  danaDiajukan: string;
 }
 
 export default function EditProposalPage() {
@@ -50,8 +49,7 @@ export default function EditProposalPage() {
     skemaId: "",
     bidangKeahlianId: "",
     judul: "",
-    abstrak: "",
-    danaDiajukan: "",
+    abstrak: ""
   });
 
   const [file, setFile] = useState<File | null>(null);
@@ -77,8 +75,7 @@ export default function EditProposalPage() {
         skemaId: proposal.skemaId || "",
         bidangKeahlianId: proposal.bidangKeahlianId || "",
         judul: proposal.judul || "",
-        abstrak: proposal.abstrak || "",
-        danaDiajukan: proposal.danaDiajukan?.toString() || "",
+        abstrak: proposal.abstrak || ""
       });
 
       if (proposal.fileName && proposal.fileSize) {
@@ -144,14 +141,6 @@ export default function EditProposalPage() {
       toast.error("Abstrak maksimal 500 karakter");
       return false;
     }
-    if (formData.danaDiajukan && parseFloat(formData.danaDiajukan) < 0) {
-      toast.error("Dana yang diajukan tidak boleh negatif");
-      return false;
-    }
-    if (formData.danaDiajukan && parseFloat(formData.danaDiajukan) > 10000000) {
-      toast.error("Dana yang diajukan maksimal Rp 10.000.000");
-      return false;
-    }
     return true;
   };
 
@@ -177,7 +166,6 @@ export default function EditProposalPage() {
       // Update proposal
       await proposalApi.update(id, {
         ...formData,
-        danaDiajukan: formData.danaDiajukan ? parseFloat(formData.danaDiajukan) : null,
         filePath: uploadedFilePath || undefined,
         fileName: uploadedFileName || undefined,
         fileSize: uploadedFileSize || undefined,
@@ -312,26 +300,6 @@ export default function EditProposalPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            {/* Dana Diajukan */}
-            <div className="space-y-2">
-              <Label htmlFor="danaDiajukan">Dana yang Diajukan (Rp)</Label>
-              <Input
-                id="danaDiajukan"
-                type="number"
-                placeholder="Contoh: 5000000"
-                value={formData.danaDiajukan}
-                onChange={(e) =>
-                  setFormData({ ...formData, danaDiajukan: e.target.value })
-                }
-                min="0"
-                max="10000000"
-                step="100000"
-              />
-              <p className="text-sm text-muted-foreground">
-                Isi Rp 0 untuk penelitian mandiri. Maksimal Rp 10.000.000
-              </p>
             </div>
 
             {/* Bidang Keahlian */}

@@ -69,6 +69,7 @@ export function DosenFormDialog({ open, onOpenChange, dosen, bidangKeahlianList,
           noHp: formData.noHp || undefined,
           bidangKeahlianId: formData.bidangKeahlianId || undefined,
           status: formData.status as "AKTIF" | "NONAKTIF",
+          ...(formData.password && { password: formData.password }),
         });
         toast.success("Dosen berhasil diupdate!");
       } else {

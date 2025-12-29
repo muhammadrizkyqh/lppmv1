@@ -559,7 +559,7 @@ export interface Proposal {
   bidangKeahlianId: string | null
   judul: string
   abstrak: string
-  danaDiajukan: number | null
+  danaDisetujui: number | null
   filePath: string | null
   fileName: string | null
   fileSize: number | null
@@ -579,6 +579,8 @@ export interface Proposal {
     tahun: string
     nama: string
     status: string
+    tanggalBuka?: string
+    tanggalTutup?: string
   }
   skema?: {
     id: string
@@ -634,6 +636,100 @@ export interface UploadResponse {
   fileName: string
   filePath: string
   fileSize: number
+}
+
+// ==========================================
+// PROPOSAL TIMELINE TYPES
+// ==========================================
+
+export interface ProposalTimeline {
+  proposal: {
+    id: string
+    status: string
+    createdAt: string
+    submittedAt: string | null
+    catatan: string | null
+    catatanRevisi: string | null
+    catatanAdministrasi: string | null
+    catatanKesesuaianTeknikPenulisan: string | null
+    catatanKelengkapanKomponen: string | null
+    statusAdministrasi: string | null
+    checkedAdminAt: string | null
+    dosen: {
+      id: string
+      nama: string
+      nidn: string
+    }
+  }
+  revisions: Array<{
+    id: string
+    catatan: string | null
+    filePath: string | null
+    fileName: string | null
+  }>
+  reviews: Array<{
+    id: string
+    reviewerId: string
+    reviewer: {
+      id: string
+      nama: string
+      email: string
+    }
+    review: {
+      id: string
+      catatan: string | null
+      nilaiTotal: number | null
+      filePenilaian: string | null
+      rekomendasi: string | null
+      submittedAt: string
+      updatedAt: string
+    } | null
+  }>
+  seminar: {
+    id: string
+    tanggal: string
+    notulensi: string | null
+    hasilKeputusan: string | null
+    keterangan: string | null
+    createdAt: string
+    updatedAt: string
+  } | null
+  monitoring: {
+    id: string
+    status: string
+    catatanKemajuan: string | null
+    catatanAkhir: string | null
+    catatanFinal: string | null
+    persentaseKemajuan: number
+    plagiarismeStatus: string | null
+    plagiarismePercentage: number | null
+    verifikasiKemajuanAt: string | null
+    verifikasiAkhirAt: string | null
+    createdAt: string
+    updatedAt: string
+  } | null
+  luaran: Array<{
+    id: string
+    jenis: string
+    judul: string
+    keterangan: string | null
+    catatanVerifikasi: string | null
+    statusVerifikasi: string | null
+    verifiedAt: string | null
+    createdAt: string
+    updatedAt: string
+  }>
+  pencairan: Array<{
+    id: string
+    termin: string
+    nominal: number
+    persentase: number
+    tanggalPencairan: string | null
+    keterangan: string | null
+    status: string
+    createdAt: string
+    updatedAt: string
+  }>
 }
 
 // ==========================================
@@ -711,7 +807,7 @@ export const proposalApi = {
     bidangKeahlianId?: string
     judul: string
     abstrak: string
-    danaDiajukan?: number | null
+    danaDisetujui?: number | null
     filePath?: string
     fileName?: string
     fileSize?: number
@@ -729,7 +825,7 @@ export const proposalApi = {
     bidangKeahlianId?: string
     judul?: string
     abstrak?: string
-    danaDiajukan?: number | null
+    danaDisetujui?: number | null
     filePath?: string
     fileName?: string
     fileSize?: number
@@ -797,6 +893,11 @@ export const proposalApi = {
       method: 'POST',
       body: JSON.stringify(data),
     })
+  },
+
+  // Get proposal timeline (all feedback/catatan)
+  getTimeline: (id: string) => {
+    return fetchApi<ProposalTimeline>(`/api/proposal/${id}/timeline`)
   },
 }
 
@@ -875,10 +976,7 @@ export interface Review {
   id: string
   proposalReviewerId: string
   reviewerId: string
-  nilaiKriteria1: number
-  nilaiKriteria2: number
-  nilaiKriteria3: number
-  nilaiKriteria4: number
+  filePenilaian: string
   nilaiTotal: number
   rekomendasi: 'DITERIMA' | 'REVISI' | 'DITOLAK'
   catatan?: string
@@ -902,20 +1000,8 @@ export const reviewApi = {
     return fetchApi<ReviewAssignment>(`/api/reviews/${proposalReviewerId}`)
   },
 
-  // Submit review
-  submit: (proposalReviewerId: string, data: {
-    nilaiKriteria1: number
-    nilaiKriteria2: number
-    nilaiKriteria3: number
-    nilaiKriteria4: number
-    rekomendasi: 'DITERIMA' | 'REVISI' | 'DITOLAK'
-    catatan?: string
-  }) => {
-    return fetchApi<Review>(`/api/reviews/${proposalReviewerId}/submit`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  },
+  // Note: Submit review now uses FormData for file upload
+  // Use direct fetch with FormData instead of this helper
 }
 
 // ==========================================
@@ -928,7 +1014,7 @@ interface ProposalReviewed {
   jenis: string
   status: string
   submittedAt: string | null
-  danaDiajukan: number | null
+  danaDisetujui: number | null
   periode: {
     id: string
     tahun: number
@@ -989,11 +1075,11 @@ export const adminReviewApi = {
   },
 
   // Approve proposal
-  approve: async (proposalId: string, catatan?: string) => {
+  approve: async (proposalId: string, catatan?: string, danaDisetujui?: number) => {
     const response = await fetch(`/api/proposal/${proposalId}/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ catatan })
+      body: JSON.stringify({ catatan, danaDisetujui })
     })
     if (!response.ok) {
       const error = await response.json()

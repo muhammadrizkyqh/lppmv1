@@ -169,3 +169,87 @@ export async function PATCH(
     )
   }
 }
+
+// DELETE /api/luaran/[id] - Delete luaran (Dosen only, PENDING/DITOLAK only)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await requireAuth()
+    if (session.role !== 'DOSEN') {
+      return NextResponse.json(
+        { success: false, error: 'Hanya dosen yang bisa hapus luaran' },
+        { status: 403 }
+      )
+    }
+
+    const { id } = await params
+
+    // Get luaran
+    const luaran = await prisma.luaran.findUnique({
+      where: { id },
+      include: {
+        proposal: true
+      }
+    })
+
+    if (!luaran) {
+      return NextResponse.json(
+        { success: false, error: 'Luaran tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+
+    // Check permission
+    const dosen = await prisma.dosen.findFirst({
+      where: { userId: session.id }
+    })
+    if (!dosen || luaran.proposal.ketuaId !== dosen.id) {
+      return NextResponse.json(
+        { success: false, error: 'Hanya ketua penelitian yang bisa hapus luaran' },
+        { status: 403 }
+      )
+    }
+
+    // Only PENDING or DITOLAK can be deleted
+    if (luaran.statusVerifikasi !== 'PENDING' && luaran.statusVerifikasi !== 'DITOLAK') {
+      return NextResponse.json(
+        { success: false, error: 'Hanya luaran PENDING atau DITOLAK yang bisa dihapus' },
+        { status: 400 }
+      )
+    }
+
+    // ========== CASCADE DELETE TERMIN_3 ==========
+    // If deleting luaran, also delete TERMIN_3 for this proposal
+    const termin3 = await prisma.pencairan_dana.findFirst({
+      where: {
+        proposalId: luaran.proposalId,
+        termin: 'TERMIN_3'
+      }
+    })
+
+    if (termin3) {
+      await prisma.pencairan_dana.delete({
+        where: { id: termin3.id }
+      })
+      console.log(`✅ Cascade deleted TERMIN_3 for proposal ${luaran.proposalId}`)
+    }
+
+    // Delete luaran
+    await prisma.luaran.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Luaran berhasil dihapus' + (termin3 ? '. TERMIN_3 ikut dihapus.' : '')
+    })
+  } catch (error) {
+    console.error('Delete luaran error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

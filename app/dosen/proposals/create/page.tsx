@@ -50,8 +50,7 @@ export default function CreateProposalPage() {
     skemaId: "",
     bidangKeahlianId: "",
     judul: "",
-    abstrak: "",
-    danaDiajukan: ""
+    abstrak: ""
   });
   
   const [file, setFile] = useState<File | null>(null);
@@ -134,14 +133,6 @@ export default function CreateProposalPage() {
       toast.error("Abstrak maksimal 500 karakter");
       return false;
     }
-    if (formData.danaDiajukan && parseFloat(formData.danaDiajukan) < 0) {
-      toast.error("Dana yang diajukan tidak boleh negatif");
-      return false;
-    }
-    if (formData.danaDiajukan && parseFloat(formData.danaDiajukan) > 10000000) {
-      toast.error("Dana yang diajukan maksimal Rp 10.000.000");
-      return false;
-    }
     return true;
   };
 
@@ -173,13 +164,13 @@ export default function CreateProposalPage() {
         bidangKeahlianId: formData.bidangKeahlianId,
         judul: formData.judul,
         abstrak: formData.abstrak,
-        danaDiajukan: formData.danaDiajukan ? parseFloat(formData.danaDiajukan) : null,
         ...fileData
       });
 
       if (result.success && result.data) {
         toast.success("Draft proposal berhasil disimpan!");
-        router.push("/dosen/proposals");
+        // Redirect to detail page to add members and submit
+        router.push(`/dosen/proposals/${result.data.id}`);
       } else {
         toast.error(result.error || "Gagal menyimpan draft");
       }
@@ -190,74 +181,7 @@ export default function CreateProposalPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-    
-    console.log("🔍 Submit check - file:", file ? `${file.name} (${file.size} bytes)` : "NO FILE");
-    
-    if (!file) {
-      toast.error("Upload file proposal terlebih dahulu");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      // 1. Upload file first
-      console.log("📤 Uploading file...");
-      const uploadResult = await uploadApi.uploadFile(file, formData.periodeId);
-      console.log("📤 Upload result:", uploadResult);
-      
-      if (!uploadResult.success) {
-        toast.error("Gagal upload file");
-        return;
-      }
-
-      // 2. Create proposal with file info
-      console.log("📝 Creating proposal with file data:", {
-        filePath: uploadResult.data.filePath,
-        fileName: uploadResult.data.fileName,
-        fileSize: uploadResult.data.fileSize
-      });
-      
-      const createResult = await proposalApi.create({
-        periodeId: formData.periodeId,
-        skemaId: formData.skemaId,
-        bidangKeahlianId: formData.bidangKeahlianId,
-        judul: formData.judul,
-        abstrak: formData.abstrak,
-        danaDiajukan: formData.danaDiajukan ? parseFloat(formData.danaDiajukan) : null,
-        filePath: uploadResult.data.filePath,
-        fileName: uploadResult.data.fileName,
-        fileSize: uploadResult.data.fileSize
-      });
-
-      console.log("📝 Create result:", createResult);
-
-      if (!createResult.success || !createResult.data) {
-        toast.error(createResult.error || "Gagal membuat proposal");
-        return;
-      }
-
-      const proposalId = createResult.data.id;
-
-      // 3. Submit proposal
-      console.log("✅ Submitting proposal ID:", proposalId);
-      const submitResult = await proposalApi.submit(proposalId);
-      console.log("✅ Submit result:", submitResult);
-      
-      if (submitResult.success) {
-        toast.success("Proposal berhasil diajukan!");
-        router.push("/dosen/proposals");
-      } else {
-        toast.error(submitResult.error || "Gagal submit proposal");
-      }
-    } catch (error: any) {
-      console.error("❌ Submit error:", error);
-      toast.error(error.message || "Gagal mengajukan proposal");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Submit will be done from detail page after adding members
 
   return (
     <DashboardLayout>
@@ -272,20 +196,11 @@ export default function CreateProposalPage() {
           </div>
           <div className="flex items-center space-x-2">
             <Button 
-              variant="outline"
               onClick={handleSaveDraft}
-              disabled={saving || submitting || !!(periodeCheck && !periodeCheck.isOpen)}
+              disabled={saving || !!(periodeCheck && !periodeCheck.isOpen)}
             >
               <Save className="w-4 h-4 mr-2" />
               {saving ? "Menyimpan..." : "Simpan Draft"}
-            </Button>
-            <Button 
-              className="bg-gradient-to-r from-primary to-primary/90"
-              onClick={handleSubmit}
-              disabled={saving || submitting || !!(periodeCheck && !periodeCheck.isOpen)}
-            >
-              <Check className="w-4 h-4 mr-2" />
-              {submitting ? "Mengajukan..." : "Submit Proposal"}
             </Button>
           </div>
         </div>
@@ -367,24 +282,6 @@ export default function CreateProposalPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="danaDiajukan">Dana yang Diajukan (Rp)</Label>
-                  <Input
-                    id="danaDiajukan"
-                    type="number"
-                    placeholder="Contoh: 5000000"
-                    className="text-base"
-                    value={formData.danaDiajukan}
-                    onChange={(e) => handleInputChange('danaDiajukan', e.target.value)}
-                    min="0"
-                    max="10000000"
-                    step="100000"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Isi Rp 0 untuk penelitian mandiri. Maksimal Rp 10.000.000
-                  </p>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="judul">Judul Penelitian *</Label>
                   <Input
                     id="judul"
@@ -451,7 +348,7 @@ export default function CreateProposalPage() {
                       {file ? file.name : "Drag & drop file atau klik untuk browse"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Hanya file PDF, maksimal 10MB
+                    Hanya file PDF, maksimal 10MB (opsional, dapat diupload nanti)
                     </p>
                     {file && (
                       <p className="text-xs text-green-600">
@@ -475,15 +372,15 @@ export default function CreateProposalPage() {
                   </Button>
                 </div>
 
-                <div className="mt-4 p-3 border border-amber-200 bg-amber-50 rounded-lg">
+                <div className="mt-4 p-3 border border-blue-200 bg-blue-50 rounded-lg">
                   <div className="flex items-start space-x-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
-                    <div className="text-sm text-amber-800">
-                      <p className="font-medium">Tips untuk file proposal:</p>
+                    <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium">Informasi Upload File:</p>
                       <ul className="mt-1 space-y-1 text-xs">
-                        <li>• Gunakan format PDF yang dapat dibaca dengan baik</li>
-                        <li>• Pastikan semua halaman terlihat jelas</li>
-                        <li>• Ukuran file tidak lebih dari 10MB</li>
+                        <li>• File dapat diupload sekarang atau nanti di halaman detail</li>
+                        <li>• File WAJIB ada sebelum submit proposal</li>
+                        <li>• Format PDF, ukuran maksimal 10MB</li>
                       </ul>
                     </div>
                   </div>
@@ -497,8 +394,8 @@ export default function CreateProposalPage() {
                 <div className="flex items-center space-x-3 text-muted-foreground">
                   <Users className="w-5 h-5" />
                   <div>
-                    <p className="text-sm font-medium">Anggota Tim</p>
-                    <p className="text-xs">Anda dapat menambahkan anggota tim setelah menyimpan draft proposal</p>
+                    <p className="text-sm font-medium">Anggota Tim & Submit Proposal</p>
+                    <p className="text-xs">Setelah menyimpan draft, Anda dapat menambahkan anggota tim dan submit proposal di halaman detail</p>
                   </div>
                 </div>
               </CardContent>

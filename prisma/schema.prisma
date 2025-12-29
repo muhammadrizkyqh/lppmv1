@@ -56,6 +56,7 @@ model kontrak {
   proposalId                    String    @unique
   nomorKontrak                  String    @unique
   nomorSK                       String    @unique
+  danaDisetujui                 Decimal   @db.Decimal(15, 2)
   tanggalKontrak                DateTime  @default(now())
   fileKontrak                   String?
   fileSK                        String?
@@ -240,7 +241,7 @@ model proposal {
   statusAdministrasi      String?             @default("BELUM_DICEK")
   tanggalMulai            DateTime?
   tanggalSelesai          DateTime?
-  danaDiajukan            Decimal?            @db.Decimal(15, 2)
+  danaDisetujui           Decimal?            @db.Decimal(15, 2)
   kontrak                 kontrak?
   luaran                  luaran[]
   monitoring              monitoring[]
@@ -315,11 +316,8 @@ model review {
   id                 String             @id @default(cuid())
   proposalReviewerId String             @unique
   reviewerId         String
-  nilaiKriteria1     Int
-  nilaiKriteria2     Int
-  nilaiKriteria3     Int
-  nilaiKriteria4     Int
-  nilaiTotal         Decimal            @db.Decimal(5, 2)
+  filePenilaian      String?            // Path to uploaded PDF assessment file
+  nilaiTotal         Int                // Manual input score 0-100
   rekomendasi        review_rekomendasi
   catatan            String?            @db.Text
   submittedAt        DateTime           @default(now())

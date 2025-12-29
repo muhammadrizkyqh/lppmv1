@@ -117,12 +117,14 @@ export async function updateSession(): Promise<void> {
 // ==========================================
 
 export async function login(
-  identifier: string, // username or email
+  identifier: string, // username, email, NIDN, or NIM
   password: string
 ): Promise<{ success: boolean; user?: SessionUser; error?: string }> {
   try {
+    console.log('🔍 Login attempt:', { identifier })
+    
     // Find user by username or email
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: {
         OR: [
           { username: identifier },
@@ -136,20 +138,65 @@ export async function login(
       },
     })
 
+    // If not found, try to find by NIDN in dosen table
     if (!user) {
-      return { success: false, error: 'Username atau email tidak ditemukan' }
+      const dosen = await prisma.dosen.findFirst({
+        where: { nidn: identifier },
+        include: { user: true }
+      })
+      
+      if (dosen?.user) {
+        user = await prisma.user.findUnique({
+          where: { id: dosen.userId },
+          include: {
+            dosen: true,
+            mahasiswa: true,
+            reviewer: true,
+          }
+        })
+      }
     }
 
+    // If not found, try to find by NIM in mahasiswa table
+    if (!user) {
+      const mahasiswa = await prisma.mahasiswa.findFirst({
+        where: { nim: identifier },
+        include: { user: true }
+      })
+      
+      if (mahasiswa?.user) {
+        user = await prisma.user.findUnique({
+          where: { id: mahasiswa.userId },
+          include: {
+            dosen: true,
+            mahasiswa: true,
+            reviewer: true,
+          }
+        })
+      }
+    }
+
+    if (!user) {
+      console.log('❌ User not found:', identifier)
+      return { success: false, error: 'Username, email, NIDN, atau NIM tidak ditemukan' }
+    }
+
+    console.log('✅ User found:', { id: user.id, username: user.username, role: user.role, status: user.status })
+    
     // Check if user is active
     if (user.status !== 'AKTIF') {
+      console.log('❌ User inactive:', user.status)
       return { success: false, error: 'Akun Anda tidak aktif' }
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
+      console.log('❌ Password invalid')
       return { success: false, error: 'Password salah' }
     }
+    
+    console.log('✅ Password valid, creating session...')
 
     // Update last login
     await prisma.user.update({

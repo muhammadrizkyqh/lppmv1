@@ -35,7 +35,8 @@ import {
   GraduationCap,
   ChevronDown,
   ChevronRight,
-  DollarSign
+  DollarSign,
+  Package
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -113,6 +114,12 @@ const getNavigationByRole = (role: string) => {
             href: "/admin/pencairan",
             badge: null,
           },
+          {
+            title: "Luaran",
+            icon: Package,
+            href: "/admin/luaran",
+            badge: null,
+          },
         ],
       },
       {
@@ -185,6 +192,12 @@ const getNavigationByRole = (role: string) => {
             title: "Pencairan Dana",
             icon: DollarSign,
             href: "/dosen/pencairan",
+            badge: null,
+          },
+          {
+            title: "Luaran Penelitian",
+            icon: Package,
+            href: "/dosen/luaran",
             badge: null,
           },
         ],

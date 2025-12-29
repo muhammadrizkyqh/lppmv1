@@ -26,10 +26,11 @@ import {
   Calendar,
   DollarSign,
   ArrowLeft,
-  Loader2
+  Loader2,
+  Upload
 } from "lucide-react";
-import { reviewApi } from "@/lib/api-client";
 import { toast } from "sonner";
+import { reviewApi } from "@/lib/api-client";
 
 export default function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: assignmentId } = use(params);
@@ -41,12 +42,8 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
   const [submitDialog, setSubmitDialog] = useState(false);
 
   // Form state
-  const [scores, setScores] = useState({
-    kriteria1: 0,
-    kriteria2: 0,
-    kriteria3: 0,
-    kriteria4: 0,
-  });
+  const [file, setFile] = useState<File | null>(null);
+  const [nilaiTotal, setNilaiTotal] = useState<number>(0);
   const [rekomendasi, setRekomendasi] = useState<'DITERIMA' | 'REVISI' | 'DITOLAK' | ''>('');
   const [catatan, setCatatan] = useState('');
 
@@ -79,61 +76,41 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
     }
   };
 
-  const criteriaScoring = [
-    {
-      id: 1,
-      key: 'kriteria1',
-      criteria: "Kesesuaian Judul & Latar Belakang",
-      description: "Kejelasan dan relevansi judul dengan masalah yang diangkat",
-      maxScore: 100,
-    },
-    {
-      id: 2,
-      key: 'kriteria2',
-      criteria: "Kejelasan Metode Penelitian",
-      description: "Metodologi yang digunakan sistematis dan dapat dipertanggungjawabkan",
-      maxScore: 100,
-    },
-    {
-      id: 3,
-      key: 'kriteria3',
-      criteria: "Kelayakan Timeline & Jadwal",
-      description: "Rencana waktu pelaksanaan realistis dan dapat dicapai",
-      maxScore: 100,
-    },
-    {
-      id: 4,
-      key: 'kriteria4',
-      criteria: "Manfaat & Dampak Penelitian",
-      description: "Kontribusi penelitian terhadap keilmuan dan masyarakat",
-      maxScore: 100,
-    }
-  ];
-
-  const totalScore = (
-    scores.kriteria1 * 0.25 +
-    scores.kriteria2 * 0.25 +
-    scores.kriteria3 * 0.25 +
-    scores.kriteria4 * 0.25
-  );
   const formProgress = (
-    (scores.kriteria1 > 0 ? 20 : 0) +
-    (scores.kriteria2 > 0 ? 20 : 0) +
-    (scores.kriteria3 > 0 ? 20 : 0) +
-    (scores.kriteria4 > 0 ? 20 : 0) +
-    (rekomendasi ? 20 : 0)
+    (file ? 40 : 0) +
+    (nilaiTotal > 0 ? 30 : 0) +
+    (rekomendasi ? 30 : 0)
   );
 
-  const handleScoreChange = (key: string, value: string) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (selectedFile.type !== 'application/pdf') {
+        toast.error('File harus berformat PDF');
+        return;
+      }
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error('Ukuran file maksimal 10MB');
+        return;
+      }
+      setFile(selectedFile);
+    }
+  };
+
+  const handleNilaiChange = (value: string) => {
     const numValue = parseInt(value) || 0;
     if (numValue >= 0 && numValue <= 100) {
-      setScores(prev => ({ ...prev, [key]: numValue }));
+      setNilaiTotal(numValue);
     }
   };
 
   const validateForm = () => {
-    if (scores.kriteria1 === 0 || scores.kriteria2 === 0 || scores.kriteria3 === 0 || scores.kriteria4 === 0) {
-      toast.error('Semua kriteria penilaian harus diisi');
+    if (!file) {
+      toast.error('File penilaian wajib diupload');
+      return false;
+    }
+    if (nilaiTotal === 0) {
+      toast.error('Nilai total harus diisi');
       return false;
     }
     if (!rekomendasi) {
@@ -148,14 +125,20 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
     
     setSubmitting(true);
     try {
-      const result = await reviewApi.submit(assignmentId!, {
-        nilaiKriteria1: scores.kriteria1,
-        nilaiKriteria2: scores.kriteria2,
-        nilaiKriteria3: scores.kriteria3,
-        nilaiKriteria4: scores.kriteria4,
-        rekomendasi: rekomendasi as 'DITERIMA' | 'REVISI' | 'DITOLAK',
-        catatan: catatan || undefined,
+      const formData = new FormData();
+      formData.append('file', file!);
+      formData.append('nilaiTotal', nilaiTotal.toString());
+      formData.append('rekomendasi', rekomendasi);
+      if (catatan) {
+        formData.append('catatan', catatan);
+      }
+
+      const response = await fetch(`/api/reviews/${assignmentId}/submit`, {
+        method: 'POST',
+        body: formData,
       });
+
+      const result = await response.json();
 
       if (result.success) {
         toast.success('Review berhasil disubmit!');
@@ -321,7 +304,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                     <div className="flex items-center space-x-2">
                       <DollarSign className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">
-                        Rp {proposal.danaDiajukan ? Number(proposal.danaDiajukan).toLocaleString('id-ID') : '0'}
+                        Rp {proposal.danaDisetujui ? Number(proposal.danaDisetujui).toLocaleString('id-ID') : '0'}
                       </span>
                     </div>
                   </div>
@@ -389,7 +372,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                   </CardHeader>
                 </Card>
 
-                {/* Score Display */}
+                {/* File & Score Display */}
                 <Card className="border-0 shadow-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
@@ -398,55 +381,41 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Kriteria Scores */}
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">Kesesuaian Judul & Latar Belakang</div>
-                          <div className="flex items-center justify-between">
-                            <Progress value={assignment.review.nilaiKriteria1} className="h-2 flex-1 mr-3" />
-                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria1}</span>
+                    {/* File Penilaian */}
+                    {assignment.review.filePenilaian && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">File Penilaian</Label>
+                        <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg border">
+                          <FileText className="w-8 h-8 text-primary" />
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">Dokumen Penilaian Lengkap</p>
+                            <p className="text-xs text-muted-foreground">File PDF hasil penilaian</p>
                           </div>
-                        </div>
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">Kejelasan Metode Penelitian</div>
-                          <div className="flex items-center justify-between">
-                            <Progress value={assignment.review.nilaiKriteria2} className="h-2 flex-1 mr-3" />
-                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria2}</span>
-                          </div>
-                        </div>
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">Kelayakan Timeline & Jadwal</div>
-                          <div className="flex items-center justify-between">
-                            <Progress value={assignment.review.nilaiKriteria3} className="h-2 flex-1 mr-3" />
-                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria3}</span>
-                          </div>
-                        </div>
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">Manfaat & Dampak Penelitian</div>
-                          <div className="flex items-center justify-between">
-                            <Progress value={assignment.review.nilaiKriteria4} className="h-2 flex-1 mr-3" />
-                            <span className="text-lg font-bold text-primary">{assignment.review.nilaiKriteria4}</span>
-                          </div>
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={assignment.review.filePenilaian} target="_blank" rel="noopener noreferrer">
+                              <Download className="w-4 h-4 mr-2" />
+                              Download
+                            </a>
+                          </Button>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Total Score */}
                     <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-sm font-medium text-muted-foreground mb-1">Total Skor Akhir</div>
+                          <div className="text-sm font-medium text-muted-foreground mb-1">Skor Akhir</div>
                           <div className="text-xs text-muted-foreground">
-                            Bobot masing-masing kriteria: 25%
+                            Hasil penilaian proposal
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-4xl font-bold text-primary">{Number(assignment.review.nilaiTotal).toFixed(2)}</div>
+                          <div className="text-4xl font-bold text-primary">{assignment.review.nilaiTotal}</div>
                           <div className="text-sm text-muted-foreground">dari 100</div>
                         </div>
                       </div>
-                      <Progress value={Number(assignment.review.nilaiTotal)} className="mt-3 h-3" />
+                      <Progress value={assignment.review.nilaiTotal} className="mt-3 h-3" />
                     </div>
                   </CardContent>
                 </Card>
@@ -498,72 +467,70 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
             ) : (
               <>
                 {/* Editable Review Form - Only show if not submitted */}
-                {/* Scoring Section */}
+                {/* File Upload & Score Section */}
                 <Card className="border-0 shadow-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
-                      <Star className="w-5 h-5 text-primary" />
-                      <span>Penilaian Proposal</span>
+                      <Upload className="w-5 h-5 text-primary" />
+                      <span>Upload File Penilaian</span>
                     </CardTitle>
                     <CardDescription>
-                      Berikan skor untuk setiap kriteria penilaian (1-100)
+                      Upload file penilaian lengkap (PDF) dan masukkan skor akhir
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                {criteriaScoring.map((criteria, index) => (
-                  <div key={criteria.id} className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-foreground">{criteria.criteria}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {criteria.description}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="ml-4">
-                        Max: {criteria.maxScore}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <Label htmlFor={`score-${criteria.id}`} className="sr-only">
-                          Skor untuk {criteria.criteria}
-                        </Label>
+                    {/* File Upload */}
+                    <div className="space-y-2">
+                      <Label htmlFor="file">File Penilaian (PDF) *</Label>
+                      <div className="flex items-center gap-4">
                         <Input
-                          id={`score-${criteria.id}`}
+                          id="file"
+                          type="file"
+                          accept=".pdf"
+                          onChange={handleFileChange}
+                          className="cursor-pointer"
+                        />
+                      </div>
+                      {file && (
+                        <div className="flex items-center gap-2 text-sm text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Format: PDF • Maksimal: 10MB • File berisi penilaian lengkap
+                      </p>
+                    </div>
+
+                    <Separator />
+
+                    {/* Score Input */}
+                    <div className="space-y-3">
+                      <Label htmlFor="nilai">Nilai/Skor Akhir *</Label>
+                      <div className="flex items-center gap-4">
+                        <Input
+                          id="nilai"
                           type="number"
                           min="0"
                           max="100"
                           placeholder="0-100"
-                          className="w-20"
-                          value={scores[criteria.key as keyof typeof scores] || ''}
-                          onChange={(e) => handleScoreChange(criteria.key, e.target.value)}
+                          className="w-32"
+                          value={nilaiTotal || ''}
+                          onChange={(e) => handleNilaiChange(e.target.value)}
                         />
+                        <div className="flex-1">
+                          <Progress value={nilaiTotal} className="h-3" />
+                        </div>
+                        <div className="text-lg font-bold text-primary w-20 text-right">
+                          {nilaiTotal}/100
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <Progress value={scores[criteria.key as keyof typeof scores]} className="h-2" />
-                      </div>
-                      <div className="text-sm font-medium w-16 text-right">
-                        {scores[criteria.key as keyof typeof scores]}/100
-                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Masukkan skor akhir hasil penilaian Anda (0-100)
+                      </p>
                     </div>
-
-                    {index < criteriaScoring.length - 1 && <Separator />}
-                  </div>
-                ))}
-
-                <div className="p-4 bg-primary/5 border border-primary/10 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-lg">Total Skor:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl font-bold text-primary">{totalScore}</span>
-                      <span className="text-muted-foreground">/100</span>
-                    </div>
-                  </div>
-                  <Progress value={totalScore} className="mt-2 h-3" />
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
             {/* Recommendation & Comments */}
             <Card className="border-0 shadow-sm">
@@ -778,7 +745,8 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                 <div className="space-y-2">
                   <p>Apakah Anda yakin ingin submit review ini?</p>
                   <div className="p-3 bg-muted rounded-lg space-y-1 text-sm">
-                    <div><strong>Total Skor:</strong> {totalScore.toFixed(2)}/100</div>
+                    {file && <div><strong>File:</strong> {file.name}</div>}
+                    <div><strong>Skor Akhir:</strong> {nilaiTotal}/100</div>
                     <div><strong>Rekomendasi:</strong> {rekomendasi}</div>
                   </div>
                   <p className="text-xs text-muted-foreground">

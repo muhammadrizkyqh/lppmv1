@@ -239,8 +239,8 @@ export default function ProposalsPage() {
     status: p.status.toLowerCase(),
     progress: 0, // Could be calculated based on status
     tanggalPengajuan: p.createdAt || new Date().toISOString(),
-    tanggalDeadline: "-", // Would come from periode settings
-    dana: Number(p.skema?.dana || 0),
+    tanggalDeadline: p.periode?.tanggalTutup || null, // From periode close date
+    dana: Number(p.danaDisetujui || 0), // Dana yang sudah disetujui admin
     bidangKeahlian: p.bidangkeahlian?.nama || "-",
     anggota: p._count?.proposalmember || 0,
     reviewer: [], // Would come from reviews relation
@@ -430,8 +430,6 @@ export default function ProposalsPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
-                        <span className="font-medium text-primary truncate">{proposal.id}</span>
-                        <span className="hidden sm:inline">•</span>
                         <span className="truncate">{proposal.skema}</span>
                         <span className="hidden sm:inline">•</span>
                         <span className="truncate">{proposal.bidangKeahlian}</span>
@@ -488,18 +486,21 @@ export default function ProposalsPage() {
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Deadline</p>
+                      <p className="text-xs text-muted-foreground">Deadline Periode</p>
                       <p className="text-sm font-medium">
-                        {proposal.tanggalDeadline !== "-" 
+                        {proposal.tanggalDeadline
                           ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
-                          : "-"
+                          : "Belum ditentukan"
                         }
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Dana Hibah</p>
+                      <p className="text-xs text-muted-foreground">Dana Disetujui</p>
                       <p className="text-sm font-medium">
-                        {proposal.dana > 0 ? `Rp ${proposal.dana.toLocaleString('id-ID')}` : "Mandiri"}
+                        {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                          ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                          : "-"
+                        }
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -611,7 +612,7 @@ export default function ProposalsPage() {
                   )}
 
                   {proposal.status === "revisi" && (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-4">
                       <div className="flex items-center space-x-2 min-w-0">
                         <AlertCircle className="w-4 h-4 text-yellow-600 shrink-0" />
                         <span className="text-xs sm:text-sm text-yellow-800">
@@ -661,8 +662,435 @@ export default function ProposalsPage() {
           )}
           </TabsContent>
 
+          {/* Review Tab */}
+          <TabsContent value="review" className="space-y-4">
+            {proposals.filter(p => p.status === "review" || p.status === "direview").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Tidak ada proposal dalam review</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang sedang direview akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              proposals.filter(p => p.status === "review" || p.status === "direview").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0 self-start">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-4 mb-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2" />
+                          <span className="text-sm font-medium">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleViewProposal(proposal.id)} className="flex-1 sm:flex-none">
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Lihat Detail</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Diterima Tab */}
+          <TabsContent value="diterima" className="space-y-4">
+            {proposals.filter(p => p.status === "diterima").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <CheckCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Belum ada proposal diterima</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang sudah diterima akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              proposals.filter(p => p.status === "diterima").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0 self-start">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-4 mb-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2" />
+                          <span className="text-sm font-medium">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleViewProposal(proposal.id)} className="flex-1 sm:flex-none">
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Lihat Detail</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Monitoring Tab */}
+          <TabsContent value="monitoring" className="space-y-4">
+            {proposals.filter(p => p.status === "monitoring" || p.status === "berjalan").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Belum ada proposal dalam monitoring</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang sedang berjalan akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              proposals.filter(p => p.status === "monitoring" || p.status === "berjalan").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0 self-start">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-4 mb-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2" />
+                          <span className="text-sm font-medium">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleViewProposal(proposal.id)} className="flex-1 sm:flex-none">
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Lihat Detail</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Revisi Tab */}
+          <TabsContent value="revisi" className="space-y-4">
+            {proposals.filter(p => p.status === "revisi").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Tidak ada proposal perlu revisi</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang memerlukan revisi akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              proposals.filter(p => p.status === "revisi").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0 self-start">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-4 mb-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2" />
+                          <span className="text-sm font-medium">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Revisi Alert & Action */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-4">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 shrink-0" />
+                        <span className="text-xs sm:text-sm text-yellow-800">
+                          Perlu revisi berdasarkan feedback reviewer
+                        </span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        className="bg-yellow-600 hover:bg-yellow-700 shrink-0 w-full sm:w-auto"
+                        onClick={() => {
+                          setRevisionDialog({ 
+                            open: true, 
+                            proposalId: proposal.id,
+                            title: proposal.title 
+                          });
+                          setRevisionForm({ filePath: "", fileName: "", fileSize: 0, catatanRevisi: "" });
+                        }}
+                      >
+                        Upload Revisi
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Selesai Tab */}
+          <TabsContent value="selesai" className="space-y-4">
+            {proposals.filter(p => p.status === "selesai").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <CheckCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Belum ada proposal selesai</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang sudah selesai akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              proposals.filter(p => p.status === "selesai").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0 self-start">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-4 mb-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2" />
+                          <span className="text-sm font-medium">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleViewProposal(proposal.id)} className="flex-1 sm:flex-none">
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Lihat Detail</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
           {/* Other tab contents would be similar but filtered by status */}
-          <TabsContent value="review">
+          <TabsContent value="review-old">
             <div className="text-center py-12">
               <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">Proposal dalam Review</h3>

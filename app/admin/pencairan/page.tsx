@@ -430,18 +430,6 @@ export default function AdminPencairanPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openUpdateDialog(item)}
-                        className="w-full"
-                        disabled={item.status === 'DICAIRKAN'}
-                        title={item.status === 'DICAIRKAN' ? 'Pencairan yang sudah dicairkan tidak dapat diubah' : 'Update status pencairan'}
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Update Status
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
                         onClick={() => openUploadDialog(item)}
                         className="w-full"
                         disabled={item.status === 'DICAIRKAN'}
@@ -449,6 +437,18 @@ export default function AdminPencairanPage() {
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         {item.fileBukti ? 'Ganti Bukti' : 'Upload Bukti'}
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openUpdateDialog(item)}
+                        className="w-full"
+                        disabled={item.status === 'DICAIRKAN'}
+                        title={item.status === 'DICAIRKAN' ? 'Pencairan yang sudah dicairkan tidak dapat diubah' : 'Update status pencairan'}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Update Status
                       </Button>
 
                       {item.fileBukti && (

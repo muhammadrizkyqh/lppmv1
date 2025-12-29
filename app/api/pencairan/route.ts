@@ -108,16 +108,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/pencairan - Create new pencairan (Dosen ajukan, Admin bisa buat manual)
+// POST /api/pencairan - Create new pencairan (Admin only - untuk edge cases)
+// Catatan: Dosen tidak perlu ajukan manual, semua pencairan dibuat otomatis oleh sistem
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth()
     
-    // Both ADMIN and DOSEN can create pencairan
-    if (!['ADMIN', 'DOSEN'].includes(session.role)) {
+    // Only ADMIN can create pencairan manually (for special cases)
+    // Dosen should not create manually - all auto-created by system
+    if (session.role !== 'ADMIN') {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: 'Pencairan dibuat otomatis oleh sistem. Hubungi admin jika ada masalah.' },
+        { status: 403 }
       )
     }
 
@@ -147,19 +149,6 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Proposal tidak ditemukan' },
         { status: 404 }
       )
-    }
-
-    // Dosen hanya bisa ajukan pencairan untuk proposal sendiri
-    if (session.role === 'DOSEN') {
-      const dosen = await prisma.dosen.findFirst({
-        where: { userId: session.id }
-      })
-      if (!dosen || proposal.ketuaId !== dosen.id) {
-        return NextResponse.json(
-          { success: false, error: 'Anda hanya bisa mengajukan pencairan untuk proposal Anda sendiri' },
-          { status: 403 }
-        )
-      }
     }
 
     // Validate proposal status
@@ -246,7 +235,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate nominal based on termin
-    const danaHibah = Number(proposal.danaDiajukan || 0)
+    const danaHibah = Number(proposal.danaDisetujui || 0)
     let persentase: number
     let nominal: number
 

@@ -53,11 +53,17 @@ export default function DosenMonitoringPage() {
         status: 'DITERIMA,BERJALAN,SELESAI'
       });
 
+      console.log('📊 Monitoring - API Response:', response);
+      
       if (response.success && response.data) {
+        console.log('✅ Proposals loaded:', response.data.length);
+        console.log('📝 First proposal:', response.data[0]);
         setProposals(response.data as any);
+      } else {
+        console.error('❌ API returned unsuccessful response:', response);
       }
     } catch (error) {
-      console.error('Error loading proposals:', error);
+      console.error('❌ Error loading proposals:', error);
       toast.error("Gagal memuat data proposal");
     } finally {
       setLoading(false);
@@ -79,7 +85,8 @@ export default function DosenMonitoringPage() {
       return {
         icon: <AlertCircle className="w-5 h-5 text-yellow-500" />,
         text: "Belum ada monitoring",
-        color: "text-yellow-600"
+        color: "text-yellow-600",
+        progress: 0
       };
     }
 
@@ -89,7 +96,8 @@ export default function DosenMonitoringPage() {
       return {
         icon: <CheckCircle className="w-5 h-5 text-green-500" />,
         text: "Laporan akhir sudah disubmit",
-        color: "text-green-600"
+        color: "text-green-600",
+        progress: monitoring.persentaseKemajuan || 100
       };
     }
 
@@ -97,14 +105,16 @@ export default function DosenMonitoringPage() {
       return {
         icon: <Clock className="w-5 h-5 text-blue-500" />,
         text: "Laporan kemajuan sudah disubmit",
-        color: "text-blue-600"
+        color: "text-blue-600",
+        progress: monitoring.persentaseKemajuan || 50
       };
     }
 
     return {
       icon: <AlertCircle className="w-5 h-5 text-yellow-500" />,
       text: "Belum ada laporan",
-      color: "text-yellow-600"
+      color: "text-yellow-600",
+      progress: monitoring.persentaseKemajuan || 0
     };
   };
 
@@ -231,6 +241,15 @@ export default function DosenMonitoringPage() {
               const monitoring = proposal.monitoring?.[0];
               const monitoringStatus = getMonitoringStatus(proposal);
               
+              console.log('🔍 Rendering proposal:', {
+                id: proposal.id,
+                judul: proposal.judul,
+                periode: proposal.periode,
+                skema: proposal.skema,
+                monitoring: monitoring,
+                status: proposal.status
+              });
+              
               return (
                 <Card key={proposal.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
@@ -242,10 +261,10 @@ export default function DosenMonitoringPage() {
                           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
-                              {proposal.periode?.nama} ({proposal.periode?.tahun})
+                              {proposal.periode?.nama || 'N/A'} ({proposal.periode?.tahun || 'N/A'})
                             </div>
                             <span>•</span>
-                            <span>{proposal.skema?.nama}</span>
+                            <span>{proposal.skema?.nama || 'N/A'}</span>
                           </div>
                         </div>
 
@@ -258,15 +277,13 @@ export default function DosenMonitoringPage() {
                         </div>
 
                         {/* Progress Bar */}
-                        {monitoring && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Progress:</span>
-                              <span className="font-medium">{monitoring.persentaseKemajuan}%</span>
-                            </div>
-                            <Progress value={monitoring.persentaseKemajuan} className="h-2" />
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Progress:</span>
+                            <span className="font-medium">{monitoringStatus.progress}%</span>
                           </div>
-                        )}
+                          <Progress value={monitoringStatus.progress} className="h-2" />
+                        </div>
                       </div>
 
                       {/* Right: Actions */}

@@ -11,7 +11,6 @@ import { ResponsiveTabs } from "@/components/ui/responsive-tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Search,
-  Filter,
   Plus,
   FileText,
   Calendar,
@@ -26,10 +25,10 @@ import {
   MoreVertical,
   Trash2
 } from "lucide-react";
-import { SearchFilter, PROPOSAL_FILTERS } from "@/components/ui/search-filter";
+import { SearchFilter } from "@/components/ui/search-filter";
 import { NoProposalsFound, NoSearchResults } from "@/components/ui/empty-states";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -56,6 +55,9 @@ export default function ProposalsPage() {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+  const [skemaOptions, setSkemaOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [periodeOptions, setPeriodeOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [bidangKeahlianOptions, setBidangKeahlianOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string | null; title: string | null }>({
     open: false,
     id: null,
@@ -75,6 +77,47 @@ export default function ProposalsPage() {
 
   // Fetch proposals from backend
   const { data: proposalsData, loading, refetch } = useProposals();
+
+  // Fetch master data for filters
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      try {
+        // Fetch Skema
+        const skemaRes = await fetch('/api/skema');
+        const skemaData = await skemaRes.json();
+        if (skemaData.success) {
+          setSkemaOptions([
+            { value: 'all', label: 'Semua Skema' },
+            ...skemaData.data.map((s: any) => ({ value: s.id, label: s.nama }))
+          ]);
+        }
+
+        // Fetch Periode
+        const periodeRes = await fetch('/api/periode');
+        const periodeData = await periodeRes.json();
+        if (periodeData.success) {
+          setPeriodeOptions([
+            { value: 'all', label: 'Semua Periode' },
+            ...periodeData.data.map((p: any) => ({ value: p.id, label: `${p.nama} ${p.tahun}` }))
+          ]);
+        }
+
+        // Fetch Bidang Keahlian
+        const bidangRes = await fetch('/api/bidang-keahlian');
+        const bidangData = await bidangRes.json();
+        if (bidangData.success) {
+          setBidangKeahlianOptions([
+            { value: 'all', label: 'Semua Bidang' },
+            ...bidangData.data.map((b: any) => ({ value: b.id, label: b.nama }))
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch master data:', error);
+      }
+    };
+
+    fetchMasterData();
+  }, []);
 
   const handleFilterChange = (key: string, value: any) => {
     setActiveFilters(prev => ({ ...prev, [key]: value }));
@@ -146,16 +189,57 @@ export default function ProposalsPage() {
     id: p.id,
     title: p.judul,
     skema: p.skema?.nama || "-",
+    skemaId: p.skemaId,
     status: p.status.toLowerCase(),
     progress: 0, // Could be calculated based on status
     tanggalPengajuan: p.createdAt || new Date().toISOString(),
-    tanggalDeadline: "-", // Would come from periode settings
-    dana: Number(p.skema?.dana || 0),
+    tanggalDeadline: p.periode?.tanggalTutup || null, // From periode close date
+    dana: Number(p.danaDisetujui || 0), // Dana yang sudah disetujui admin
     bidangKeahlian: p.bidangkeahlian?.nama || "-",
+    bidangKeahlianId: p.bidangKeahlianId,
+    periode: p.periode?.nama ? `${p.periode.nama} ${p.periode.tahun}` : "-",
+    periodeId: p.periodeId,
+    dosenNama: p.dosen?.nama || "-",
     anggota: p._count?.proposalmember || 0,
     reviewer: [], // Would come from reviews relation
     _original: p // Keep original data for actions
   })) || [];
+
+  // Apply filters
+  const filteredProposals = proposals.filter(proposal => {
+    // Search filter
+    if (searchValue) {
+      const searchLower = searchValue.toLowerCase();
+      const matchesSearch = 
+        proposal.title.toLowerCase().includes(searchLower) ||
+        proposal.dosenNama.toLowerCase().includes(searchLower) ||
+        proposal.bidangKeahlian.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
+
+    // Status filter
+    if (activeFilters.status && activeFilters.status !== 'all') {
+      if (proposal.status !== activeFilters.status) return false;
+    }
+
+    // Skema filter
+    if (activeFilters.skema && activeFilters.skema !== 'all') {
+      if (proposal.skemaId !== activeFilters.skema) return false;
+    }
+
+    // Periode filter
+    if (activeFilters.periode && activeFilters.periode !== 'all') {
+      if (proposal.periodeId !== activeFilters.periode) return false;
+    }
+
+    // Bidang Keahlian filter
+    if (activeFilters.bidangKeahlian && activeFilters.bidangKeahlian !== 'all') {
+      if (proposal.bidangKeahlianId !== activeFilters.bidangKeahlian) return false;
+    }
+
+    return true;
+  });
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -188,38 +272,70 @@ export default function ProposalsPage() {
   };
 
   const stats = [
-    { label: "Total Proposal", value: proposals.length, icon: FileText },
-    { label: "Dalam Review", value: proposals.filter(p => p.status === "review").length, icon: Clock },
-    { label: "Diterima", value: proposals.filter(p => p.status === "diterima").length, icon: CheckCircle },
-    { label: "Total Dana", value: `Rp ${proposals.reduce((sum, p) => sum + (p.status === "diterima" ? p.dana : 0), 0).toLocaleString('id-ID')}`, icon: DollarSign }
+    { label: "Total Proposal", value: filteredProposals.length, icon: FileText },
+    { label: "Dalam Review", value: filteredProposals.filter(p => p.status === "review" || p.status === "direview").length, icon: Clock },
+    { label: "Diterima", value: filteredProposals.filter(p => p.status === "diterima").length, icon: CheckCircle },
+    { label: "Total Dana", value: `Rp ${filteredProposals.reduce((sum, p) => sum + (p.status === "diterima" ? p.dana : 0), 0).toLocaleString('id-ID')}`, icon: DollarSign }
+  ];
+
+  // Dynamic filter configuration
+  const proposalFilters = [
+    {
+      key: "status",
+      label: "Status",
+      type: "select" as const,
+      options: [
+        { value: "all", label: "Semua Status" },
+        { value: "draft", label: "Draft" },
+        { value: "diajukan", label: "Diajukan" },
+        { value: "direview", label: "Direview" },
+        { value: "revisi", label: "Revisi" },
+        { value: "diterima", label: "Diterima" },
+        { value: "ditolak", label: "Ditolak" },
+        { value: "berjalan", label: "Berjalan" },
+        { value: "selesai", label: "Selesai" },
+      ]
+    },
+    {
+      key: "skema",
+      label: "Skema",
+      type: "select" as const,
+      options: skemaOptions
+    },
+    {
+      key: "periode",
+      label: "Periode",
+      type: "select" as const,
+      options: periodeOptions
+    },
+    {
+      key: "bidangKeahlian",
+      label: "Bidang Keahlian",
+      type: "select" as const,
+      options: bidangKeahlianOptions
+    }
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Proposal Penelitian</h1>
-            <p className="text-muted-foreground mt-2">
-              Kelola dan pantau semua proposal penelitian dan PKM Anda
-            </p>
-          </div>
-          <Button className="bg-gradient-to-r from-primary to-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            Ajukan Proposal Baru
-          </Button>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Proposal Penelitian</h1>
+          <p className="text-muted-foreground mt-2">
+            Kelola dan pantau semua proposal penelitian dan PKM
+          </p>
         </div>
 
         {/* Search & Filter */}
         <SearchFilter
           searchValue={searchValue}
           onSearchChange={setSearchValue}
-          filters={PROPOSAL_FILTERS}
+          filters={proposalFilters}
           activeFilters={activeFilters}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Cari proposal..."
+          placeholder="Cari proposal berdasarkan judul, dosen, atau bidang keahlian..."
         />
 
         {/* Stats Cards */}
@@ -241,61 +357,16 @@ export default function ProposalsPage() {
           ))}
         </div>
 
-        {/* Filters and Search */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Cari proposal berdasarkan judul, kode, atau bidang keahlian..."
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Select>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="review">Review</SelectItem>
-                    <SelectItem value="diterima">Diterima</SelectItem>
-                    <SelectItem value="monitoring">Monitoring</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Skema" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Skema</SelectItem>
-                    <SelectItem value="dasar">Penelitian Dasar</SelectItem>
-                    <SelectItem value="terapan">Penelitian Terapan</SelectItem>
-                    <SelectItem value="pkm">PKM</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filter
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Proposals Tabs */}
         <ResponsiveTabs
           defaultValue="all"
           tabs={[
-            { value: 'all', label: 'Semua', icon: <FileText className="h-4 w-4" />, count: proposals.length },
-            { value: 'review', label: 'Review', icon: <Clock className="h-4 w-4" />, count: proposals.filter(p => p.status === "review" || p.status === "direview").length },
-            { value: 'diterima', label: 'Diterima', icon: <CheckCircle className="h-4 w-4" />, count: proposals.filter(p => p.status === "diterima").length },
-            { value: 'monitoring', label: 'Monitoring', icon: <AlertCircle className="h-4 w-4" />, count: proposals.filter(p => p.status === "monitoring" || p.status === "berjalan").length },
-            { value: 'revisi', label: 'Revisi', icon: <Edit className="h-4 w-4" />, count: proposals.filter(p => p.status === "revisi").length },
-            { value: 'selesai', label: 'Selesai', icon: <CheckCircle className="h-4 w-4" />, count: proposals.filter(p => p.status === "selesai").length },
+            { value: 'all', label: 'Semua', icon: <FileText className="h-4 w-4" />, count: filteredProposals.length },
+            { value: 'review', label: 'Review', icon: <Clock className="h-4 w-4" />, count: filteredProposals.filter(p => p.status === "review" || p.status === "direview").length },
+            { value: 'diterima', label: 'Diterima', icon: <CheckCircle className="h-4 w-4" />, count: filteredProposals.filter(p => p.status === "diterima").length },
+            { value: 'monitoring', label: 'Monitoring', icon: <AlertCircle className="h-4 w-4" />, count: filteredProposals.filter(p => p.status === "monitoring" || p.status === "berjalan").length },
+            { value: 'revisi', label: 'Revisi', icon: <Edit className="h-4 w-4" />, count: filteredProposals.filter(p => p.status === "revisi").length },
+            { value: 'selesai', label: 'Selesai', icon: <CheckCircle className="h-4 w-4" />, count: filteredProposals.filter(p => p.status === "selesai").length },
           ]}
         >
 
@@ -309,22 +380,24 @@ export default function ProposalsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ) : proposals.length === 0 ? (
+            ) : filteredProposals.length === 0 ? (
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-12 text-center">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Belum ada proposal</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Mulai ajukan proposal penelitian atau PKM Anda
+                  <h3 className="text-lg font-semibold mb-2">
+                    {searchValue || Object.values(activeFilters).some(v => v && v !== 'all') 
+                      ? 'Tidak ada proposal yang sesuai' 
+                      : 'Belum ada proposal'}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {searchValue || Object.values(activeFilters).some(v => v && v !== 'all')
+                      ? 'Coba ubah filter atau kata kunci pencarian'
+                      : 'Proposal akan muncul setelah dosen mengajukan'}
                   </p>
-                  <Button onClick={() => router.push("/admin/proposals/create")}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajukan Proposal Pertama
-                  </Button>
                 </CardContent>
               </Card>
             ) : (
-              proposals.map((proposal) => (
+              filteredProposals.map((proposal) => (
               <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-start justify-between gap-3 mb-4">
@@ -338,8 +411,6 @@ export default function ProposalsPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
-                        <span className="font-medium text-primary shrink-0">{proposal.id}</span>
-                        <span className="hidden sm:inline">•</span>
                         <span className="truncate">{proposal.skema}</span>
                         <span className="hidden sm:inline">•</span>
                         <span className="truncate">{proposal.bidangKeahlian}</span>
@@ -396,18 +467,21 @@ export default function ProposalsPage() {
                       </p>
                     </div>
                     <div className="space-y-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Deadline</p>
+                      <p className="text-xs text-muted-foreground">Deadline Periode</p>
                       <p className="text-sm font-medium truncate">
-                        {proposal.tanggalDeadline !== "-" 
+                        {proposal.tanggalDeadline
                           ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
-                          : "-"
+                          : "Belum ditentukan"
                         }
                       </p>
                     </div>
                     <div className="space-y-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Dana Hibah</p>
+                      <p className="text-xs text-muted-foreground">Dana Disetujui</p>
                       <p className="text-sm font-medium truncate">
-                        {proposal.dana > 0 ? `Rp ${proposal.dana.toLocaleString('id-ID')}` : "Mandiri"}
+                        {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                          ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                          : "-"
+                        }
                       </p>
                     </div>
                     <div className="space-y-1 min-w-0">
@@ -508,26 +582,6 @@ export default function ProposalsPage() {
                     </div>
                   )}
 
-                  {proposal.status === "revisi" && (
-                    <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="w-4 h-4 text-yellow-600" />
-                        <span className="text-sm text-yellow-800">
-                          Perlu revisi berdasarkan feedback reviewer
-                        </span>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        className="bg-yellow-600 hover:bg-yellow-700"
-                        onClick={() => toast.info(`Upload revisi untuk ${proposal.id}`, {
-                          description: "Membuka form upload revisi..."
-                        })}
-                      >
-                        Upload Revisi
-                      </Button>
-                    </div>
-                  )}
-
                   {proposal.status === "diterima" && (
                     <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex items-center space-x-2">
@@ -567,15 +621,464 @@ export default function ProposalsPage() {
           )}
           </TabsContent>
 
-          {/* Other tab contents would be similar but filtered by status */}
-          <TabsContent value="review">
-            <div className="text-center py-12">
-              <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Proposal dalam Review</h3>
-              <p className="text-muted-foreground">
-                Menampilkan proposal yang sedang dalam proses review
-              </p>
-            </div>
+          {/* Review Tab */}
+          <TabsContent value="review" className="space-y-4">
+            {filteredProposals.filter(p => p.status === "review" || p.status === "direview").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Tidak ada proposal dalam review</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang sedang direview akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredProposals.filter(p => p.status === "review" || p.status === "direview").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4 mb-4">
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium truncate">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium truncate">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium truncate">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2 min-w-0" />
+                          <span className="text-sm font-medium shrink-0">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-orange-600" />
+                        <span className="text-sm text-orange-800">
+                          Sedang direview oleh: {proposal.reviewer.join(", ")}
+                        </span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-orange-700 border-orange-300"
+                        onClick={() => handleViewProposal(proposal.id)}
+                      >
+                        Lihat Progress
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Diterima Tab */}
+          <TabsContent value="diterima" className="space-y-4">
+            {filteredProposals.filter(p => p.status === "diterima").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <CheckCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Belum ada proposal diterima</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang diterima akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredProposals.filter(p => p.status === "diterima").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4 mb-4">
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium truncate">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium truncate">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium truncate">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2 min-w-0" />
+                          <span className="text-sm font-medium shrink-0">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span className="text-sm text-green-800">
+                          Proposal telah diterima dan dapat dilaksanakan
+                        </span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-green-700 border-green-300"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/api/kontrak/proposal/${proposal.id}`, {
+                              credentials: "include"
+                            });
+                            const result = await response.json();
+                            
+                            if (result.success && result.data) {
+                              router.push(`/admin/kontrak/${result.data.id}`);
+                            } else {
+                              toast.error(result.error || "Kontrak belum dibuat");
+                            }
+                          } catch (error) {
+                            toast.error("Gagal memuat kontrak");
+                          }
+                        }}
+                      >
+                        Lihat Kontrak
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Monitoring Tab */}
+          <TabsContent value="monitoring" className="space-y-4">
+            {filteredProposals.filter(p => p.status === "monitoring" || p.status === "berjalan").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Tidak ada proposal dalam monitoring</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang sedang berjalan akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredProposals.filter(p => p.status === "monitoring" || p.status === "berjalan").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4 mb-4">
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium truncate">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium truncate">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium truncate">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2 min-w-0" />
+                          <span className="text-sm font-medium shrink-0">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewProposal(proposal.id)}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Lihat Detail</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Revisi Tab */}
+          <TabsContent value="revisi" className="space-y-4">
+            {filteredProposals.filter(p => p.status === "revisi").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Tidak ada proposal perlu revisi</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang memerlukan revisi akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredProposals.filter(p => p.status === "revisi").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4 mb-4">
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium truncate">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium truncate">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium truncate">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2 min-w-0" />
+                          <span className="text-sm font-medium shrink-0">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewProposal(proposal.id)}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Lihat Detail</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Selesai Tab */}
+          <TabsContent value="selesai" className="space-y-4">
+            {filteredProposals.filter(p => p.status === "selesai").length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <CheckCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Belum ada proposal selesai</h3>
+                  <p className="text-muted-foreground">
+                    Proposal yang sudah selesai akan muncul di sini
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredProposals.filter(p => p.status === "selesai").map((proposal) => (
+                <Card key={proposal.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
+                            {proposal.title}
+                          </h3>
+                          <div className="shrink-0">
+                            {getStatusBadge(proposal.status)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                          <span className="truncate">{proposal.skema}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="truncate">{proposal.bidangKeahlian}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="shrink-0">{proposal.anggota} anggota</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4 mb-4">
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
+                        <p className="text-sm font-medium truncate">
+                          {new Date(proposal.tanggalPengajuan).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Deadline Periode</p>
+                        <p className="text-sm font-medium truncate">
+                          {proposal.tanggalDeadline
+                            ? new Date(proposal.tanggalDeadline).toLocaleDateString('id-ID')
+                            : "Belum ditentukan"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Dana Disetujui</p>
+                        <p className="text-sm font-medium truncate">
+                          {['diterima', 'berjalan', 'selesai'].includes(proposal.status) && proposal.dana > 0
+                            ? `Rp ${proposal.dana.toLocaleString('id-ID')}`
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={proposal.progress} className="flex-1 h-2 min-w-0" />
+                          <span className="text-sm font-medium shrink-0">{proposal.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewProposal(proposal.id)}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Lihat Detail</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
         </ResponsiveTabs>
       </div>

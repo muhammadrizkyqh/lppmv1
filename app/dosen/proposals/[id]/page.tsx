@@ -20,12 +20,21 @@ import {
   UserPlus,
   X,
   Upload,
+  History,
+  ClipboardCheck,
+  Star,
+  TrendingUp,
+  DollarSign,
+  Plus,
+  Send,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +63,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useProposalById, useProposalMembers, useDosen, useMahasiswa, useReviewer } from "@/hooks/use-data";
-import { proposalApi, uploadApi } from "@/lib/api-client";
+import { proposalApi, uploadApi, ProposalTimeline } from "@/lib/api-client";
 import { toast } from "sonner";
 import PencairanSection from "@/components/proposal/pencairan-section";
 import LuaranSection from "@/components/proposal/luaran-section";
@@ -138,6 +147,8 @@ export default function ProposalDetailPage() {
   const [userRole, setUserRole] = useState<string>("");
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [timelineData, setTimelineData] = useState<ProposalTimeline | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   useEffect(() => {
     // Get user role from localStorage
@@ -145,6 +156,27 @@ export default function ProposalDetailPage() {
     console.log("🔍 User Role from localStorage:", role);
     setUserRole(role);
   }, []);
+
+  // Fetch timeline data
+  useEffect(() => {
+    const fetchTimeline = async () => {
+      if (!id) return;
+      
+      setTimelineLoading(true);
+      try {
+        const response = await proposalApi.getTimeline(id);
+        if (response.success && response.data) {
+          setTimelineData(response.data);
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch timeline:", error);
+      } finally {
+        setTimelineLoading(false);
+      }
+    };
+
+    fetchTimeline();
+  }, [id]);
 
   const isAdmin = userRole === "ADMIN";
   console.log("👤 isAdmin:", isAdmin, "| userRole:", userRole);
@@ -466,11 +498,34 @@ export default function ProposalDetailPage() {
           </span>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Main Content */}
-          <div className="md:col-span-2 space-y-6">
-            {/* Proposal Info */}
-            <Card>
+        {/* Tabs Navigation */}
+        <Tabs defaultValue="informasi" className="space-y-6">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+            <TabsTrigger value="informasi">
+              <FileText className="w-4 h-4 mr-2" />
+              Informasi
+            </TabsTrigger>
+            <TabsTrigger value="timeline">
+              <History className="w-4 h-4 mr-2" />
+              Timeline
+            </TabsTrigger>
+            <TabsTrigger value="anggota">
+              <Users className="w-4 h-4 mr-2" />
+              Anggota Tim
+            </TabsTrigger>
+            <TabsTrigger value="dokumen">
+              <FileText className="w-4 h-4 mr-2" />
+              Dokumen
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab: Informasi */}
+          <TabsContent value="informasi" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-3">
+              {/* Main Content */}
+              <div className="md:col-span-2 space-y-6">
+                {/* Proposal Info */}
+                <Card>
               <CardHeader>
                 <CardTitle>Informasi Proposal</CardTitle>
               </CardHeader>
@@ -517,8 +572,8 @@ export default function ProposalDetailPage() {
                       Dana Diajukan
                     </label>
                     <p className="mt-1 font-medium">
-                      {proposal.danaDiajukan
-                        ? `Rp ${Number(proposal.danaDiajukan).toLocaleString("id-ID")}`
+                      {proposal.danaDisetujui
+                        ? `Rp ${Number(proposal.danaDisetujui).toLocaleString("id-ID")}`
                         : "-"}
                     </p>
                   </div>
@@ -533,71 +588,9 @@ export default function ProposalDetailPage() {
                   <p className="mt-1 text-sm whitespace-pre-wrap">{proposal.abstrak}</p>
                 </div>
 
-                <Separator />
-
-                {/* File Upload Section - Only for DRAFT without file */}
-                {canEdit && !proposal.filePath && (
-                  <div className="p-4 border-2 border-dashed border-primary/20 rounded-lg bg-primary/5">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Upload className="w-5 h-5" />
-                        <label className="text-sm font-medium">
-                          Upload File Proposal (PDF)
-                        </label>
-                      </div>
-                      
-                      <input
-                        id="file-upload-detail"
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      
-                      {uploadFile ? (
-                        <div className="flex items-center gap-2 p-3 bg-white rounded border">
-                          <FileText className="w-5 h-5 text-primary" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{uploadFile.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={handleUploadFile}
-                            disabled={uploadingFile}
-                          >
-                            {uploadingFile ? "Uploading..." : "Upload"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setUploadFile(null)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => document.getElementById('file-upload-detail')?.click()}
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Pilih File PDF
-                        </Button>
-                      )}
-                      
-                      <p className="text-xs text-muted-foreground">
-                        Format: PDF • Ukuran maksimal: 10MB
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 {proposal.filePath && (
                   <>
+                    <Separator />
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">
                         File Proposal
@@ -621,67 +614,416 @@ export default function ProposalDetailPage() {
                 )}
               </CardContent>
             </Card>
+              </div>
 
-            {/* Catatan Administratif - Jika proposal perlu revisi */}
-            {proposal.catatanAdministrasi && status === "revisi" && (
-              <Card className="border-red-200 bg-red-50">
-                <CardHeader>
-                  <CardTitle className="text-red-600 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5" />
-                    Catatan Revisi dari Admin
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm whitespace-pre-wrap">{proposal.catatanAdministrasi}</p>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Silakan perbaiki proposal sesuai catatan di atas dan upload kembali.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+              {/* Sidebar - Period, Schema, Field Info */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detail Periode & Skema</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {proposal.periode && (
+                      <div>
+                        <label className="text-xs text-muted-foreground">Periode</label>
+                        <p className="text-sm font-medium">{proposal.periode.nama} - {proposal.periode.tahun}</p>
+                      </div>
+                    )}
+                    {proposal.skema && (
+                      <div>
+                        <label className="text-xs text-muted-foreground">Skema</label>
+                        <p className="text-sm font-medium">{proposal.skema.nama}</p>
+                      </div>
+                    )}
+                    {proposal.bidangkeahlian && (
+                      <div>
+                        <label className="text-xs text-muted-foreground">Bidang Keahlian</label>
+                        <p className="text-sm font-medium">{proposal.bidangkeahlian.nama}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
 
-            {/* Seminar Section */}
-            {(status === "diajukan" || status === "direview" || status === "diterima" || status === "berjalan" || status === "selesai") && (
-              <SeminarSection proposalId={id as string} isAdmin={isAdmin} />
-            )}
-          </div>
+          {/* Tab: Timeline */}
+          <TabsContent value="timeline" className="space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                {timelineLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                      <p className="text-sm text-muted-foreground">Loading timeline...</p>
+                    </div>
+                  </div>
+                ) : timelineData ? (
+                  <Timeline>
+                    {/* 1. Proposal Created */}
+                    <TimelineItem
+                      icon={<Plus className="w-3 h-3 text-blue-600" />}
+                      title="Proposal Dibuat"
+                      timestamp={new Date(timelineData.proposal.createdAt).toLocaleString("id-ID")}
+                      actor={timelineData.proposal.dosen.nama}
+                      status="DRAFT"
+                      statusVariant="default"
+                      collapsible={false}
+                    />
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Team Members */}
+                    {/* 2. Proposal Submitted */}
+                    {timelineData.proposal.submittedAt && (
+                      <TimelineItem
+                        icon={<Send className="w-3 h-3 text-blue-600" />}
+                        title="Proposal Diajukan"
+                        timestamp={new Date(timelineData.proposal.submittedAt).toLocaleString("id-ID")}
+                        actor={timelineData.proposal.dosen.nama}
+                        status="DIAJUKAN"
+                        statusVariant="default"
+                        collapsible={false}
+                      />
+                    )}
+
+                    {/* 3. Penilaian Administratif */}
+                    {timelineData.proposal.checkedAdminAt && (
+                      <TimelineItem
+                        icon={<AlertCircle className="w-3 h-3 text-orange-600" />}
+                        title="Penilaian Administratif"
+                        timestamp={new Date(timelineData.proposal.checkedAdminAt).toLocaleString("id-ID")}
+                        actor="Admin"
+                        status={timelineData.proposal.statusAdministrasi || ""}
+                        statusVariant={
+                          timelineData.proposal.statusAdministrasi === "LOLOS" 
+                            ? "default" 
+                            : "destructive"
+                        }
+                        collapsible={!!timelineData.proposal.catatanAdministrasi}
+                        defaultOpen={false}
+                        content={
+                          timelineData.proposal.catatanAdministrasi && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Catatan Admin:</p>
+                              <p className="text-sm whitespace-pre-wrap">
+                                {timelineData.proposal.catatanAdministrasi}
+                              </p>
+                              {timelineData.proposal.catatanKesesuaianTeknikPenulisan && (
+                                <>
+                                  <p className="text-sm font-medium mt-3">Kesesuaian Teknik Penulisan:</p>
+                                  <p className="text-sm whitespace-pre-wrap">
+                                    {timelineData.proposal.catatanKesesuaianTeknikPenulisan}
+                                  </p>
+                                </>
+                              )}
+                              {timelineData.proposal.catatanKelengkapanKomponen && (
+                                <>
+                                  <p className="text-sm font-medium mt-3">Kelengkapan Komponen:</p>
+                                  <p className="text-sm whitespace-pre-wrap">
+                                    {timelineData.proposal.catatanKelengkapanKomponen}
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          )
+                        }
+                      />
+                    )}
+
+                    {/* 4. Revisi (Multiple) */}
+                    {timelineData.revisions.map((revision, idx) => (
+                      <TimelineItem
+                        key={revision.id}
+                        icon={<Edit className="w-3 h-3 text-orange-600" />}
+                        title={`Revisi Proposal (Revisi ke-${idx + 1})`}
+                        actor="Dosen"
+                        status="REVISI"
+                        statusVariant="default"
+                        collapsible={!!revision.catatan}
+                        defaultOpen={false}
+                        content={
+                          revision.catatan && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Catatan Revisi:</p>
+                              <p className="text-sm whitespace-pre-wrap">{revision.catatan}</p>
+                              {revision.fileName && (
+                                <div className="mt-2 flex items-center gap-2 text-sm">
+                                  <FileText className="w-4 h-4" />
+                                  <span>{revision.fileName}</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        }
+                      />
+                    ))}
+
+                    {/* 5. Seminar */}
+                    {timelineData.seminar && (
+                      <TimelineItem
+                        icon={<Users className="w-3 h-3 text-purple-600" />}
+                        title="Seminar Proposal"
+                        timestamp={new Date(timelineData.seminar.tanggal).toLocaleString("id-ID")}
+                        actor="Admin"
+                        status={timelineData.seminar.hasilKeputusan || ""}
+                        statusVariant="default"
+                        collapsible={!!(timelineData.seminar.notulensi || timelineData.seminar.keterangan)}
+                        defaultOpen={false}
+                        content={
+                          (timelineData.seminar.notulensi || timelineData.seminar.keterangan) && (
+                            <div className="space-y-2">
+                              {timelineData.seminar.notulensi && (
+                                <>
+                                  <p className="text-sm font-medium">Notulensi:</p>
+                                  <p className="text-sm whitespace-pre-wrap">{timelineData.seminar.notulensi}</p>
+                                </>
+                              )}
+                              {timelineData.seminar.keterangan && (
+                                <>
+                                  <p className="text-sm font-medium mt-3">Keterangan:</p>
+                                  <p className="text-sm whitespace-pre-wrap">{timelineData.seminar.keterangan}</p>
+                                </>
+                              )}
+                            </div>
+                          )
+                        }
+                      />
+                    )}
+
+                    {/* 6. Reviews (Multiple Reviewers) */}
+                    {timelineData.reviews.map((reviewAssignment) => (
+                      reviewAssignment.review && (
+                        <TimelineItem
+                          key={reviewAssignment.id}
+                          icon={<Award className="w-3 h-3 text-yellow-600" />}
+                          title={`Penilaian Reviewer`}
+                          timestamp={new Date(reviewAssignment.review.submittedAt).toLocaleString("id-ID")}
+                          actor={reviewAssignment.reviewer?.nama || "Reviewer"}
+                          status={reviewAssignment.review.rekomendasi || ""}
+                          statusVariant={
+                            reviewAssignment.review.rekomendasi === "DITERIMA"
+                              ? "default"
+                              : reviewAssignment.review.rekomendasi === "REVISI"
+                              ? "outline"
+                              : "destructive"
+                          }
+                          collapsible={!!reviewAssignment.review.catatan}
+                          defaultOpen={false}
+                          content={
+                            reviewAssignment.review.catatan && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium">Catatan Reviewer:</p>
+                                <p className="text-sm whitespace-pre-wrap">{reviewAssignment.review.catatan}</p>
+                                {reviewAssignment.review.nilaiTotal && (
+                                  <div className="mt-3 p-3 bg-muted rounded-lg">
+                                    <p className="text-sm font-medium mb-2">Skor Akhir: {reviewAssignment.review.nilaiTotal}/100</p>
+                                    {reviewAssignment.review.filePenilaian && (
+                                      <a 
+                                        href={reviewAssignment.review.filePenilaian} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline"
+                                      >
+                                        Download File Penilaian
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          }
+                        />
+                      )
+                    ))}
+
+                    {/* 7. Keputusan Admin */}
+                    {timelineData.proposal.catatan && (
+                      <TimelineItem
+                        icon={<CheckCircle2 className="w-3 h-3 text-green-600" />}
+                        title="Keputusan Admin"
+                        actor="Admin"
+                        status={timelineData.proposal.status}
+                        statusVariant={
+                          timelineData.proposal.status === "DITERIMA"
+                            ? "default"
+                            : "destructive"
+                        }
+                        collapsible={true}
+                        defaultOpen={false}
+                        content={
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Catatan:</p>
+                            <p className="text-sm whitespace-pre-wrap">{timelineData.proposal.catatan}</p>
+                          </div>
+                        }
+                      />
+                    )}
+
+                    {/* 8. Monitoring */}
+                    {timelineData.monitoring && (timelineData.monitoring.catatanKemajuan || timelineData.monitoring.catatanAkhir || timelineData.monitoring.catatanFinal) && (
+                      <TimelineItem
+                        icon={<Clock className="w-3 h-3 text-blue-600" />}
+                        title="Monitoring"
+                        timestamp={new Date(timelineData.monitoring.createdAt).toLocaleString("id-ID")}
+                        actor="Admin"
+                        status={timelineData.monitoring.status}
+                        collapsible={true}
+                        defaultOpen={false}
+                        content={
+                          <div className="space-y-2">
+                            {timelineData.monitoring.catatanKemajuan && (
+                              <>
+                                <p className="text-sm font-medium">Catatan Kemajuan:</p>
+                                <p className="text-sm whitespace-pre-wrap">{timelineData.monitoring.catatanKemajuan}</p>
+                              </>
+                            )}
+                            {timelineData.monitoring.catatanAkhir && (
+                              <>
+                                <p className="text-sm font-medium mt-3">Catatan Akhir:</p>
+                                <p className="text-sm whitespace-pre-wrap">{timelineData.monitoring.catatanAkhir}</p>
+                              </>
+                            )}
+                            {timelineData.monitoring.catatanFinal && (
+                              <>
+                                <p className="text-sm font-medium mt-3">Catatan Final:</p>
+                                <p className="text-sm whitespace-pre-wrap">{timelineData.monitoring.catatanFinal}</p>
+                              </>
+                            )}
+                            {timelineData.monitoring.plagiarismeStatus && (
+                              <>
+                                <p className="text-sm font-medium mt-3">Status Plagiarisme:</p>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={timelineData.monitoring.plagiarismeStatus === "LOLOS" ? "default" : "destructive"}>
+                                    {timelineData.monitoring.plagiarismeStatus}
+                                  </Badge>
+                                  {timelineData.monitoring.plagiarismePercentage && (
+                                    <span className="text-sm">({Number(timelineData.monitoring.plagiarismePercentage)}%)</span>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                            <div className="mt-3 text-sm text-muted-foreground">
+                              Persentase Kemajuan: {timelineData.monitoring.persentaseKemajuan}%
+                            </div>
+                          </div>
+                        }
+                      />
+                    )}
+
+                    {/* 9. Luaran (Multiple) */}
+                    {timelineData.luaran.map((luaran) => (
+                      <TimelineItem
+                        key={luaran.id}
+                        icon={<Award className="w-3 h-3 text-purple-600" />}
+                        title={`Luaran: ${luaran.jenis}`}
+                        timestamp={new Date(luaran.createdAt).toLocaleString("id-ID")}
+                        actor="Dosen"
+                        status={luaran.statusVerifikasi || ""}
+                        statusVariant={
+                          luaran.statusVerifikasi === "TERVERIFIKASI"
+                            ? "default"
+                            : "outline"
+                        }
+                        collapsible={!!(luaran.keterangan || luaran.catatanVerifikasi)}
+                        defaultOpen={false}
+                        content={
+                          (luaran.keterangan || luaran.catatanVerifikasi) && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Judul: {luaran.judul}</p>
+                              {luaran.keterangan && (
+                                <>
+                                  <p className="text-sm font-medium mt-2">Keterangan:</p>
+                                  <p className="text-sm whitespace-pre-wrap">{luaran.keterangan}</p>
+                                </>
+                              )}
+                              {luaran.catatanVerifikasi && (
+                                <>
+                                  <p className="text-sm font-medium mt-2">Catatan Verifikasi:</p>
+                                  <p className="text-sm whitespace-pre-wrap">{luaran.catatanVerifikasi}</p>
+                                </>
+                              )}
+                            </div>
+                          )
+                        }
+                      />
+                    ))}
+
+                    {/* 10. Pencairan Dana (Multiple Termins) */}
+                    {timelineData.pencairan.map((pencairan) => (
+                      <TimelineItem
+                        key={pencairan.id}
+                        icon={<Award className="w-3 h-3 text-green-600" />}
+                        title={`Pencairan Dana - Termin ${pencairan.termin}`}
+                        timestamp={
+                          pencairan.tanggalPencairan 
+                            ? new Date(pencairan.tanggalPencairan).toLocaleString("id-ID")
+                            : ""
+                        }
+                        actor="Admin"
+                        status={pencairan.status}
+                        statusVariant={
+                          pencairan.status === "DISETUJUI"
+                            ? "default"
+                            : pencairan.status === "DITOLAK"
+                            ? "destructive"
+                            : "outline"
+                        }
+                        collapsible={!!pencairan.keterangan}
+                        defaultOpen={false}
+                        content={
+                          pencairan.keterangan && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Nominal: Rp {Number(pencairan.nominal).toLocaleString("id-ID")}</p>
+                              <p className="text-sm">Persentase: {Number(pencairan.persentase)}%</p>
+                              <p className="text-sm font-medium mt-2">Keterangan:</p>
+                              <p className="text-sm whitespace-pre-wrap">{pencairan.keterangan}</p>
+                            </div>
+                          )
+                        }
+                      />
+                    ))}
+                  </Timeline>
+                ) : (
+                  <p className="text-center text-muted-foreground">Timeline data tidak tersedia</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab: Anggota Tim */}
+          <TabsContent value="anggota" className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Anggota Tim
+                    Anggota Tim Penelitian
                   </CardTitle>
                   {canAddMember && (members || []).length < 4 && (
                     <Button
                       size="sm"
-                      variant="outline"
                       onClick={() => setAddMemberDialog(true)}
                     >
-                      <UserPlus className="w-4 h-4" />
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Tambah Anggota
                     </Button>
                   )}
                 </div>
               </CardHeader>
               <CardContent>
                 {(members || []).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Belum ada anggota tim
-                  </p>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Belum ada anggota tim</p>
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    {(members || []).map((member, index) => (
+                    {(members || []).map((member) => (
                       <div
                         key={member.id}
-                        className="flex items-start justify-between gap-2 p-3 rounded-lg border bg-card"
+                        className="flex items-start justify-between gap-2 p-4 rounded-lg border bg-card hover:bg-muted/50"
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm truncate">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium truncate">
                               {member.dosen?.nama || member.mahasiswa?.nama}
                             </p>
                             {member.role === "ketua" && (
@@ -690,17 +1032,22 @@ export default function ProposalDetailPage() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             {member.dosen
-                              ? `NIDN: ${member.dosen.nidn}`
-                              : `NIM: ${member.mahasiswa?.nim}`}
+                              ? `NIDN: ${member.dosen.nidn} • ${member.dosen.email}`
+                              : `NIM: ${member.mahasiswa?.nim} • ${member.mahasiswa?.email}`}
                           </p>
+                          {member.dosen?.bidangKeahlian && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Bidang: {member.dosen.bidangKeahlian.nama}
+                            </p>
+                          )}
                         </div>
                         {canAddMember && member.role !== "ketua" && (
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600"
+                            className="text-muted-foreground hover:text-red-600"
                             onClick={() =>
                               setRemoveMemberDialog({
                                 open: true,
@@ -716,61 +1063,163 @@ export default function ProposalDetailPage() {
                     ))}
                   </div>
                 )}
-                {canAddMember && (members || []).length >= 4 && (
-                  <p className="text-xs text-muted-foreground text-center mt-3">
-                    Maksimal 4 anggota tim
-                  </p>
-                )}
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Timeline */}
+          {/* Tab: Dokumen */}
+          <TabsContent value="dokumen" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Timeline</CardTitle>
+                <CardTitle>Dokumen Proposal</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  File proposal dan dokumen pendukung lainnya
+                </p>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-2 h-2 rounded-full bg-primary"></div>
-                      <div className="w-0.5 h-full bg-border"></div>
-                    </div>
-                    <div className="flex-1 pb-4">
-                      <p className="text-sm font-medium">Dibuat</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(proposal.createdAt).toLocaleString("id-ID")}
+              <CardContent className="space-y-6">
+                {/* File Upload Section - Only for DRAFT without file */}
+                {canEdit && !proposal.filePath && (
+                  <div className="p-6 border-2 border-dashed border-primary/20 rounded-lg bg-primary/5">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 text-primary">
+                        <Upload className="w-6 h-6" />
+                        <div>
+                          <label className="text-base font-semibold">
+                            Upload File Proposal (PDF)
+                          </label>
+                          <p className="text-sm text-muted-foreground">
+                            Unggah file proposal dalam format PDF
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <input
+                        id="file-upload-detail"
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      
+                      {uploadFile ? (
+                        <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+                          <FileText className="w-8 h-8 text-primary" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{uploadFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <Button
+                            onClick={handleUploadFile}
+                            disabled={uploadingFile}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {uploadingFile ? "Uploading..." : "Upload"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setUploadFile(null)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="w-full"
+                          onClick={() => document.getElementById('file-upload-detail')?.click()}
+                        >
+                          <Upload className="w-5 h-5 mr-2" />
+                          Pilih File PDF
+                        </Button>
+                      )}
+                      
+                      <p className="text-xs text-muted-foreground text-center">
+                        Format: PDF • Ukuran maksimal: 10MB
                       </p>
                     </div>
                   </div>
+                )}
 
-                  {proposal.updatedAt !== proposal.createdAt && (
-                    <div className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="w-2 h-2 rounded-full bg-primary"></div>
-                        <div className="w-0.5 h-full bg-border"></div>
-                      </div>
-                      <div className="flex-1 pb-4">
-                        <p className="text-sm font-medium">Terakhir Diubah</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(proposal.updatedAt).toLocaleString("id-ID")}
-                        </p>
+                {proposal.filePath && (
+                  <div className="space-y-4">
+                    <div className="p-6 border rounded-lg bg-card">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-6 h-6 text-red-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold mb-1">File Proposal</h4>
+                          <p className="text-sm font-medium truncate">{proposal.fileName}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {proposal.fileSize
+                              ? `Ukuran: ${(proposal.fileSize / 1024 / 1024).toFixed(2)} MB`
+                              : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Diupload: {new Date(proposal.updatedAt).toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="default" 
+                          onClick={handleDownload}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Additional Info */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="w-5 h-5 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Dibuat</p>
+                              <p className="text-sm font-medium">
+                                {new Date(proposal.createdAt).toLocaleDateString('id-ID')}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-3">
+                            <Edit className="w-5 h-5 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Terakhir Diupdate</p>
+                              <p className="text-sm font-medium">
+                                {new Date(proposal.updatedAt).toLocaleDateString('id-ID')}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                )}
+
+                {!proposal.filePath && !canEdit && (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Belum ada file proposal yang diupload</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
+          </TabsContent>
+        </Tabs>
 
-            {/* Pencairan Dana Section - Only show if proposal DITERIMA/BERJALAN/SELESAI */}
-            {['DITERIMA', 'BERJALAN', 'SELESAI'].includes(proposal.status) && (
-              <PencairanSection proposalId={proposal.id} />
-            )}
-
-            {/* Luaran Section - Only show if proposal BERJALAN/SELESAI */}
-            <LuaranSection proposalId={proposal.id} proposalStatus={proposal.status} />
-          </div>
-        </div>
+        {/* Seminar Section (Outside Tabs) */}
+        <SeminarSection proposalId={proposal.id} isAdmin={false} />
       </div>
 
       {/* Delete Confirmation Dialog */}
