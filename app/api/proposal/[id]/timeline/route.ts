@@ -30,8 +30,6 @@ export async function GET(
         catatan: true,
         catatanRevisi: true,
         catatanAdministrasi: true,
-        catatanKesesuaianTeknikPenulisan: true,
-        catatanKelengkapanKomponen: true,
         statusAdministrasi: true,
         checkedAdminAt: true,
         dosen: {
@@ -173,8 +171,6 @@ export async function GET(
         catatan: proposal.catatan,
         catatanRevisi: proposal.catatanRevisi,
         catatanAdministrasi: proposal.catatanAdministrasi,
-        catatanKesesuaianTeknikPenulisan: proposal.catatanKesesuaianTeknikPenulisan,
-        catatanKelengkapanKomponen: proposal.catatanKelengkapanKomponen,
         statusAdministrasi: proposal.statusAdministrasi,
         checkedAdminAt: proposal.checkedAdminAt,
         dosen: proposal.dosen,
