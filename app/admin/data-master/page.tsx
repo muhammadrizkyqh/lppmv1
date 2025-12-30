@@ -62,9 +62,9 @@ export default function DataMasterPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: string; id: string; name: string } | null>(null);
 
   // Fetch data dengan hooks
-  const { data: dosenData, loading: dosenLoading, error: dosenError, refetch: refetchDosen } = useDosen({ search: dosenSearch });
-  const { data: mahasiswaData, loading: mahasiswaLoading, error: mahasiswaError, refetch: refetchMahasiswa } = useMahasiswa({ search: mahasiswaSearch });
-  const { data: reviewerData, loading: reviewerLoading, error: reviewerError, refetch: refetchReviewer } = useReviewer({ search: reviewerSearch });
+  const { data: dosenData, loading: dosenLoading, error: dosenError, refetch: refetchDosen } = useDosen({ search: dosenSearch, limit: 1000 });
+  const { data: mahasiswaData, loading: mahasiswaLoading, error: mahasiswaError, refetch: refetchMahasiswa } = useMahasiswa({ search: mahasiswaSearch, limit: 1000 });
+  const { data: reviewerData, loading: reviewerLoading, error: reviewerError, refetch: refetchReviewer } = useReviewer({ search: reviewerSearch, limit: 1000 });
   const { data: bidangKeahlianData } = useBidangKeahlian();
 
   // Handle actions
@@ -502,12 +502,17 @@ export default function DataMasterPage() {
           const data = await result.json();
           
           if (data.success) {
+            console.log('📊 Import Result:', data.data);
             toast.success(data.message, { id: loadingToast });
             if (data.data.errors.length > 0) {
-              console.log('Import errors:', data.data.errors);
+              console.error('❌ Import errors:', data.data.errors);
               toast.warning(`${data.data.errors.length} baris gagal diimport. Lihat console untuk detail.`);
             }
-            refetchDosen();
+            // Force refresh data dengan delay
+            setTimeout(() => {
+              refetchDosen();
+              window.location.reload();
+            }, 500);
           } else {
             toast.error(data.error || 'Gagal import data', { id: loadingToast });
           }
@@ -535,12 +540,17 @@ export default function DataMasterPage() {
           const data = await result.json();
           
           if (data.success) {
+            console.log('📊 Import Result:', data.data);
             toast.success(data.message, { id: loadingToast });
             if (data.data.errors.length > 0) {
-              console.log('Import errors:', data.data.errors);
+              console.error('❌ Import errors:', data.data.errors);
               toast.warning(`${data.data.errors.length} baris gagal diimport. Lihat console untuk detail.`);
             }
-            refetchMahasiswa();
+            // Force refresh data dengan delay
+            setTimeout(() => {
+              refetchMahasiswa();
+              window.location.reload();
+            }, 500);
           } else {
             toast.error(data.error || 'Gagal import data', { id: loadingToast });
           }
@@ -568,12 +578,17 @@ export default function DataMasterPage() {
           const data = await result.json();
           
           if (data.success) {
+            console.log('📊 Import Result:', data.data);
             toast.success(data.message, { id: loadingToast });
             if (data.data.errors.length > 0) {
-              console.log('Import errors:', data.data.errors);
+              console.error('❌ Import errors:', data.data.errors);
               toast.warning(`${data.data.errors.length} baris gagal diimport. Lihat console untuk detail.`);
             }
-            refetchReviewer();
+            // Force refresh data dengan delay
+            setTimeout(() => {
+              refetchReviewer();
+              window.location.reload();
+            }, 500);
           } else {
             toast.error(data.error || 'Gagal import data', { id: loadingToast });
           }
