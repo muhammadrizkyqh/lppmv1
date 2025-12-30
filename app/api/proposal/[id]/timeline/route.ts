@@ -193,6 +193,8 @@ export async function GET(
     })
   } catch (error: any) {
     console.error('Get proposal timeline error:', error)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
 
     if (error.message === 'Unauthorized') {
       return NextResponse.json(
@@ -202,7 +204,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { success: false, error: 'Terjadi kesalahan server' },
+      { success: false, error: error.message || 'Terjadi kesalahan server' },
       { status: 500 }
     )
   }
