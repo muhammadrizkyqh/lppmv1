@@ -131,9 +131,9 @@ export default function ProposalDetailPage() {
 
   const { data: proposal, loading, refetch } = useProposalById(id);
   const { data: members = [], refetch: refetchMembers } = useProposalMembers(id);
-  const { data: reviewerList = [] } = useReviewer();
-  const { data: dosenList = [] } = useDosen();
-  const { data: mahasiswaList = [] } = useMahasiswa();
+  const { data: reviewerList = [] } = useReviewer({ limit: 1000 });
+  const { data: dosenList = [] } = useDosen({ limit: 1000 });
+  const { data: mahasiswaList = [] } = useMahasiswa({ limit: 1000 });
 
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [addMemberDialog, setAddMemberDialog] = useState(false);

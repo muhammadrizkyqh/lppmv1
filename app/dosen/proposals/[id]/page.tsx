@@ -140,9 +140,9 @@ export default function ProposalDetailPage() {
 
   const { data: proposal, loading, refetch } = useProposalById(id);
   const { data: members = [], refetch: refetchMembers } = useProposalMembers(id);
-  const { data: reviewerList = [] } = useReviewer();
-  const { data: dosenList = [] } = useDosen();
-  const { data: mahasiswaList = [] } = useMahasiswa();
+  const { data: reviewerList = [] } = useReviewer({ limit: 1000 });
+  const { data: dosenList = [] } = useDosen({ limit: 1000 });
+  const { data: mahasiswaList = [] } = useMahasiswa({ limit: 1000 });
 
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [addMemberDialog, setAddMemberDialog] = useState(false);
@@ -177,16 +177,24 @@ export default function ProposalDetailPage() {
   // Fetch timeline data
   useEffect(() => {
     const fetchTimeline = async () => {
-      if (!id) return;
+      if (!id) {
+        console.log("❌ No proposal ID for timeline");
+        return;
+      }
       
+      console.log("📍 Fetching timeline for proposal:", id);
       setTimelineLoading(true);
       try {
         const response = await proposalApi.getTimeline(id);
+        console.log("📊 Timeline Response:", response);
         if (response.success && response.data) {
+          console.log("✅ Timeline Data:", response.data);
           setTimelineData(response.data);
+        } else {
+          console.error("❌ Timeline fetch failed:", response.error);
         }
       } catch (error: any) {
-        console.error("Failed to fetch timeline:", error);
+        console.error("❌ Failed to fetch timeline:", error);
       } finally {
         setTimelineLoading(false);
       }
