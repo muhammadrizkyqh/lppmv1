@@ -62,6 +62,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useProposalById, useProposalMembers, useDosen, useMahasiswa, useReviewer } from "@/hooks/use-data";
 import { proposalApi, uploadApi, ProposalTimeline } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -140,6 +155,8 @@ export default function ProposalDetailPage() {
     type: "dosen",
     id: "",
   });
+  const [memberComboOpen, setMemberComboOpen] = useState(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitDialog, setSubmitDialog] = useState(false);
   const [assignReviewerDialog, setAssignReviewerDialog] = useState(false);
@@ -1261,6 +1278,7 @@ export default function ProposalDetailPage() {
                 value={addMemberForm.type}
                 onValueChange={(value: "dosen" | "mahasiswa") => {
                   setAddMemberForm({ type: value, id: "" });
+                  setMemberSearchQuery("");
                 }}
               >
                 <SelectTrigger>
@@ -1275,29 +1293,90 @@ export default function ProposalDetailPage() {
 
             <div className="space-y-2">
               <Label>Pilih {addMemberForm.type === "dosen" ? "Dosen" : "Mahasiswa"}</Label>
-              <Select
-                value={addMemberForm.id}
-                onValueChange={(value) =>
-                  setAddMemberForm({ ...addMemberForm, id: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih anggota..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {addMemberForm.type === "dosen"
-                    ? availableDosen.map((dosen) => (
-                        <SelectItem key={dosen.id} value={dosen.id}>
-                          {dosen.nama} ({dosen.nidn})
-                        </SelectItem>
-                      ))
-                    : availableMahasiswa.map((mhs) => (
-                        <SelectItem key={mhs.id} value={mhs.id}>
-                          {mhs.nama} ({mhs.nim})
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
+              <Popover open={memberComboOpen} onOpenChange={setMemberComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={memberComboOpen}
+                    className="w-full justify-between"
+                  >
+                    {addMemberForm.id
+                      ? addMemberForm.type === "dosen"
+                        ? availableDosen.find((d) => d.id === addMemberForm.id)?.nama
+                        : availableMahasiswa.find((m) => m.id === addMemberForm.id)?.nama
+                      : "Pilih anggota..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder={`Cari ${addMemberForm.type === "dosen" ? "dosen" : "mahasiswa"}...`}
+                      value={memberSearchQuery}
+                      onValueChange={setMemberSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Tidak ada data.</CommandEmpty>
+                      <CommandGroup>
+                        {addMemberForm.type === "dosen"
+                          ? availableDosen
+                              .filter((dosen) =>
+                                dosen.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                                dosen.nidn.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                              )
+                              .map((dosen) => (
+                                <CommandItem
+                                  key={dosen.id}
+                                  value={dosen.id}
+                                  onSelect={() => {
+                                    setAddMemberForm({ ...addMemberForm, id: dosen.id });
+                                    setMemberComboOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      addMemberForm.id === dosen.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{dosen.nama}</span>
+                                    <span className="text-xs text-muted-foreground">NIDN: {dosen.nidn}</span>
+                                  </div>
+                                </CommandItem>
+                              ))
+                          : availableMahasiswa
+                              .filter((mhs) =>
+                                mhs.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                                mhs.nim.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                              )
+                              .map((mhs) => (
+                                <CommandItem
+                                  key={mhs.id}
+                                  value={mhs.id}
+                                  onSelect={() => {
+                                    setAddMemberForm({ ...addMemberForm, id: mhs.id });
+                                    setMemberComboOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      addMemberForm.id === mhs.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{mhs.nama}</span>
+                                    <span className="text-xs text-muted-foreground">NIM: {mhs.nim}</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
