@@ -27,6 +27,8 @@ import {
   Calendar,
   Filter,
   Plus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -64,6 +66,7 @@ export default function AdminPencairanPage() {
   const [uploadDialog, setUploadDialog] = useState(false);
   const [updateDialog, setUpdateDialog] = useState(false);
   const [selectedPencairan, setSelectedPencairan] = useState<PencairanList | null>(null);
+  const [expandedProposals, setExpandedProposals] = useState<Set<string>>(new Set());
   
   // Form states
   const [fileBukti, setFileBukti] = useState<File | null>(null);
@@ -224,6 +227,31 @@ export default function AdminPencairanPage() {
     setUpdateDialog(true);
   };
 
+  const toggleProposal = (proposalId: string) => {
+    const newExpanded = new Set(expandedProposals);
+    if (newExpanded.has(proposalId)) {
+      newExpanded.delete(proposalId);
+    } else {
+      newExpanded.add(proposalId);
+    }
+    setExpandedProposals(newExpanded);
+  };
+
+  // Group pencairan by proposal
+  const groupedPencairan = pencairan.reduce((acc, item) => {
+    const proposalId = item.proposal.id;
+    if (!acc[proposalId]) {
+      acc[proposalId] = {
+        proposal: item.proposal,
+        termins: []
+      };
+    }
+    acc[proposalId].termins.push(item);
+    return acc;
+  }, {} as Record<string, { proposal: any, termins: PencairanList[] }>);
+
+  const proposals = Object.values(groupedPencairan);
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -373,8 +401,8 @@ export default function AdminPencairanPage() {
           </CardContent>
         </Card>
 
-        {/* Pencairan List */}
-        {pencairan.length === 0 ? (
+        {/* Pencairan List - Grouped by Proposal */}
+        {proposals.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mb-4" />
@@ -386,86 +414,147 @@ export default function AdminPencairanPage() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {pencairan.map((item) => (
-              <Card key={item.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    {/* Left: Proposal Info */}
-                    <div className="flex-1 space-y-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-semibold">{item.proposal.judul}</h3>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                          <span>{item.proposal.dosen.nama}</span>
-                          <span>•</span>
-                          <span>{item.proposal.periode.nama} ({item.proposal.periode.tahun})</span>
-                          <span>•</span>
-                          <span>{item.proposal.skema.nama}</span>
-                        </div>
-                      </div>
+            {proposals.map((group) => {
+              const isExpanded = expandedProposals.has(group.proposal.id);
+              const totalTermins = group.termins.length;
+              const totalNominal = group.termins.reduce((sum, t) => sum + Number(t.nominal), 0);
+              const dicairkanCount = group.termins.filter(t => t.status === 'DICAIRKAN').length;
+              const pendingCount = group.termins.filter(t => t.status === 'PENDING').length;
 
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Badge variant="outline">{getTerminLabel(item.termin)} ({item.persentase}%)</Badge>
-                        {getStatusBadge(item.status)}
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <DollarSign className="w-4 h-4" />
-                          <span className="font-semibold">{formatCurrency(Number(item.nominal))}</span>
-                        </div>
-                        {item.tanggalPencairan && (
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {formatDate(item.tanggalPencairan)}
+              return (
+                <Card key={group.proposal.id} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-0">
+                    {/* Header - Collapsible */}
+                    <div 
+                      className="p-6 cursor-pointer hover:bg-accent/50 transition-colors"
+                      onClick={() => toggleProposal(group.proposal.id)}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold mb-1">{group.proposal.judul}</h3>
+                              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                <span>{group.proposal.dosen.nama}</span>
+                                <span>•</span>
+                                <span>{group.proposal.periode.nama} ({group.proposal.periode.tahun})</span>
+                                <span>•</span>
+                                <span>{group.proposal.skema.nama}</span>
+                              </div>
+                            </div>
+                            <div className="shrink-0">
+                              {isExpanded ? (
+                                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              )}
+                            </div>
                           </div>
-                        )}
+
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{totalTermins} Termin</Badge>
+                              {dicairkanCount > 0 && (
+                                <Badge variant="default" className="gap-1">
+                                  <CheckCircle className="w-3 h-3" />
+                                  {dicairkanCount} Dicairkan
+                                </Badge>
+                              )}
+                              {pendingCount > 0 && (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {pendingCount} Pending
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm font-semibold text-primary flex items-center gap-1">
+                              <DollarSign className="w-4 h-4" />
+                              {formatCurrency(totalNominal)}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-
-                      {item.keterangan && (
-                        <p className="text-sm text-muted-foreground">{item.keterangan}</p>
-                      )}
                     </div>
 
-                    {/* Right: Actions */}
-                    <div className="flex flex-col gap-2 min-w-[200px]">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openUploadDialog(item)}
-                        className="w-full"
-                        disabled={item.status === 'DICAIRKAN'}
-                        title={item.status === 'DICAIRKAN' ? 'Pencairan sudah dicairkan' : (item.fileBukti ? 'Ganti bukti transfer' : 'Upload bukti transfer')}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {item.fileBukti ? 'Ganti Bukti' : 'Upload Bukti'}
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openUpdateDialog(item)}
-                        className="w-full"
-                        disabled={item.status === 'DICAIRKAN'}
-                        title={item.status === 'DICAIRKAN' ? 'Pencairan yang sudah dicairkan tidak dapat diubah' : 'Update status pencairan'}
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Update Status
-                      </Button>
+                    {/* Termin List - Expandable */}
+                    {isExpanded && (
+                      <div className="border-t">
+                        {group.termins.map((item, idx) => (
+                          <div 
+                            key={item.id} 
+                            className={`p-6 ${idx !== group.termins.length - 1 ? 'border-b' : ''} bg-accent/20`}
+                          >
+                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                              {/* Termin Info */}
+                              <div className="flex-1 space-y-3">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <Badge variant="outline" className="font-semibold">
+                                    {getTerminLabel(item.termin)} ({item.persentase}%)
+                                  </Badge>
+                                  {getStatusBadge(item.status)}
+                                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                    <DollarSign className="w-4 h-4" />
+                                    <span className="font-semibold">{formatCurrency(Number(item.nominal))}</span>
+                                  </div>
+                                  {item.tanggalPencairan && (
+                                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                      <Calendar className="w-4 h-4" />
+                                      {formatDate(item.tanggalPencairan)}
+                                    </div>
+                                  )}
+                                </div>
 
-                      {item.fileBukti && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(item.fileBukti!, '_blank')}
-                          className="w-full"
-                        >
-                          Lihat Bukti
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                                {item.keterangan && (
+                                  <p className="text-sm text-muted-foreground italic">{item.keterangan}</p>
+                                )}
+                              </div>
+
+                              {/* Termin Actions */}
+                              <div className="flex flex-col gap-2 min-w-[200px]">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openUploadDialog(item)}
+                                  className="w-full"
+                                  disabled={item.status === 'DICAIRKAN'}
+                                  title={item.status === 'DICAIRKAN' ? 'Pencairan sudah dicairkan' : (item.fileBukti ? 'Ganti bukti transfer' : 'Upload bukti transfer')}
+                                >
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  {item.fileBukti ? 'Ganti Bukti' : 'Upload Bukti'}
+                                </Button>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openUpdateDialog(item)}
+                                  className="w-full"
+                                  disabled={item.status === 'DICAIRKAN'}
+                                  title={item.status === 'DICAIRKAN' ? 'Pencairan yang sudah dicairkan tidak dapat diubah' : 'Update status pencairan'}
+                                >
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Update Status
+                                </Button>
+
+                                {item.fileBukti && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(item.fileBukti!, '_blank')}
+                                    className="w-full"
+                                  >
+                                    Lihat Bukti
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 

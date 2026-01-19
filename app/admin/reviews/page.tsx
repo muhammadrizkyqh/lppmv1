@@ -79,8 +79,16 @@ export default function AdminReviewsPage() {
     p.skema.nama.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const completeProposals = filteredProposals.filter(p => p.reviewStatus.allComplete)
-  const incompleteProposals = filteredProposals.filter(p => !p.reviewStatus.allComplete)
+  // Hanya proposal yang masih DIREVIEW dan review lengkap yang bisa diputuskan
+  const completeProposals = filteredProposals.filter(p => 
+    p.status === 'DIREVIEW' && p.reviewStatus.allComplete
+  )
+  const incompleteProposals = filteredProposals.filter(p => 
+    p.status === 'DIREVIEW' && !p.reviewStatus.allComplete
+  )
+  const decidedProposals = filteredProposals.filter(p => 
+    p.status === 'DITERIMA' || p.status === 'DITOLAK'
+  )
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -99,7 +107,17 @@ export default function AdminReviewsPage() {
     })
   }
 
-  const ProposalCard = ({ proposal }: { proposal: ProposalReviewed }) => (
+  const ProposalCard = ({ proposal }: { proposal: ProposalReviewed }) => {
+    const isDecided = proposal.status === 'DITERIMA' || proposal.status === 'DITOLAK'
+    const statusBadge = isDecided 
+      ? proposal.status === 'DITERIMA' 
+        ? { variant: 'default' as const, label: 'Diterima', color: 'text-green-600' }
+        : { variant: 'destructive' as const, label: 'Ditolak', color: 'text-red-600' }
+      : proposal.reviewStatus.allComplete
+        ? { variant: 'default' as const, label: proposal.reviewStatus.label, color: '' }
+        : { variant: 'secondary' as const, label: proposal.reviewStatus.label, color: '' }
+
+    return (
     <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
       <CardContent className="p-4 md:p-6">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -108,18 +126,29 @@ export default function AdminReviewsPage() {
               <h3 className="font-semibold text-base md:text-lg text-foreground line-clamp-2 break-words">
                 {proposal.judul}
               </h3>
-              <div className="shrink-0">
-                <Badge
-                  variant={proposal.reviewStatus.allComplete ? 'default' : 'secondary'}
-                  className="gap-1"
-                >
-                  {proposal.reviewStatus.allComplete ? (
-                    <CheckCircle2 className="h-3 w-3" />
-                  ) : (
-                    <Clock className="h-3 w-3" />
-                  )}
-                  {proposal.reviewStatus.label}
-                </Badge>
+              <div className="shrink-0 flex gap-2">
+                {isDecided ? (
+                  <Badge variant={statusBadge.variant} className="gap-1">
+                    {proposal.status === 'DITERIMA' ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      <AlertCircle className="h-3 w-3" />
+                    )}
+                    {statusBadge.label}
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant={statusBadge.variant}
+                    className="gap-1"
+                  >
+                    {proposal.reviewStatus.allComplete ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      <Clock className="h-3 w-3" />
+                    )}
+                    {statusBadge.label}
+                  </Badge>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
@@ -171,22 +200,21 @@ export default function AdminReviewsPage() {
           </div>
           <Button
             size="sm"
-            variant={proposal.reviewStatus.allComplete ? 'default' : 'outline'}
+            variant={isDecided ? 'outline' : proposal.reviewStatus.allComplete ? 'default' : 'outline'}
             onClick={() => router.push(`/admin/reviews/${proposal.id}`)}
             className="shrink-0"
           >
             <Eye className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">
-              {proposal.reviewStatus.allComplete ? 'Buat Keputusan' : 'Lihat Detail'}
+              {isDecided ? 'Lihat Detail' : proposal.reviewStatus.allComplete ? 'Buat Keputusan' : 'Lihat Detail'}
             </span>
-            <span className="sm:hidden">
-              {proposal.reviewStatus.allComplete ? 'Keputusan' : 'Detail'}
-            </span>
+            <span className="sm:hidden">Detail</span>
           </Button>
         </div>
       </CardContent>
     </Card>
   )
+}
 
   const ProposalList = ({ proposals }: { proposals: ProposalReviewed[] }) => {
     if (proposals.length === 0) {
@@ -236,19 +264,7 @@ export default function AdminReviewsPage() {
         </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Direview</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{proposals.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Proposal dalam proses review
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Review Lengkap</CardTitle>
@@ -270,6 +286,30 @@ export default function AdminReviewsPage() {
             <div className="text-2xl font-bold">{incompleteProposals.length}</div>
             <p className="text-xs text-muted-foreground">
               Review belum lengkap
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sudah Diputuskan</CardTitle>
+            <FileText className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{decidedProposals.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Diterima atau ditolak
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{proposals.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Semua proposal
             </p>
           </CardContent>
         </Card>
@@ -309,6 +349,12 @@ export default function AdminReviewsPage() {
             count: incompleteProposals.length,
           },
           {
+            value: 'decided',
+            label: 'Sudah Diputuskan',
+            icon: <FileText className="h-4 w-4" />,
+            count: decidedProposals.length,
+          },
+          {
             value: 'all',
             label: 'Semua',
             icon: <AlertCircle className="h-4 w-4" />,
@@ -322,6 +368,10 @@ export default function AdminReviewsPage() {
 
         <TabsContent value="incomplete" className="space-y-4">
           <ProposalList proposals={incompleteProposals} />
+        </TabsContent>
+
+        <TabsContent value="decided" className="space-y-4">
+          <ProposalList proposals={decidedProposals} />
         </TabsContent>
 
         <TabsContent value="all" className="space-y-4">

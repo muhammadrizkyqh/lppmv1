@@ -1327,71 +1327,94 @@ export default function ProposalDetailPage() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0">
-                  <Command>
-                    <CommandInput 
-                      placeholder={`Cari ${addMemberForm.type === "dosen" ? "dosen" : "mahasiswa"}...`}
-                      value={memberSearchQuery}
-                      onValueChange={setMemberSearchQuery}
-                    />
-                    <CommandList>
-                      <CommandEmpty>Tidak ada data.</CommandEmpty>
-                      <CommandGroup>
-                        {addMemberForm.type === "dosen"
-                          ? availableDosen
-                              .filter((dosen) =>
-                                dosen.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
-                                dosen.nidn.toLowerCase().includes(memberSearchQuery.toLowerCase())
-                              )
-                              .map((dosen) => (
-                                <CommandItem
-                                  key={dosen.id}
-                                  value={dosen.id}
-                                  onSelect={() => {
-                                    setAddMemberForm({ ...addMemberForm, id: dosen.id });
-                                    setMemberComboOpen(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      addMemberForm.id === dosen.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span>{dosen.nama}</span>
-                                    <span className="text-xs text-muted-foreground">NIDN: {dosen.nidn}</span>
-                                  </div>
-                                </CommandItem>
-                              ))
-                          : availableMahasiswa
-                              .filter((mhs) =>
-                                mhs.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
-                                mhs.nim.toLowerCase().includes(memberSearchQuery.toLowerCase())
-                              )
-                              .map((mhs) => (
-                                <CommandItem
-                                  key={mhs.id}
-                                  value={mhs.id}
-                                  onSelect={() => {
-                                    setAddMemberForm({ ...addMemberForm, id: mhs.id });
-                                    setMemberComboOpen(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      addMemberForm.id === mhs.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span>{mhs.nama}</span>
-                                    <span className="text-xs text-muted-foreground">NIM: {mhs.nim}</span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
+                  <div className="flex flex-col">
+                    <div className="border-b px-3 py-2">
+                      <Input
+                        placeholder={`Cari ${addMemberForm.type === "dosen" ? "dosen" : "mahasiswa"}...`}
+                        value={memberSearchQuery}
+                        onChange={(e) => setMemberSearchQuery(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                      {(addMemberForm.type === "dosen"
+                        ? availableDosen.filter((dosen) =>
+                            dosen.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                            dosen.nidn.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                          )
+                        : availableMahasiswa.filter((mhs) =>
+                            mhs.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                            mhs.nim.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                          )
+                      ).length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                          Tidak ada data.
+                        </div>
+                      ) : addMemberForm.type === "dosen" ? (
+                        availableDosen
+                          .filter((dosen) =>
+                            dosen.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                            dosen.nidn.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                          )
+                          .map((dosen) => (
+                            <div
+                              key={dosen.id}
+                              onClick={() => {
+                                setAddMemberForm({ ...addMemberForm, id: dosen.id });
+                                setMemberComboOpen(false);
+                                setMemberSearchQuery("");
+                              }}
+                              className={cn(
+                                "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                addMemberForm.id === dosen.id && "bg-accent"
+                              )}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4 shrink-0",
+                                  addMemberForm.id === dosen.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{dosen.nama}</span>
+                                <span className="text-xs text-muted-foreground">NIDN: {dosen.nidn}</span>
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        availableMahasiswa
+                          .filter((mhs) =>
+                            mhs.nama.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                            mhs.nim.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                          )
+                          .map((mhs) => (
+                            <div
+                              key={mhs.id}
+                              onClick={() => {
+                                setAddMemberForm({ ...addMemberForm, id: mhs.id });
+                                setMemberComboOpen(false);
+                                setMemberSearchQuery("");
+                              }}
+                              className={cn(
+                                "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                addMemberForm.id === mhs.id && "bg-accent"
+                              )}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4 shrink-0",
+                                  addMemberForm.id === mhs.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{mhs.nama}</span>
+                                <span className="text-xs text-muted-foreground">NIM: {mhs.nim}</span>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
                 </PopoverContent>
               </Popover>
             </div>

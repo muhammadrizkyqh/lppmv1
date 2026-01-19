@@ -8,20 +8,18 @@ import { prisma } from './prisma'
  */
 export async function generateNomorKontrak(): Promise<string> {
   const currentYear = new Date().getFullYear()
+  const sequenceId = `KONTRAK_${currentYear}`
   
   // Atomic increment using upsert - thread-safe, no race condition
   const sequence = await prisma.sequence.upsert({
     where: {
-      id_year: {
-        id: 'KONTRAK',
-        year: currentYear
-      }
+      id: sequenceId
     },
     update: {
       lastNumber: { increment: 1 }
     },
     create: {
-      id: 'KONTRAK',
+      id: sequenceId,
       year: currentYear,
       lastNumber: 1
     }
@@ -40,20 +38,18 @@ export async function generateNomorKontrak(): Promise<string> {
  */
 export async function generateNomorSK(): Promise<string> {
   const currentYear = new Date().getFullYear()
+  const sequenceId = `SK_${currentYear}`
   
   // Atomic increment using upsert - thread-safe, no race condition
   const sequence = await prisma.sequence.upsert({
     where: {
-      id_year: {
-        id: 'SK',
-        year: currentYear
-      }
+      id: sequenceId
     },
     update: {
       lastNumber: { increment: 1 }
     },
     create: {
-      id: 'SK',
+      id: sequenceId,
       year: currentYear,
       lastNumber: 1
     }

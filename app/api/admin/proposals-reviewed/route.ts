@@ -21,10 +21,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get all proposals with status DIREVIEW
+    // Get all proposals with status DIREVIEW (includes those being reviewed and those reviewed but not yet decided)
     const proposals = await prisma.proposal.findMany({
       where: {
-        status: 'DIREVIEW'
+        status: {
+          in: ['DIREVIEW', 'DITERIMA', 'DITOLAK']
+        }
       },
       select: {
         id: true,
