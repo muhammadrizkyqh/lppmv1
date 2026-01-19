@@ -168,13 +168,6 @@ function LoginForm() {
                   )}
                 </Button>
               </form>
-              
-              <div className="text-center space-y-2">
-                <div className="text-xs text-muted-foreground">
-                  <p>Default password: <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">password123</code></p>
-                  <p className="mt-1">Username: admin, dosen1, dosen2, mhs1, dll</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
