@@ -83,12 +83,25 @@ jobs:
             cd /home/deploy
             tar -xzf deploy.tar.gz
             
+            # Verify extraction
+            if [ ! -d "deploy-package/.next" ]; then
+              echo "ERROR: .next folder not found in deployment package!"
+              exit 1
+            fi
+            
             # Replace build files
             cd /home/deploy/lppmv1
+            rm -rf .next public
             cp -r /home/deploy/deploy-package/.next .
             cp -r /home/deploy/deploy-package/public .
             cp /home/deploy/deploy-package/package.json .
             cp /home/deploy/deploy-package/package-lock.json .
+            
+            # Verify .next exists
+            if [ ! -d ".next" ]; then
+              echo "ERROR: .next folder copy failed!"
+              exit 1
+            fi
             
             # Update prisma schema and migrations
             cp /home/deploy/deploy-package/prisma/schema.prisma prisma/
@@ -109,6 +122,12 @@ jobs:
             
             # Run migrations
             npx prisma migrate deploy || echo "No migrations to run"
+            
+            # Verify build exists before restart
+            if [ ! -f ".next/BUILD_ID" ]; then
+              echo "ERROR: No valid build found!"
+              exit 1
+            fi
             
             # Restart application
             pm2 restart lppm || pm2 start npm --name lppm -- start
