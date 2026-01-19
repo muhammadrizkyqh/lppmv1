@@ -667,12 +667,34 @@ export default function DataMasterPage() {
           return;
         }
 
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        // Parse CSV with proper quote handling
+        const parseCSVLine = (line: string): string[] => {
+          const result: string[] = [];
+          let current = '';
+          let inQuotes = false;
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim());
+          return result;
+        };
+
+        const headers = parseCSVLine(lines[0]);
         const rows: any[] = [];
 
         // Parse CSV rows
         for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCSVLine(lines[i]);
           const rowData: any = {};
           
           headers.forEach((header, index) => {
