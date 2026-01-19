@@ -168,10 +168,19 @@ export default function ProposalDetailPage() {
   const [timelineLoading, setTimelineLoading] = useState(false);
 
   useEffect(() => {
-    // Get user role from localStorage
-    const role = localStorage.getItem("userRole") || "";
-    console.log("🔍 User Role from localStorage:", role);
-    setUserRole(role);
+    // Get user role from session API
+    const fetchUserRole = async () => {
+      try {
+        const response = await fetch('/api/auth/session')
+        const data = await response.json()
+        if (data.success && data.user) {
+          setUserRole(data.user.role)
+        }
+      } catch (error) {
+        console.error("Failed to fetch user role:", error)
+      }
+    }
+    fetchUserRole()
   }, []);
 
   // Fetch timeline data

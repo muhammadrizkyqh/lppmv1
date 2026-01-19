@@ -66,7 +66,19 @@ export async function middleware(request: NextRequest) {
 
   // Redirect to dashboard if accessing auth route with active session
   if (isAuthRoute && session) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Redirect to role-specific dashboard
+    switch (session.user.role) {
+      case 'ADMIN':
+        return NextResponse.redirect(new URL('/admin/proposals', request.url))
+      case 'DOSEN':
+        return NextResponse.redirect(new URL('/dosen/proposals', request.url))
+      case 'REVIEWER':
+        return NextResponse.redirect(new URL('/reviewer/assignments', request.url))
+      case 'MAHASISWA':
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      default:
+        return NextResponse.redirect(new URL('/login', request.url))
+    }
   }
 
   return NextResponse.next()

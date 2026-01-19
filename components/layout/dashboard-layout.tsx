@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useSessionRefresh } from "@/hooks/use-session-refresh";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -270,6 +271,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Enable auto session refresh
+  useSessionRefresh();
 
   // Fetch current session
   useEffect(() => {
@@ -304,12 +308,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       const data = await response.json();
 
       if (data.success) {
-        // Clear localStorage
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("userName");
-        console.log("🗑️ Cleared localStorage");
-        
         toast.success('Logout berhasil');
         router.push('/login');
         router.refresh();

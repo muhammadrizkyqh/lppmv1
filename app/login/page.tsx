@@ -44,18 +44,6 @@ function LoginForm() {
       const data = await response.json();
 
       if (data.success) {
-        // Store user info in localStorage
-        if (data.user) {
-          localStorage.setItem("userRole", data.user.role);
-          localStorage.setItem("userId", data.user.id);
-          localStorage.setItem("userName", data.user.name || data.user.username);
-          console.log("✅ Saved to localStorage:", {
-            role: data.user.role,
-            id: data.user.id,
-            name: data.user.name || data.user.username
-          });
-        }
-        
         toast.success('Login berhasil!', {
           description: `Selamat datang, ${data.user.name || data.user.username}`,
         });
