@@ -34,12 +34,8 @@ jobs:
           mkdir -p deploy-package
           cp -r .next deploy-package/
           cp -r public deploy-package/
-          mkdir -p deploy-package/node_modules
-          cp -r node_modules/.prisma deploy-package/node_modules/
-          cp -r node_modules/@prisma deploy-package/node_modules/
           cp package.json deploy-package/
           cp package-lock.json deploy-package/
-          cp .env deploy-package/ || echo "No .env file to copy"
           mkdir -p deploy-package/prisma
           cp prisma/schema.prisma deploy-package/prisma/
           cp -r prisma/migrations deploy-package/prisma/ || echo "No migrations to copy"
@@ -74,30 +70,28 @@ jobs:
             
             cd /home/deploy/lppmv1
             
-            # Backup current deployment
-            if [ -d ".next" ]; then
-              mv .next .next.backup.$(date +%Y%m%d_%H%M%S)
-              # Keep only last 2 backups
-              ls -t .next.backup.* | tail -n +3 | xargs -r rm -rf
-            fi
-            
-            # Extract new build
-            cd /home/deploy
-            tar -xzf deploy.tar.gz
-            
             # Stop application before replacing files
             pm2 stop lppm || echo "App not running"
             
-            # Replace files
+            # Backup current .next
+            if [ -d ".next" ]; then
+              mv .next .next.backup.$(date +%Y%m%d_%H%M%S)
+              ls -t .next.backup.* 2>/dev/null | tail -n +3 | xargs -r rm -rf
+            fi
+            
+            # Extract deployment package
+            cd /home/deploy
+            tar -xzf deploy.tar.gz
+            
+            # Replace build files
             cd /home/deploy/lppmv1
-            rm -rf .next public
             cp -r /home/deploy/deploy-package/.next .
             cp -r /home/deploy/deploy-package/public .
-            mkdir -p node_modules
-            cp -r /home/deploy/deploy-package/node_modules/.prisma node_modules/
-            cp -r /home/deploy/deploy-package/node_modules/@prisma node_modules/
+            cp /home/deploy/deploy-package/package.json .
+            cp /home/deploy/deploy-package/package-lock.json .
             
-            # Update prisma if needed
+            # Update prisma schema and migrations
+            cp /home/deploy/deploy-package/prisma/schema.prisma prisma/
             if [ -d "/home/deploy/deploy-package/prisma/migrations" ]; then
               cp -r /home/deploy/deploy-package/prisma/migrations prisma/
             fi
@@ -106,14 +100,14 @@ jobs:
             cd /home/deploy
             rm -rf deploy-package deploy.tar.gz
             
-            # Back to app directory
+            # Install/update dependencies
             cd /home/deploy/lppmv1
+            npm ci --omit=dev || npm install --omit=dev
             
-            # Regenerate Prisma Client (force fresh)
-            rm -rf node_modules/.prisma node_modules/@prisma
+            # Regenerate Prisma Client
             npx prisma generate
             
-            # Run migrations safely
+            # Run migrations
             npx prisma migrate deploy || echo "No migrations to run"
             
             # Restart application
@@ -122,7 +116,7 @@ jobs:
             # Save PM2 configuration
             pm2 save
             
-            # Wait and check status
+            # Check status
             sleep 3
             pm2 status lppm
             pm2 logs lppm --lines 20 --nostream
