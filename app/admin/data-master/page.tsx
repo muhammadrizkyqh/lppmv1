@@ -21,7 +21,9 @@ import {
   BookOpen,
   UserCheck,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -51,11 +53,17 @@ export default function DataMasterPage() {
   const [reviewerPage, setReviewerPage] = useState(1);
   const [reviewerPageSize, setReviewerPageSize] = useState(10);
 
+  // Selection states for bulk delete
+  const [selectedDosenIds, setSelectedDosenIds] = useState<string[]>([]);
+  const [selectedMahasiswaIds, setSelectedMahasiswaIds] = useState<string[]>([]);
+  const [selectedReviewerIds, setSelectedReviewerIds] = useState<string[]>([]);
+
   // Dialog states
   const [dosenDialogOpen, setDosenDialogOpen] = useState(false);
   const [mahasiswaDialogOpen, setMahasiswaDialogOpen] = useState(false);
   const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [selectedDosen, setSelectedDosen] = useState<Dosen | null>(null);
   const [selectedMahasiswa, setSelectedMahasiswa] = useState<Mahasiswa | null>(null);
   const [selectedReviewer, setSelectedReviewer] = useState<Reviewer | null>(null);
@@ -145,8 +153,146 @@ export default function DataMasterPage() {
     }
   };
 
+  // Bulk delete handlers
+  const handleBulkDelete = async () => {
+    try {
+      let result: any;
+      if (activeTab === 'dosen' && selectedDosenIds.length > 0) {
+        const response = await fetch('/api/admin/dosen/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedDosenIds }),
+        });
+        result = await response.json();
+        if (result.success) {
+          toast.success(`${selectedDosenIds.length} dosen berhasil dihapus`);
+          setSelectedDosenIds([]);
+          refetchDosen();
+        } else {
+          toast.error(result.error || 'Gagal menghapus dosen');
+        }
+      } else if (activeTab === 'mahasiswa' && selectedMahasiswaIds.length > 0) {
+        const response = await fetch('/api/admin/mahasiswa/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedMahasiswaIds }),
+        });
+        result = await response.json();
+        if (result.success) {
+          toast.success(`${selectedMahasiswaIds.length} mahasiswa berhasil dihapus`);
+          setSelectedMahasiswaIds([]);
+          refetchMahasiswa();
+        } else {
+          toast.error(result.error || 'Gagal menghapus mahasiswa');
+        }
+      } else if (activeTab === 'reviewer' && selectedReviewerIds.length > 0) {
+        const response = await fetch('/api/admin/reviewer/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedReviewerIds }),
+        });
+        result = await response.json();
+        if (result.success) {
+          toast.success(`${selectedReviewerIds.length} reviewer berhasil dihapus`);
+          setSelectedReviewerIds([]);
+          refetchReviewer();
+        } else {
+          toast.error(result.error || 'Gagal menghapus reviewer');
+        }
+      }
+      setBulkDeleteDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Terjadi kesalahan');
+    }
+  };
+
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (activeTab === 'dosen') {
+      setSelectedDosenIds(checked ? (dosenData || []).map(d => d.id) : []);
+    } else if (activeTab === 'mahasiswa') {
+      setSelectedMahasiswaIds(checked ? (mahasiswaData || []).map(m => m.id) : []);
+    } else if (activeTab === 'reviewer') {
+      setSelectedReviewerIds(checked ? (reviewerData || []).map(r => r.id) : []);
+    }
+  };
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    if (activeTab === 'dosen') {
+      setSelectedDosenIds(prev => 
+        checked ? [...prev, id] : prev.filter(x => x !== id)
+      );
+    } else if (activeTab === 'mahasiswa') {
+      setSelectedMahasiswaIds(prev => 
+        checked ? [...prev, id] : prev.filter(x => x !== id)
+      );
+    } else if (activeTab === 'reviewer') {
+      setSelectedReviewerIds(prev => 
+        checked ? [...prev, id] : prev.filter(x => x !== id)
+      );
+    }
+  };
+
+  const isItemSelected = (id: string) => {
+    if (activeTab === 'dosen') return selectedDosenIds.includes(id);
+    if (activeTab === 'mahasiswa') return selectedMahasiswaIds.includes(id);
+    if (activeTab === 'reviewer') return selectedReviewerIds.includes(id);
+    return false;
+  };
+
+  const isAllSelected = () => {
+    if (activeTab === 'dosen') {
+      return dosenData && dosenData.length > 0 && selectedDosenIds.length === dosenData.length;
+    }
+    if (activeTab === 'mahasiswa') {
+      return mahasiswaData && mahasiswaData.length > 0 && selectedMahasiswaIds.length === mahasiswaData.length;
+    }
+    if (activeTab === 'reviewer') {
+      return reviewerData && reviewerData.length > 0 && selectedReviewerIds.length === reviewerData.length;
+    }
+    return false;
+  };
+
+  const getSelectedCount = () => {
+    if (activeTab === 'dosen') return selectedDosenIds.length;
+    if (activeTab === 'mahasiswa') return selectedMahasiswaIds.length;
+    if (activeTab === 'reviewer') return selectedReviewerIds.length;
+    return 0;
+  };
+
   // Column definitions untuk Dosen
   const dosenColumns: any[] = [
+    {
+      key: "select",
+      header: () => (
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => handleSelectAll(!isAllSelected())}
+            className="hover:bg-muted rounded p-1"
+          >
+            {isAllSelected() ? (
+              <CheckSquare className="w-4 h-4" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ),
+      render: (_: any, row: any) => (
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => handleSelectItem(row.id, !isItemSelected(row.id))}
+            className="hover:bg-muted rounded p-1"
+          >
+            {isItemSelected(row.id) ? (
+              <CheckSquare className="w-4 h-4" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ),
+    },
     {
       key: "nama",
       header: "Dosen",
@@ -218,6 +364,37 @@ export default function DataMasterPage() {
   // Column definitions untuk Mahasiswa
   const mahasiswaColumns: any[] = [
     {
+      key: "select",
+      header: () => (
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => handleSelectAll(!isAllSelected())}
+            className="hover:bg-muted rounded p-1"
+          >
+            {isAllSelected() ? (
+              <CheckSquare className="w-4 h-4" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ),
+      render: (_: any, row: any) => (
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => handleSelectItem(row.id, !isItemSelected(row.id))}
+            className="hover:bg-muted rounded p-1"
+          >
+            {isItemSelected(row.id) ? (
+              <CheckSquare className="w-4 h-4" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ),
+    },
+    {
       key: "nama",
       header: "Mahasiswa",
       render: (_: any, row: any) => (
@@ -279,6 +456,37 @@ export default function DataMasterPage() {
 
   // Column definitions untuk Reviewer
   const reviewerColumns: any[] = [
+    {
+      key: "select",
+      header: () => (
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => handleSelectAll(!isAllSelected())}
+            className="hover:bg-muted rounded p-1"
+          >
+            {isAllSelected() ? (
+              <CheckSquare className="w-4 h-4" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ),
+      render: (_: any, row: any) => (
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => handleSelectItem(row.id, !isItemSelected(row.id))}
+            className="hover:bg-muted rounded p-1"
+          >
+            {isItemSelected(row.id) ? (
+              <CheckSquare className="w-4 h-4" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ),
+    },
     {
       key: "nama",
       header: "Reviewer",
@@ -614,6 +822,15 @@ export default function DataMasterPage() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
+            {getSelectedCount() > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setBulkDeleteDialogOpen(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Hapus Terpilih ({getSelectedCount()})
+              </Button>
+            )}
             <Button variant="outline" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
@@ -863,6 +1080,15 @@ export default function DataMasterPage() {
         title={`Hapus ${deleteTarget?.type === 'dosen' ? 'Dosen' : deleteTarget?.type === 'mahasiswa' ? 'Mahasiswa' : 'Reviewer'}`}
         description={`Apakah Anda yakin ingin menghapus ${deleteTarget?.name}? Tindakan ini tidak dapat dibatalkan.`}
         onConfirm={handleDelete}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+        title={`Hapus ${getSelectedCount()} ${activeTab === 'dosen' ? 'Dosen' : activeTab === 'mahasiswa' ? 'Mahasiswa' : 'Reviewer'}`}
+        description={`Apakah Anda yakin ingin menghapus ${getSelectedCount()} ${activeTab === 'dosen' ? 'dosen' : activeTab === 'mahasiswa' ? 'mahasiswa' : 'reviewer'} yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
+        onConfirm={handleBulkDelete}
       />
     </DashboardLayout>
   );
