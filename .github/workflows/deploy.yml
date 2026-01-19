@@ -34,12 +34,15 @@ jobs:
           mkdir -p deploy-package
           cp -r .next deploy-package/
           cp -r public deploy-package/
+          mkdir -p deploy-package/node_modules
           cp -r node_modules/.prisma deploy-package/node_modules/
           cp -r node_modules/@prisma deploy-package/node_modules/
           cp package.json deploy-package/
+          cp package-lock.json deploy-package/
+          cp .env deploy-package/ || echo "No .env file to copy"
           mkdir -p deploy-package/prisma
-          cp -r prisma/schema.prisma deploy-package/prisma/
-          cp -r prisma/migrations deploy-package/prisma/
+          cp prisma/schema.prisma deploy-package/prisma/
+          cp -r prisma/migrations deploy-package/prisma/ || echo "No migrations to copy"
           tar -czf deploy.tar.gz deploy-package/
       
       - name: Install SSH Key
@@ -66,35 +69,60 @@ jobs:
           command_timeout: 10m
           script: |
             export PATH=$PATH:/home/deploy/.nvm/versions/node/v24.12.0/bin
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             
             cd /home/deploy/lppmv1
             
             # Backup current deployment
             if [ -d ".next" ]; then
-              mv .next .next.backup
+              mv .next .next.backup.$(date +%Y%m%d_%H%M%S)
+              # Keep only last 2 backups
+              ls -t .next.backup.* | tail -n +3 | xargs -r rm -rf
             fi
             
             # Extract new build
             cd /home/deploy
             tar -xzf deploy.tar.gz
-            cp -r deploy-package/.next lppmv1/
-            cp -r deploy-package/public lppmv1/
-            mkdir -p lppmv1/node_modules
-            cp -r deploy-package/node_modules/.prisma lppmv1/node_modules/
-            cp -r deploy-package/node_modules/@prisma lppmv1/node_modules/
+            
+            # Stop application before replacing files
+            pm2 stop lppm || echo "App not running"
+            
+            # Replace files
+            cd /home/deploy/lppmv1
+            rm -rf .next public
+            cp -r /home/deploy/deploy-package/.next .
+            cp -r /home/deploy/deploy-package/public .
+            mkdir -p node_modules
+            cp -r /home/deploy/deploy-package/node_modules/.prisma node_modules/
+            cp -r /home/deploy/deploy-package/node_modules/@prisma node_modules/
+            
+            # Update prisma if needed
+            if [ -d "/home/deploy/deploy-package/prisma/migrations" ]; then
+              cp -r /home/deploy/deploy-package/prisma/migrations prisma/
+            fi
+            
+            # Cleanup deploy package
+            cd /home/deploy
             rm -rf deploy-package deploy.tar.gz
             
+            # Back to app directory
             cd /home/deploy/lppmv1
             
-            # Copy new prisma files
-            cp -r /home/deploy/deploy-package/prisma/migrations prisma/
+            # Regenerate Prisma Client (force fresh)
+            rm -rf node_modules/.prisma node_modules/@prisma
+            npx prisma generate
             
             # Run migrations safely
-            npx prisma migrate deploy
+            npx prisma migrate deploy || echo "No migrations to run"
             
             # Restart application
-            pm2 restart lppmv1 || pm2 start npm --name lppmv1 -- start
+            pm2 restart lppm || pm2 start npm --name lppm -- start
             
-            # Cleanup old backup after successful restart
-            sleep 5
-            pm2 status lppmv1 && rm -rf .next.backup || echo "Warning: PM2 status check failed"
+            # Save PM2 configuration
+            pm2 save
+            
+            # Wait and check status
+            sleep 3
+            pm2 status lppm
+            pm2 logs lppm --lines 20 --nostream
