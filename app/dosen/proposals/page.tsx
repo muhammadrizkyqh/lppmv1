@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { SearchFilter, PROPOSAL_FILTERS } from "@/components/ui/search-filter";
 import { NoProposalsFound, NoSearchResults } from "@/components/ui/empty-states";
+import { getStatusBadgeVariant } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -249,21 +250,21 @@ export default function ProposalsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      draft: { label: "Draft", variant: "secondary" as const, icon: FileText, className: "" },
-      diajukan: { label: "Diajukan", variant: "outline" as const, icon: Clock, className: "" },
-      review: { label: "Review", variant: "outline" as const, icon: Clock, className: "text-orange-600 border-orange-200" },
-      revisi: { label: "Revisi", variant: "outline" as const, icon: AlertCircle, className: "text-yellow-600 border-yellow-200" },
-      diterima: { label: "Diterima", variant: "outline" as const, icon: CheckCircle, className: "text-green-600 border-green-200" },
-      ditolak: { label: "Ditolak", variant: "outline" as const, icon: XCircle, className: "text-red-600 border-red-200" },
-      monitoring: { label: "Monitoring", variant: "outline" as const, icon: Clock, className: "text-blue-600 border-blue-200" },
-      selesai: { label: "Selesai", variant: "default" as const, icon: CheckCircle, className: "" }
+      draft: { label: "Draft", icon: FileText, className: "" },
+      diajukan: { label: "Diajukan", icon: Clock, className: "" },
+      review: { label: "Review", icon: Clock, className: "" },
+      revisi: { label: "Revisi", icon: AlertCircle, className: "" },
+      diterima: { label: "Diterima", icon: CheckCircle, className: "" },
+      ditolak: { label: "Ditolak", icon: XCircle, className: "" },
+      monitoring: { label: "Monitoring", icon: Clock, className: "" },
+      selesai: { label: "Selesai", icon: CheckCircle, className: "" }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
     const Icon = config.icon;
 
     return (
-      <Badge variant={config.variant} className={config.className}>
+      <Badge variant={getStatusBadgeVariant(config.label)} className={config.className}>
         <Icon className="w-3 h-3 mr-1" />
         {config.label}
       </Badge>

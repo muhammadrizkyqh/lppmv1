@@ -12,12 +12,15 @@ import {
   User,
   AlertCircle,
   Award,
+  Search,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 interface ProposalReviewer {
@@ -59,6 +62,7 @@ export default function ReviewerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<ProposalReviewer[]>([]);
   const [completed, setCompleted] = useState<ProposalReviewer[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState({
     total: 0,
     pendingCount: 0,
@@ -84,11 +88,31 @@ export default function ReviewerDashboardPage() {
           completedCount: data.data.completedCount || 0,
         });
       } else {
-        toast.error(data.error || 'Gagal memuat data');
+        toast.error('Gagal memuat tugas review', {
+          description: data.error || 'Periksa koneksi internet Anda',
+          action: {
+            label: 'Coba Lagi',
+            onClick: () => fetchAssignments()
+          }
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Fetch assignments error:', error);
-      toast.error('Gagal memuat data');
+      const errorMessage = error?.response?.status === 401 
+        ? 'Sesi berakhir, silakan login kembali'
+        : error?.response?.status === 403
+        ? 'Anda tidak memiliki akses'
+        : error?.response?.status === 500
+        ? 'Terjadi kesalahan server'
+        : 'Gagal memuat tugas review';
+      
+      toast.error(errorMessage, {
+        description: error?.response?.status === 401 ? undefined : 'Periksa koneksi internet Anda',
+        action: error?.response?.status === 401 ? undefined : {
+          label: 'Coba Lagi',
+          onClick: () => fetchAssignments()
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -119,13 +143,47 @@ export default function ReviewerDashboardPage() {
     });
   };
 
+  // Filter assignments berdasarkan search query
+  const filterAssignments = (assignments: ProposalReviewer[]) => {
+    if (!searchQuery) return assignments;
+    
+    return assignments.filter((assignment) =>
+      assignment.proposal.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      assignment.proposal.dosen.nama.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const filteredPending = filterAssignments(pending);
+  const filteredCompleted = filterAssignments(completed);
+
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Memuat tugas review...</p>
+        <div className="space-y-6">
+          {/* Header skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-72" />
+            <Skeleton className="h-5 w-96" />
+          </div>
+
+          {/* Stats cards skeleton */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+
+          {/* Search skeleton */}
+          <Skeleton className="h-12 w-full" />
+
+          {/* Tabs skeleton */}
+          <Skeleton className="h-10 w-full" />
+
+          {/* Content skeleton */}
+          <div className="space-y-4">
+            <Skeleton className="h-56 w-full" />
+            <Skeleton className="h-56 w-full" />
+            <Skeleton className="h-56 w-full" />
           </div>
         </div>
       </DashboardLayout>
@@ -196,20 +254,42 @@ export default function ReviewerDashboardPage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Search Input */}
+          <SearchInput
+            placeholder="Cari judul proposal atau nama dosen..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+
           {/* Pending Tab */}
           <TabsContent value="pending" className="space-y-4">
-            {pending.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Tidak Ada Tugas Pending</h3>
-                  <p className="text-muted-foreground text-center">
-                    Anda tidak memiliki tugas review yang belum diselesaikan
-                  </p>
-                </CardContent>
-              </Card>
+            {filteredPending.length === 0 ? (
+              pending.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Tidak Ada Tugas Pending</h3>
+                    <p className="text-muted-foreground text-center">
+                      Anda tidak memiliki tugas review yang belum diselesaikan
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Search className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">Tidak Ada Hasil</h3>
+                    <p className="text-muted-foreground text-center max-w-md">
+                      Tidak ditemukan tugas untuk &quot;{searchQuery}&quot;
+                    </p>
+                    <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
+                      Clear pencarian
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
             ) : (
-              pending.map((assignment) => {
+              filteredPending.map((assignment) => {
                 const deadlineStatus = getDeadlineStatus(assignment.deadline);
                 return (
                   <Card key={assignment.id} className="hover:shadow-lg transition-shadow">
@@ -299,18 +379,33 @@ export default function ReviewerDashboardPage() {
 
           {/* Completed Tab */}
           <TabsContent value="completed" className="space-y-4">
-            {completed.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Belum Ada Review Selesai</h3>
-                  <p className="text-muted-foreground text-center">
-                    Review yang sudah Anda selesaikan akan muncul di sini
-                  </p>
-                </CardContent>
-              </Card>
+            {filteredCompleted.length === 0 ? (
+              completed.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Belum Ada Review Selesai</h3>
+                    <p className="text-muted-foreground text-center">
+                      Review yang sudah Anda selesaikan akan muncul di sini
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Search className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">Tidak Ada Hasil</h3>
+                    <p className="text-muted-foreground text-center max-w-md">
+                      Tidak ditemukan review untuk &quot;{searchQuery}&quot;
+                    </p>
+                    <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
+                      Clear pencarian
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
             ) : (
-              completed.map((assignment) => (
+              filteredCompleted.map((assignment) => (
                 <Card key={assignment.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">

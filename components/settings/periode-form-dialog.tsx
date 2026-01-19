@@ -86,12 +86,13 @@ export function PeriodeFormDialog({
             <DialogDescription>
               {periode ? "Update data periode penelitian" : "Tambah periode penelitian baru"}
             </DialogDescription>
+            <p className="text-sm text-muted-foreground mt-2">* Wajib diisi</p>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tahun" className="text-right">
-                Tahun
+                Tahun <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="tahun"
@@ -105,7 +106,7 @@ export function PeriodeFormDialog({
 
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="nama" className="text-right">
-                Nama Periode
+                Nama Periode <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="nama"
@@ -119,7 +120,7 @@ export function PeriodeFormDialog({
 
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tanggalBuka" className="text-right">
-                Tanggal Buka
+                Tanggal Buka <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="tanggalBuka"
@@ -133,7 +134,7 @@ export function PeriodeFormDialog({
 
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tanggalTutup" className="text-right">
-                Tanggal Tutup
+                Tanggal Tutup <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="tanggalTutup"

@@ -15,10 +15,12 @@ import {
   FileText,
   Download,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Search
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchApi } from "@/lib/api-client";
+import { SearchInput } from "@/components/ui/search-input";
 
 interface ProposalWithPencairan {
   id: string;
@@ -46,6 +48,7 @@ export default function DosenPencairanPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<ProposalWithPencairan[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState({
     totalDana: 0,
     totalDicairkan: 0,
@@ -98,9 +101,23 @@ export default function DosenPencairanPage() {
           jumlahProposal: 0
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching pencairan:', error);
-      toast.error("Gagal memuat data pencairan");
+      const errorMessage = error?.response?.status === 401 
+        ? 'Sesi berakhir, silakan login kembali'
+        : error?.response?.status === 403
+        ? 'Anda tidak memiliki akses'
+        : error?.response?.status === 500
+        ? 'Terjadi kesalahan server'
+        : 'Gagal memuat data pencairan';
+      
+      toast.error(errorMessage, {
+        description: error?.response?.status === 401 ? undefined : 'Periksa koneksi internet Anda',
+        action: error?.response?.status === 401 ? undefined : {
+          label: 'Coba Lagi',
+          onClick: () => fetchData()
+        }
+      });
       setProposals([]);
     } finally {
       setLoading(false);
@@ -180,6 +197,11 @@ export default function DosenPencairanPage() {
 
     return { show: false, message: '', icon: '' }
   };
+
+  // Filter proposals berdasarkan search query
+  const filteredProposals = proposals.filter((proposal) =>
+    proposal.judul.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -262,6 +284,13 @@ export default function DosenPencairanPage() {
           </Card>
         </div>
 
+        {/* Search Input */}
+        <SearchInput
+          placeholder="Cari judul proposal..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
+
         {/* Pencairan List by Proposal */}
         {proposals.length === 0 ? (
           <Card>
@@ -277,9 +306,22 @@ export default function DosenPencairanPage() {
               </Button>
             </CardContent>
           </Card>
+        ) : filteredProposals.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Search className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">Tidak Ada Hasil</h3>
+              <p className="text-muted-foreground text-center max-w-md">
+                Tidak ditemukan proposal untuk &quot;{searchQuery}&quot;
+              </p>
+              <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">
+                Clear pencarian
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-6">
-            {proposals.map((proposal) => (
+            {filteredProposals.map((proposal) => (
               <Card key={proposal.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">

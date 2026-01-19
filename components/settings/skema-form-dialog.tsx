@@ -86,12 +86,13 @@ export function SkemaFormDialog({
             <DialogDescription>
               {skema ? "Update data skema penelitian" : "Tambah skema penelitian baru"}
             </DialogDescription>
+            <p className="text-sm text-muted-foreground mt-2">* Wajib diisi</p>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="nama" className="text-right">
-                Nama Skema
+                Nama Skema <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="nama"
@@ -105,7 +106,7 @@ export function SkemaFormDialog({
 
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tipe" className="text-right">
-                Tipe
+                Tipe <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.tipe}

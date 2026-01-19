@@ -6,12 +6,14 @@ import { adminReviewApi } from '@/lib/api-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Progress } from '@/components/ui/progress'
 import { TabsContent } from '@/components/ui/tabs'
-import { Search, Eye, CheckCircle2, Clock, AlertCircle, FileText } from 'lucide-react'
+import { Eye, CheckCircle2, Clock, AlertCircle, FileText } from 'lucide-react'
 import DashboardLayout from '@/components/layout/dashboard-layout'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
+import { Skeleton } from '@/components/ui/skeleton'
+import { getStatusBadgeVariant } from '@/lib/utils'
 
 interface ProposalReviewed {
   id: string
@@ -54,6 +56,9 @@ export default function AdminReviewsPage() {
   const [proposals, setProposals] = useState<ProposalReviewed[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [activeTab, setActiveTab] = useState('all')
+  const itemsPerPage = 10
 
   useEffect(() => {
     loadProposals()
@@ -90,6 +95,28 @@ export default function AdminReviewsPage() {
     p.status === 'DITERIMA' || p.status === 'DITOLAK'
   )
 
+  // Reset page saat tab atau search berubah
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchQuery])
+
+  // Pagination helper function
+  const getPaginatedData = (data: ProposalReviewed[]) => {
+    const totalItems = data.length
+    const totalPages = Math.ceil(totalItems / itemsPerPage)
+    const indexOfLastItem = currentPage * itemsPerPage
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage
+    const currentItems = data.slice(indexOfFirstItem, indexOfLastItem)
+
+    return {
+      items: currentItems,
+      totalItems,
+      totalPages,
+      indexOfFirstItem,
+      indexOfLastItem
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -111,11 +138,11 @@ export default function AdminReviewsPage() {
     const isDecided = proposal.status === 'DITERIMA' || proposal.status === 'DITOLAK'
     const statusBadge = isDecided 
       ? proposal.status === 'DITERIMA' 
-        ? { variant: 'default' as const, label: 'Diterima', color: 'text-green-600' }
-        : { variant: 'destructive' as const, label: 'Ditolak', color: 'text-red-600' }
+        ? { variant: getStatusBadgeVariant('DITERIMA'), label: 'Diterima', color: 'text-green-600' }
+        : { variant: getStatusBadgeVariant('DITOLAK'), label: 'Ditolak', color: 'text-red-600' }
       : proposal.reviewStatus.allComplete
-        ? { variant: 'default' as const, label: proposal.reviewStatus.label, color: '' }
-        : { variant: 'secondary' as const, label: proposal.reviewStatus.label, color: '' }
+        ? { variant: getStatusBadgeVariant('LENGKAP'), label: proposal.reviewStatus.label, color: '' }
+        : { variant: getStatusBadgeVariant('PENDING'), label: proposal.reviewStatus.label, color: '' }
 
     return (
     <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
@@ -216,7 +243,9 @@ export default function AdminReviewsPage() {
   )
 }
 
-  const ProposalList = ({ proposals }: { proposals: ProposalReviewed[] }) => {
+  const ProposalList = ({ proposals, tabKey }: { proposals: ProposalReviewed[], tabKey: string }) => {
+    const paginatedData = getPaginatedData(proposals)
+    
     if (proposals.length === 0) {
       return (
         <Card className="border-0 shadow-sm">
@@ -233,9 +262,65 @@ export default function AdminReviewsPage() {
 
     return (
       <div className="space-y-4">
-        {proposals.map((proposal) => (
-          <ProposalCard key={proposal.id} proposal={proposal} />
-        ))}
+        <div className="space-y-4">
+          {paginatedData.items.map((proposal) => (
+            <ProposalCard key={proposal.id} proposal={proposal} />
+          ))}
+        </div>
+
+        {/* Pagination Controls */}
+        {paginatedData.totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Menampilkan {paginatedData.indexOfFirstItem + 1}-{Math.min(paginatedData.indexOfLastItem, paginatedData.totalItems)} dari {paginatedData.totalItems} proposal
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              
+              {/* Page Numbers */}
+              <div className="flex gap-1">
+                {Array.from({ length: paginatedData.totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === paginatedData.totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className="w-9"
+                      >
+                        {page}
+                      </Button>
+                    )
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="px-1">...</span>
+                  }
+                  return null
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === paginatedData.totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -243,10 +328,30 @@ export default function AdminReviewsPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Memuat data...</p>
+        <div className="space-y-6">
+          {/* Header skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-5 w-96" />
+          </div>
+
+          {/* Stats cards skeleton */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+
+          {/* Search and tabs skeleton */}
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-10 w-full" />
+
+          {/* Content skeleton */}
+          <div className="space-y-4">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
           </div>
         </div>
       </DashboardLayout>
@@ -319,15 +424,12 @@ export default function AdminReviewsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari judul, pengusul, atau skema..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchInput
+              placeholder="Cari judul, pengusul, atau skema..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+              containerClassName="flex-1"
+            />
           </div>
         </CardHeader>
       </Card>
@@ -335,6 +437,7 @@ export default function AdminReviewsPage() {
       {/* Tabs - Responsive */}
       <ResponsiveTabs
         defaultValue="complete"
+        onValueChange={(value) => setActiveTab(value)}
         tabs={[
           {
             value: 'complete',
@@ -363,19 +466,19 @@ export default function AdminReviewsPage() {
         ]}
       >
         <TabsContent value="complete" className="space-y-4">
-          <ProposalList proposals={completeProposals} />
+          <ProposalList proposals={completeProposals} tabKey="complete" />
         </TabsContent>
 
         <TabsContent value="incomplete" className="space-y-4">
-          <ProposalList proposals={incompleteProposals} />
+          <ProposalList proposals={incompleteProposals} tabKey="incomplete" />
         </TabsContent>
 
         <TabsContent value="decided" className="space-y-4">
-          <ProposalList proposals={decidedProposals} />
+          <ProposalList proposals={decidedProposals} tabKey="decided" />
         </TabsContent>
 
         <TabsContent value="all" className="space-y-4">
-          <ProposalList proposals={filteredProposals} />
+          <ProposalList proposals={filteredProposals} tabKey="all" />
         </TabsContent>
       </ResponsiveTabs>
     </div>

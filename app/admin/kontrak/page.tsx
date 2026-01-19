@@ -6,7 +6,6 @@ import Link from "next/link"
 import DashboardLayout from "@/components/layout/dashboard-layout"
 import {
   FileText,
-  Search,
   Filter,
   Download,
   Upload,
@@ -15,9 +14,10 @@ import {
   Clock,
   FileSignature,
   RefreshCw,
+  X,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { SearchInput } from "@/components/ui/search-input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -74,6 +74,11 @@ export default function AdminKontrakPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // Detect active filters
+  const hasActiveFilters = search !== "" || statusFilter !== "ALL"
 
   const fetchKontrakList = async () => {
     setLoading(true)
@@ -103,11 +108,19 @@ export default function AdminKontrakPage() {
   }
 
   useEffect(() => {
+    setCurrentPage(1)
     fetchKontrakList()
   }, [statusFilter])
 
   const handleSearch = () => {
+    setCurrentPage(1)
     fetchKontrakList()
+  }
+
+  const handleClearFilters = () => {
+    setSearch("")
+    setStatusFilter("ALL")
+    setCurrentPage(1)
   }
 
   const getStatusBadge = (status: string) => {
@@ -143,6 +156,17 @@ export default function AdminKontrakPage() {
       month: "long",
       year: "numeric",
     })
+  }
+
+  // Pagination calculations
+  const totalItems = kontrakList.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = kontrakList.slice(indexOfFirstItem, indexOfLastItem)
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page)
   }
 
   const stats = {
@@ -215,22 +239,29 @@ export default function AdminKontrakPage() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filter Kontrak</CardTitle>
-          <CardDescription>Cari dan filter kontrak penelitian</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Filter Kontrak</CardTitle>
+              <CardDescription>Cari dan filter kontrak penelitian</CardDescription>
+            </div>
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                <X className="h-4 w-4 mr-2" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
             <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari nomor kontrak, SK, judul proposal, atau nama dosen..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                placeholder="Cari nomor kontrak, SK, judul proposal, atau nama dosen..."
+                value={search}
+                onChange={setSearch}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onClear={() => setCurrentPage(1)}
+              />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
@@ -246,7 +277,7 @@ export default function AdminKontrakPage() {
               </SelectContent>
             </Select>
             <Button onClick={handleSearch}>
-              <Search className="h-4 w-4 mr-2" />
+              <Filter className="h-4 w-4 mr-2" />
               Cari
             </Button>
           </div>
@@ -286,7 +317,7 @@ export default function AdminKontrakPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {kontrakList.map((kontrak) => (
+                {currentItems.map((kontrak) => (
                   <TableRow key={kontrak.id}>
                     <TableCell>
                       <div className="space-y-1">
@@ -336,6 +367,61 @@ export default function AdminKontrakPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination Controls */}
+          {!loading && kontrakList.length > 0 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, totalItems)} dari {totalItems} kontrak
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                
+                {/* Page Numbers */}
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className="w-9"
+                        >
+                          {page}
+                        </Button>
+                      )
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return <span key={page} className="px-1">...</span>
+                    }
+                    return null
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

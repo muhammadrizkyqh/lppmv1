@@ -22,6 +22,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -33,7 +48,9 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Package, Plus, Trash2, Eye, Loader2, FileText } from "lucide-react"
+import { Package, Plus, Trash2, Eye, Loader2, FileText, X } from "lucide-react"
+import { getStatusBadgeVariant } from "@/lib/utils"
+import { SearchInput } from "@/components/ui/search-input"
 
 interface Luaran {
   id: string
@@ -79,6 +96,12 @@ export default function DosenLuaranPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("ALL")
+  const [jenisFilter, setJenisFilter] = useState("ALL")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 15
+  const [deleteConfirm, setDeleteConfirm] = useState<{open: boolean, id: string | null, status: string | null}>({open: false, id: null, status: null})
 
   // Form state
   const [formData, setFormData] = useState({
@@ -245,10 +268,6 @@ export default function DosenLuaranPage() {
       return
     }
 
-    if (!confirm("Yakin ingin menghapus luaran ini? TERMIN_3 akan ikut dihapus.")) {
-      return
-    }
-
     try {
       const response = await fetch(`/api/luaran/${id}`, {
         method: "DELETE",
@@ -259,6 +278,7 @@ export default function DosenLuaranPage() {
       if (data.success) {
         toast.success("Luaran berhasil dihapus")
         fetchLuaran()
+        setDeleteConfirm({open: false, id: null, status: null})
       } else {
         toast.error(data.error || "Gagal menghapus luaran")
       }
@@ -284,13 +304,13 @@ export default function DosenLuaranPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
-        return <Badge variant="secondary">Pending</Badge>
+        return <Badge variant={getStatusBadgeVariant('PENDING')}>Pending</Badge>
       case "DIVERIFIKASI":
-        return <Badge variant="default" className="bg-green-500">Diverifikasi</Badge>
+        return <Badge variant={getStatusBadgeVariant('DISETUJUI')}>Diverifikasi</Badge>
       case "DITOLAK":
-        return <Badge variant="destructive">Ditolak</Badge>
+        return <Badge variant={getStatusBadgeVariant('DITOLAK')}>Ditolak</Badge>
       default:
-        return <Badge>{status}</Badge>
+        return <Badge variant={getStatusBadgeVariant(status)}>{status}</Badge>
     }
   }
 
@@ -304,6 +324,35 @@ export default function DosenLuaranPage() {
       LAINNYA: "Lainnya",
     }
     return labels[jenis] || jenis
+  }
+
+  // Filter luaran berdasarkan search query dan filters
+  const filteredLuaran = luaranList.filter((luaran) => {
+    const matchesSearch = 
+      luaran.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      luaran.proposal.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getJenisLabel(luaran.jenis).toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesStatus = statusFilter === "ALL" || luaran.statusVerifikasi === statusFilter
+    const matchesJenis = jenisFilter === "ALL" || luaran.jenis === jenisFilter
+
+    return matchesSearch && matchesStatus && matchesJenis
+  })
+
+  // Reset page saat filter berubah
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, jenisFilter])
+
+  // Pagination calculations
+  const totalItems = filteredLuaran.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredLuaran.slice(indexOfFirstItem, indexOfLastItem)
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page)
   }
 
   return (
@@ -356,6 +405,63 @@ export default function DosenLuaranPage() {
           </Card>
         </div>
 
+        {/* Search and Filters */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search */}
+            <SearchInput
+              placeholder="Cari judul luaran atau proposal..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+              containerClassName="flex-1"
+            />
+
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua Status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="DIVERIFIKASI">Diverifikasi</SelectItem>
+                <SelectItem value="DITOLAK">Ditolak</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Jenis Filter */}
+            <Select value={jenisFilter} onValueChange={setJenisFilter}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Jenis Luaran" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua Jenis</SelectItem>
+                <SelectItem value="JURNAL">Jurnal</SelectItem>
+                <SelectItem value="BUKU">Buku</SelectItem>
+                <SelectItem value="HAKI">HAKI/Paten</SelectItem>
+                <SelectItem value="PRODUK">Produk</SelectItem>
+                <SelectItem value="MEDIA_MASSA">Media Massa</SelectItem>
+                <SelectItem value="LAINNYA">Lainnya</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters */}
+            {(searchQuery || statusFilter !== "ALL" || jenisFilter !== "ALL") && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("")
+                  setStatusFilter("ALL")
+                  setJenisFilter("ALL")
+                }}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+
         {/* Main Content */}
         <Card>
           <CardHeader>
@@ -379,11 +485,14 @@ export default function DosenLuaranPage() {
                     <DialogDescription>
                       Upload bukti luaran hasil penelitian
                     </DialogDescription>
+                    <p className="text-sm text-muted-foreground mt-2">* Wajib diisi</p>
                   </DialogHeader>
                   <form onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <Label htmlFor="proposalId">Proposal Penelitian *</Label>
+                        <Label htmlFor="proposalId">
+                          Proposal Penelitian <span className="text-red-500">*</span>
+                        </Label>
                         <Select
                           value={formData.proposalId}
                           onValueChange={(value) =>
@@ -404,7 +513,9 @@ export default function DosenLuaranPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="jenis">Jenis Luaran *</Label>
+                        <Label htmlFor="jenis">
+                          Jenis Luaran <span className="text-red-500">*</span>
+                        </Label>
                         <Select
                           value={formData.jenis}
                           onValueChange={(value) =>
@@ -424,7 +535,9 @@ export default function DosenLuaranPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="judul">Judul Luaran *</Label>
+                        <Label htmlFor="judul">
+                          Judul Luaran <span className="text-red-500">*</span>
+                        </Label>
                         <Input
                           id="judul"
                           value={formData.judul}
@@ -473,7 +586,9 @@ export default function DosenLuaranPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="file">File Bukti * (PDF/JPG/PNG, max 10MB)</Label>
+                        <Label htmlFor="file">
+                          File Bukti <span className="text-red-500">*</span> (PDF/JPG/PNG, max 10MB)
+                        </Label>
                         <Input
                           id="file"
                           type="file"
@@ -534,67 +649,213 @@ export default function DosenLuaranPage() {
               <div className="text-center py-8 text-muted-foreground">
                 Belum ada luaran yang disubmit
               </div>
+            ) : filteredLuaran.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <FileText className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">Tidak Ada Hasil</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-4">
+                  Tidak ditemukan luaran yang sesuai dengan pencarian atau filter Anda
+                </p>
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    setSearchQuery("")
+                    setStatusFilter("ALL")
+                    setJenisFilter("ALL")
+                  }}
+                >
+                  Clear semua filter
+                </Button>
+              </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Proposal</TableHead>
-                    <TableHead>Jenis</TableHead>
-                    <TableHead>Judul Luaran</TableHead>
-                    <TableHead>Penerbit</TableHead>
-                    <TableHead>Tahun</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {luaranList.map((luaran) => (
-                    <TableRow key={luaran.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{luaran.proposal.judul}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {luaran.proposal.periode.nama} {luaran.proposal.periode.tahun}
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Proposal</TableHead>
+                      <TableHead>Jenis</TableHead>
+                      <TableHead>Judul Luaran</TableHead>
+                      <TableHead>Penerbit</TableHead>
+                      <TableHead>Tahun</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentItems.map((luaran) => (
+                      <TableRow key={luaran.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{luaran.proposal.judul}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {luaran.proposal.periode.nama} {luaran.proposal.periode.tahun}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getJenisLabel(luaran.jenis)}</TableCell>
-                      <TableCell>{luaran.judul}</TableCell>
-                      <TableCell>{luaran.penerbit || "-"}</TableCell>
-                      <TableCell>{luaran.tahunTerbit || "-"}</TableCell>
-                      <TableCell>{getStatusBadge(luaran.statusVerifikasi)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {luaran.fileBukti && (
+                        </TableCell>
+                        <TableCell>{getJenisLabel(luaran.jenis)}</TableCell>
+                        <TableCell>{luaran.judul}</TableCell>
+                        <TableCell>{luaran.penerbit || "-"}</TableCell>
+                        <TableCell>{luaran.tahunTerbit || "-"}</TableCell>
+                        <TableCell>{getStatusBadge(luaran.statusVerifikasi)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {luaran.fileBukti && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0"
+                                    onClick={() =>
+                                      window.open(`/uploads/luaran/${luaran.fileBukti}`, "_blank")
+                                    }
+                                    aria-label="Lihat file bukti"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Lihat Bukti</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {(luaran.statusVerifikasi === 'PENDING' || luaran.statusVerifikasi === 'DITOLAK') && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0"
+                                    onClick={() => setDeleteConfirm({open: true, id: luaran.id, status: luaran.statusVerifikasi})}
+                                    aria-label="Hapus luaran"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Hapus Luaran</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-2 py-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, totalItems)} dari {totalItems} luaran
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      
+                      <div className="flex items-center gap-1">
+                        {currentPage > 2 && (
+                          <>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() =>
-                                window.open(`/uploads/luaran/${luaran.fileBukti}`, "_blank")
-                              }
+                              onClick={() => goToPage(1)}
                             >
-                              <Eye className="h-4 w-4" />
+                              1
                             </Button>
-                          )}
-                          {(luaran.statusVerifikasi === 'PENDING' || luaran.statusVerifikasi === 'DITOLAK') && (
+                            {currentPage > 3 && (
+                              <span className="px-2 text-muted-foreground">...</span>
+                            )}
+                          </>
+                        )}
+                        
+                        {currentPage > 1 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => goToPage(currentPage - 1)}
+                          >
+                            {currentPage - 1}
+                          </Button>
+                        )}
+                        
+                        <Button
+                          variant="default"
+                          size="sm"
+                        >
+                          {currentPage}
+                        </Button>
+                        
+                        {currentPage < totalPages && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => goToPage(currentPage + 1)}
+                          >
+                            {currentPage + 1}
+                          </Button>
+                        )}
+                        
+                        {currentPage < totalPages - 1 && (
+                          <>
+                            {currentPage < totalPages - 2 && (
+                              <span className="px-2 text-muted-foreground">...</span>
+                            )}
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleDelete(luaran.id, luaran.statusVerifikasi)}
+                              onClick={() => goToPage(totalPages)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {totalPages}
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                          </>
+                        )}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({open, id: null, status: null})}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Luaran?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Luaran yang sudah dihapus tidak dapat dikembalikan. TERMIN_3 akan ikut dihapus.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirm.id && deleteConfirm.status && handleDelete(deleteConfirm.id, deleteConfirm.status)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }

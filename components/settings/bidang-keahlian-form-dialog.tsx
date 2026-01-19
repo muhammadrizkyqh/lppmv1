@@ -82,12 +82,13 @@ export function BidangKeahlianFormDialog({
             <DialogDescription>
               {bidangKeahlian ? "Update data bidang keahlian" : "Tambah bidang keahlian baru"}
             </DialogDescription>
+            <p className="text-sm text-muted-foreground mt-2">* Wajib diisi</p>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="nama" className="text-right">
-                Nama
+                Nama <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="nama"

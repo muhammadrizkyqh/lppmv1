@@ -76,11 +76,31 @@ export default function DosenDashboardPage() {
         setData(result.data as DosenDashboardData);
       } else {
         setError(result.error || "Failed to load dashboard");
-        toast.error("Gagal memuat data dashboard");
+        toast.error("Gagal memuat dashboard", {
+          description: result.error || 'Periksa koneksi internet Anda',
+          action: {
+            label: 'Coba Lagi',
+            onClick: () => fetchDashboardData()
+          }
+        });
       }
-    } catch (err) {
-      setError("Failed to fetch dashboard data");
-      toast.error("Gagal memuat data dashboard");
+    } catch (err: any) {
+      const errorMessage = err?.response?.status === 401 
+        ? 'Sesi berakhir, silakan login kembali'
+        : err?.response?.status === 403
+        ? 'Anda tidak memiliki akses'
+        : err?.response?.status === 500
+        ? 'Terjadi kesalahan server'
+        : 'Gagal memuat dashboard';
+      
+      setError(errorMessage);
+      toast.error(errorMessage, {
+        description: err?.response?.status === 401 ? undefined : 'Periksa koneksi internet Anda',
+        action: err?.response?.status === 401 ? undefined : {
+          label: 'Coba Lagi',
+          onClick: () => fetchDashboardData()
+        }
+      });
     } finally {
       setIsLoading(false);
     }
