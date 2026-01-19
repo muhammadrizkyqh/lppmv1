@@ -733,11 +733,19 @@ export default function DataMasterPage() {
           
           if (data.success) {
             console.log('📊 Import Result:', data.data);
-            toast.success(data.message, { id: loadingToast });
-            if (data.data.errors.length > 0) {
+            const successCount = data.data.success || 0;
+            const failedCount = data.data.failed || 0;
+            
+            if (failedCount > 0) {
               console.error('❌ Import errors:', data.data.errors);
-              toast.warning(`${data.data.errors.length} baris gagal diimport. Lihat console untuk detail.`);
+              toast.warning(
+                `${successCount} berhasil, ${failedCount} gagal. Detail error:\n${data.data.errors.slice(0, 5).map((e: any) => `Baris ${e.row}: ${e.error}`).join('\n')}${data.data.errors.length > 5 ? `\n...dan ${data.data.errors.length - 5} lainnya` : ''}`,
+                { id: loadingToast, duration: 10000 }
+              );
+            } else {
+              toast.success(`${successCount} dosen berhasil diimport`, { id: loadingToast });
             }
+            
             // Force refresh data dengan delay
             setTimeout(() => {
               refetchDosen();
