@@ -1,0 +1,16 @@
+# Rsync ignore file untuk deployment
+node_modules/
+.git/
+.next/cache/
+.env*
+*.log
+*.map
+.DS_Store
+coverage/
+.vscode/
+.idea/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
