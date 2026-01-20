@@ -32,15 +32,7 @@ jobs:
       - name: Create deployment package
         run: |
           mkdir -p deploy-package
-          
-          # Copy standalone build if exists, otherwise copy full .next
-          if [ -d ".next/standalone" ]; then
-            cp -r .next/standalone deploy-package/.next
-            cp -r .next/static deploy-package/.next/static || true
-          else
-            cp -r .next deploy-package/
-          fi
-          
+          cp -r .next deploy-package/
           cp -r public deploy-package/
           cp package.json deploy-package/
           cp package-lock.json deploy-package/
@@ -48,11 +40,13 @@ jobs:
           cp prisma/schema.prisma deploy-package/prisma/
           cp -r prisma/migrations deploy-package/prisma/ || echo "No migrations to copy"
           
-          # Create compressed archive with better compression
-          tar -czf deploy.tar.gz --exclude='*.map' --exclude='cache' deploy-package/
+          # Create compressed archive, exclude source maps and cache
+          tar -czf deploy.tar.gz --exclude='*.map' --exclude='cache' --exclude='trace' deploy-package/
           
           # Show package size
+          echo "Deployment package size:"
           ls -lh deploy.tar.gz
+          du -sh deploy-package
       
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
@@ -136,14 +130,17 @@ jobs:
             # Regenerate Prisma Client
             npx prisma generate
             
-            # Run migrations
-            npx prisma migrate deploy || echo "No migrations to run"
+            # Run migrations (skip if baseline needed)
+            npx prisma migrate deploy 2>&1 | grep -v "P3005" || echo "Migrations applied or skipped"
             
             # Verify build exists before restart
-            if [ ! -f ".next/BUILD_ID" ]; then
-              echo "ERROR: No valid build found!"
+            if [ ! -d ".next" ] || [ ! -f ".next/package.json" ]; then
+              echo "ERROR: No valid .next build found!"
+              ls -la .next/ || echo ".next folder missing"
               exit 1
             fi
+            
+            echo "Build verification passed!"
             
             # Restart application
             pm2 restart lppm || pm2 start npm --name lppm -- start

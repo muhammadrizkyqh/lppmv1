@@ -11,8 +11,10 @@ const nextConfig: NextConfig = {
   compress: true, // Enable gzip compression
   poweredByHeader: false, // Remove X-Powered-By header
   
-  // Output optimization
-  output: 'standalone', // This creates a minimal standalone build
+  // Disable experimental features that increase build size
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts'],
+  },
 };
 
 export default nextConfig;
