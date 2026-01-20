@@ -153,6 +153,9 @@ jobs:
             rm -rf .next/cache/fetch-cache
             rm -rf .next/cache/webpack
             
+            # Flush PM2 logs and cache before restart
+            pm2 flush lppm || echo "No logs to flush"
+            
             # Restart application
             pm2 restart lppm || pm2 start npm --name lppm -- start
             
