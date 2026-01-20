@@ -211,8 +211,8 @@ model proposal {
   bidangKeahlianId        String?
   judul                   String              @db.Text
   abstrak                 String              @db.Text
-  filePath                String?
-  fileName                String?
+  filePath                String?             @db.VarChar(500)
+  fileName                String?             @db.VarChar(255)
   fileSize                Int?
   status                  proposal_status     @default(DRAFT)
   submittedAt             DateTime?
@@ -302,8 +302,8 @@ model proposalrevision {
   id         String   @id @default(cuid())
   proposalId String
   revisiKe   Int
-  filePath   String
-  fileName   String
+  filePath   String   @db.VarChar(500)
+  fileName   String   @db.VarChar(255)
   fileSize   Int
   catatan    String?  @db.Text
   uploadedAt DateTime @default(now())

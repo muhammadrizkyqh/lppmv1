@@ -114,6 +114,7 @@ jobs:
             fi
             
             # Update prisma schema and migrations
+            mkdir -p prisma
             cp /home/deploy/deploy-package/prisma/schema.prisma prisma/
             if [ -d "/home/deploy/deploy-package/prisma/migrations" ]; then
               cp -r /home/deploy/deploy-package/prisma/migrations prisma/
@@ -140,7 +141,17 @@ jobs:
               exit 1
             fi
             
+            # Verify Prisma schema exists
+            if [ ! -f "prisma/schema.prisma" ]; then
+              echo "ERROR: Prisma schema not found!"
+              exit 1
+            fi
+            
             echo "Build verification passed!"
+            
+            # Clear Next.js cache to fix Server Action issues
+            rm -rf .next/cache/fetch-cache
+            rm -rf .next/cache/webpack
             
             # Restart application
             pm2 restart lppm || pm2 start npm --name lppm -- start
