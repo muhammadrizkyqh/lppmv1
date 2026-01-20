@@ -121,7 +121,7 @@ export async function login(
   password: string
 ): Promise<{ success: boolean; user?: SessionUser; error?: string }> {
   try {
-    console.log('🔍 Login attempt:', { identifier })
+    console.log('🔍 Login attempt:', { identifier, passwordLength: password?.length })
     
     // Find user by username or email
     let user = await prisma.user.findFirst({
@@ -138,14 +138,20 @@ export async function login(
       },
     })
 
+    console.log('🔍 Step 1 - Search by username/email:', user ? `Found user ${user.id}` : 'Not found')
+
     // If not found, try to find by NIDN in dosen table
     if (!user) {
+      console.log('🔍 Step 2 - Searching by NIDN in dosen table...')
       const dosen = await prisma.dosen.findFirst({
         where: { nidn: identifier },
         include: { user: true }
       })
       
+      console.log('🔍 Step 2 - Dosen found:', dosen ? `YES (userId: ${dosen.userId})` : 'NO')
+      
       if (dosen?.user) {
+        console.log('🔍 Step 2 - Fetching user by dosen.userId...')
         user = await prisma.user.findUnique({
           where: { id: dosen.userId },
           include: {
@@ -154,15 +160,21 @@ export async function login(
             reviewer: true,
           }
         })
+        console.log('🔍 Step 2 - User fetched:', user ? `YES (${user.id})` : 'NO')
+      } else if (dosen && !dosen.user) {
+        console.log('⚠️ Step 2 - Dosen found but user is null! This is a data integrity issue.')
       }
     }
 
     // If not found, try to find by NIM in mahasiswa table
     if (!user) {
+      console.log('🔍 Step 3 - Searching by NIM in mahasiswa table...')
       const mahasiswa = await prisma.mahasiswa.findFirst({
         where: { nim: identifier },
         include: { user: true }
       })
+      
+      console.log('🔍 Step 3 - Mahasiswa found:', mahasiswa ? `YES (userId: ${mahasiswa.userId})` : 'NO')
       
       if (mahasiswa?.user) {
         user = await prisma.user.findUnique({
@@ -177,11 +189,19 @@ export async function login(
     }
 
     if (!user) {
-      console.log('❌ User not found:', identifier)
+      console.log('❌ User not found after all attempts:', identifier)
       return { success: false, error: 'Username, email, NIDN, atau NIM tidak ditemukan' }
     }
 
-    console.log('✅ User found:', { id: user.id, username: user.username, role: user.role, status: user.status })
+    console.log('✅ User found:', { 
+      id: user.id, 
+      username: user.username, 
+      email: user.email,
+      role: user.role, 
+      status: user.status,
+      hasDosen: !!user.dosen,
+      dosenNidn: user.dosen?.nidn
+    })
     
     // Check if user is active
     if (user.status !== 'AKTIF') {
@@ -190,9 +210,10 @@ export async function login(
     }
 
     // Verify password
+    console.log('🔍 Verifying password...')
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
-      console.log('❌ Password invalid')
+      console.log('❌ Password invalid for user:', user.username)
       return { success: false, error: 'Password salah' }
     }
     

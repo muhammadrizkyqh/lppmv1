@@ -33,15 +33,29 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
+      // Trim inputs to remove whitespace
+      const loginData = {
+        identifier: formData.identifier.trim(),
+        password: formData.password
+      };
+
+      console.log('🔐 Client: Attempting login with:', { identifier: loginData.identifier });
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(loginData),
       });
 
       const data = await response.json();
+
+      console.log('🔐 Client: Login response:', { 
+        success: data.success, 
+        status: response.status,
+        error: data.error 
+      });
 
       if (data.success) {
         toast.success('Login berhasil!', {

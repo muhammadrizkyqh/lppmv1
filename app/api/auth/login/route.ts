@@ -4,7 +4,12 @@ import { login } from '@/lib/auth'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { identifier, password } = body
+    let { identifier, password } = body
+
+    // Trim identifier to remove whitespace
+    identifier = identifier?.trim()
+
+    console.log('🔐 Login API called with identifier:', JSON.stringify(identifier))
 
     // Validation
     if (!identifier || !password) {
@@ -17,12 +22,27 @@ export async function POST(request: NextRequest) {
     // Attempt login
     const result = await login(identifier, password)
 
+    console.log('🔐 Login result:', { 
+      success: result.success, 
+      userId: result.user?.id,
+      username: result.user?.username,
+      email: result.user?.email,
+      role: result.user?.role,
+      error: result.error
+    })
+
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: result.error },
         { status: 401 }
       )
     }
+
+    // Verify session was created
+    const { cookies: cookiesAPI } = await import('next/headers')
+    const cookieStore = await cookiesAPI()
+    const sessionCookie = cookieStore.get('session')
+    console.log('🍪 Session cookie created:', sessionCookie ? 'YES' : 'NO')
 
     return NextResponse.json({
       success: true,
