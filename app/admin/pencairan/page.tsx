@@ -35,6 +35,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { pencairanApi, PencairanList, PencairanStats } from "@/lib/api-client";
 import { periodeApi } from "@/lib/api-client";
+import { validateFileSize, validateFileType, formatFileSize, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils";
 
 interface Periode {
   id: string;
@@ -155,6 +156,49 @@ export default function AdminPencairanPage() {
       year: 'numeric'
     });
   };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validasi tipe file - accept PDF dan gambar
+    const acceptedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+    const typeValidation = validateFileType(file, acceptedTypes)
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Validasi ukuran file dengan max 5MB untuk pencairan
+    const sizeValidation = validateFileSize(file, 5 * 1024 * 1024)
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Warning jika file besar
+    if (sizeValidation.warning) {
+      toast.warning(sizeValidation.warning, { duration: 5000 })
+    }
+
+    // Analisis dan rekomendasi untuk PDF
+    if (file.type === 'application/pdf') {
+      const recommendation = await getCompressionRecommendation(file.size, 5 * 1024 * 1024)
+      if (recommendation) {
+        toast.info(recommendation, { duration: 5000 })
+      }
+
+      const compressionResult = await compressPDFIfNeeded(file)
+      if (compressionResult.recommendation) {
+        toast.info(compressionResult.recommendation, { duration: 6000 })
+      }
+      setFileBukti(compressionResult.file)
+    } else {
+      setFileBukti(file)
+    }
+  }
 
   const handleUploadBukti = async () => {
     if (!selectedPencairan || !fileBukti) {
@@ -570,13 +614,16 @@ export default function AdminPencairanPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fileBukti">File Bukti (PDF/JPG/PNG, max 5MB)</Label>
+                <Label htmlFor="fileBukti">File Bukti Transfer</Label>
                 <Input
                   id="fileBukti"
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => setFileBukti(e.target.files?.[0] || null)}
+                  onChange={handleFileChange}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Format: PDF, JPG, PNG (Max 5MB). File PDF besar akan dianalisis dan diberi rekomendasi kompresi.
+                </p>
               </div>
             </div>
 

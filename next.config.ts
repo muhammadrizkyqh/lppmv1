@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
   // Disable experimental features that increase build size
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],
+    // Increase body size limit for file uploads (default is ~1MB)
+    // This allows uploads up to 50MB
+    bodySizeLimit: '50mb',
   },
 };
 

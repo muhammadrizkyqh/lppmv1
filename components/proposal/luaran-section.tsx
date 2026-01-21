@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { validateFileSize, validateFileType, formatFileSize, FILE_SIZE_LIMITS, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils"
 import { 
   FileText, 
   CheckCircle, 
@@ -146,6 +147,46 @@ export default function LuaranSection({ proposalId, proposalStatus }: LuaranSect
       console.error("Submit luaran error:", error)
       toast.error("Terjadi kesalahan")
     }
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validasi tipe file
+    const typeValidation = validateFileType(file, 'application/pdf')
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Validasi ukuran file
+    const sizeValidation = validateFileSize(file)
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Warning jika file besar
+    if (sizeValidation.warning) {
+      toast.warning(sizeValidation.warning, { duration: 5000 })
+    }
+
+    // Cek rekomendasi kompresi
+    const recommendation = await getCompressionRecommendation(file.size)
+    if (recommendation) {
+      toast.info(recommendation, { duration: 5000 })
+    }
+
+    // Analisis PDF dan rekomendasi kompresi jika perlu
+    const compressionResult = await compressPDFIfNeeded(file)
+    if (compressionResult.recommendation) {
+      toast.info(compressionResult.recommendation, { duration: 6000 })
+    }
+
+    setFileToUpload(compressionResult.file)
   }
 
   const handleUpload = async () => {
@@ -473,11 +514,11 @@ export default function LuaranSection({ proposalId, proposalStatus }: LuaranSect
                 <Label>Pilih File *</Label>
                 <Input
                   type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => setFileToUpload(e.target.files?.[0] || null)}
+                  accept=".pdf"
+                  onChange={handleFileChange}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Format: PDF, JPG, PNG (Max 10MB)
+                  Format: PDF (Max 10MB). File besar akan dianalisis dan diberi rekomendasi kompresi.
                 </p>
               </div>
             </div>

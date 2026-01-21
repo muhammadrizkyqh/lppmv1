@@ -28,6 +28,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { monitoringApi, MonitoringDetail } from "@/lib/api-client";
 import { toast } from "sonner";
+import { validateFileSize, validateFileType, formatFileSize, FILE_SIZE_LIMITS, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils";
 
 export default function DosenMonitoringDetailPage() {
   const params = useParams();
@@ -100,21 +101,37 @@ export default function DosenMonitoringDetailPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Ukuran file maksimal 10MB");
+    // Validate file type
+    const typeValidation = validateFileType(file, 'application/pdf');
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!);
+      e.target.value = '';
       return;
     }
 
-    // Validate file type (PDF only)
-    if (file.type !== "application/pdf") {
-      toast.error("Hanya file PDF yang diperbolehkan");
+    // Validate file size
+    const sizeValidation = validateFileSize(file);
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!);
+      e.target.value = '';
       return;
+    }
+
+    // Check if compression is recommended
+    const recommendation = getCompressionRecommendation(file.size);
+    if (recommendation) {
+      toast.warning(recommendation, { duration: 5000 });
+    }
+
+    // Analyze and provide compression guidance
+    const compressionResult = await compressPDFIfNeeded(file);
+    if (compressionResult.message) {
+      toast.info(compressionResult.message, { duration: 6000 });
     }
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressionResult.file);
 
       const response = await fetch("/api/upload", {
         method: "POST",

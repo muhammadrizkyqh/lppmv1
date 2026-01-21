@@ -32,6 +32,32 @@ export async function PATCH(
       )
     }
 
+    // Validate file sizes (max 10MB per file)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+    const formatFileSize = (bytes: number) => {
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+    }
+
+    if (fileKontrak.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `File kontrak terlalu besar (${formatFileSize(fileKontrak.size)}). Maksimal ${formatFileSize(MAX_FILE_SIZE)}. Silakan kompres file PDF Anda terlebih dahulu.` 
+        },
+        { status: 400 }
+      )
+    }
+
+    if (fileSK.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `File SK terlalu besar (${formatFileSize(fileSK.size)}). Maksimal ${formatFileSize(MAX_FILE_SIZE)}. Silakan kompres file PDF Anda terlebih dahulu.` 
+        },
+        { status: 400 }
+      )
+    }
+
     // Get kontrak
     const kontrak = await prisma.kontrak.findUnique({
       where: { id },

@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { reviewApi } from "@/lib/api-client";
+import { validateFileSize, validateFileType, formatFileSize, FILE_SIZE_LIMITS, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils";
 
 export default function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: assignmentId } = use(params);
@@ -46,6 +47,42 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
   const [nilaiTotal, setNilaiTotal] = useState<number>(0);
   const [rekomendasi, setRekomendasi] = useState<'DITERIMA' | 'REVISI' | 'DITOLAK' | ''>('');
   const [catatan, setCatatan] = useState('');
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    // Validate file type
+    const typeValidation = validateFileType(selectedFile, 'application/pdf');
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!);
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file size
+    const sizeValidation = validateFileSize(selectedFile);
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!);
+      e.target.value = '';
+      return;
+    }
+
+    // Check if compression is recommended
+    const recommendation = getCompressionRecommendation(selectedFile.size);
+    if (recommendation) {
+      toast.warning(recommendation, { duration: 5000 });
+    }
+
+    // Try to analyze and provide compression guidance
+    const compressionResult = await compressPDFIfNeeded(selectedFile);
+    if (compressionResult.message) {
+      toast.info(compressionResult.message, { duration: 6000 });
+    }
+
+    setFile(compressionResult.file);
+    toast.success("File penilaian berhasil dipilih");
+  };
 
   useEffect(() => {
     fetchAssignment();

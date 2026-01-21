@@ -39,9 +39,17 @@ export async function POST(
     }
 
     // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    const formatFileSize = (bytes: number) => {
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+    }
+    
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { success: false, error: 'Ukuran file maksimal 5MB' },
+        { 
+          success: false, 
+          error: `File terlalu besar (${formatFileSize(file.size)}). Maksimal ${formatFileSize(maxSize)}. Silakan kompres file Anda terlebih dahulu.` 
+        },
         { status: 400 }
       )
     }

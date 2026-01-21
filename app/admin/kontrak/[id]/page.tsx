@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
+import { Progress } from "@/components/ui/progress"
+import { validateFileSize, validateFileType, formatFileSize, FILE_SIZE_LIMITS, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils"
 
 interface TeamMember {
   id: string
@@ -103,9 +105,12 @@ export default function AdminKontrakDetailPage() {
   const [kontrak, setKontrak] = useState<KontrakDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   const [fileKontrak, setFileKontrak] = useState<File | null>(null)
   const [fileSK, setFileSK] = useState<File | null>(null)
+  const [fileKontrakSize, setFileKontrakSize] = useState<string>("")
+  const [fileSKSize, setFileSKSize] = useState<string>("")
 
   const fetchKontrakDetail = async () => {
     setLoading(true)
@@ -134,27 +139,120 @@ export default function AdminKontrakDetailPage() {
     fetchKontrakDetail()
   }, [kontrakId])
 
+  const handleFileKontrakChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const typeValidation = validateFileType(file, 'application/pdf')
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Validate file size
+    const sizeValidation = validateFileSize(file)
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Check if compression is recommended
+    const recommendation = getCompressionRecommendation(file.size)
+    if (recommendation) {
+      toast.warning(recommendation, { duration: 5000 })
+    }
+
+    // Try to analyze and provide compression guidance
+    const compressionResult = await compressPDFIfNeeded(file)
+    if (compressionResult.mesasync (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const typeValidation = validateFileType(file, 'application/pdf')
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Validate file size
+    const sizeValidation = validateFileSize(file)
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Check if compression is recommended
+    const recommendation = getCompressionRecommendation(file.size)
+    if (recommendation) {
+      toast.warning(recommendation, { duration: 5000 })
+    }
+
+    // Try to analyze and provide compression guidance
+    const compressionResult = await compressPDFIfNeeded(file)
+    if (compressionResult.message) {
+      toast.info(compressionResult.message, { duration: 6000 })
+    }
+
+    setFileSK(compressionResult.file)
+    setFileSKSize(formatFileSize(compressionResult.newSize)
+    }
+
+    if (sizeValidation.warning) {
+      toast.warning(sizeValidation.warning)
+    }
+
+    setFileSK(file)
+    setFileSKSize(sizeValidation.size)
+  }
+
   const handleUploadTTD = async () => {
     if (!fileKontrak || !fileSK) {
       toast.error("Harap upload kedua file (Kontrak dan SK)")
       return
     }
 
-    if (fileKontrak.type !== "application/pdf" || fileSK.type !== "application/pdf") {
-      toast.error("File harus berformat PDF")
-      return
-    }
-
     setUploading(true)
+    setUploadProgress(0)
+    
     try {
       const formData = new FormData()
       formData.append("fileKontrak", fileKontrak)
       formData.append("fileSK", fileSK)
 
-      const response = await fetch(`/api/kontrak/${kontrakId}/upload-ttd`, {
-        method: "PATCH",
-        credentials: "include",
-        body: formData,
+      // Use XMLHttpRequest for progress tracking
+      const response = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100)
+            setUploadProgress(percentComplete)
+          }
+        })
+        
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(new Response(xhr.responseText, {
+              status: xhr.status,
+              statusText: xhr.statusText,
+              headers: new Headers({ 'Content-Type': 'application/json' }),
+            }))
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`))
+          }
+        })
+        
+        xhr.addEventListener('error', () => reject(new Error('Upload failed')))
+        
+        xhr.open('PATCH', `/api/kontrak/${kontrakId}/upload-ttd`)
+        xhr.setRequestHeader('credentials', 'include')
+        xhr.send(formData)
       })
 
       const result = await response.json()
@@ -164,6 +262,9 @@ export default function AdminKontrakDetailPage() {
         fetchKontrakDetail()
         setFileKontrak(null)
         setFileSK(null)
+        setFileKontrakSize("")
+        setFileSKSize("")
+        setUploadProgress(0)
       } else {
         toast.error(result.error || "Gagal mengupload file")
       }
@@ -442,6 +543,34 @@ export default function AdminKontrakDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-xs text-blue-800">
+                <strong>Maksimal: {formatFileSize(FILE_SIZE_LIMITS.MAX_SIZE)}</strong> | Rekomendasi: {formatFileSize(FILE_SIZE_LIMITS.RECOMMENDED_SIZE)}
+                <br />
+                Jika file terlalu besar, kompres PDF terlebih dahulu:
+                <div className="flex gap-2 mt-1">
+                  <a 
+                    href="https://www.ilovepdf.com/compress_pdf" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline font-medium"
+                  >
+                    iLovePDF ↗
+                  </a>
+                  <span>|</span>
+                  <a 
+                    href="https://smallpdf.com/compress-pdf" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline font-medium"
+                  >
+                    Smallpdf ↗
+                  </a>
+                </div>
+              </AlertDescription>
+            </Alert>
+            
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="fileKontrak">File Kontrak (PDF) *</Label>
@@ -449,12 +578,13 @@ export default function AdminKontrakDetailPage() {
                   id="fileKontrak"
                   type="file"
                   accept=".pdf"
-                  onChange={(e) => setFileKontrak(e.target.files?.[0] || null)}
+                  onChange={handleFileKontrakChange}
+                  disabled={uploading}
                 />
                 {fileKontrak && (
                   <p className="text-sm text-muted-foreground">
                     <CheckCircle className="h-3 w-3 inline mr-1 text-green-600" />
-                    {fileKontrak.name}
+                    {fileKontrak.name} ({fileKontrakSize})
                   </p>
                 )}
               </div>
@@ -464,16 +594,28 @@ export default function AdminKontrakDetailPage() {
                   id="fileSK"
                   type="file"
                   accept=".pdf"
-                  onChange={(e) => setFileSK(e.target.files?.[0] || null)}
+                  onChange={handleFileSKChange}
+                  disabled={uploading}
                 />
                 {fileSK && (
                   <p className="text-sm text-muted-foreground">
                     <CheckCircle className="h-3 w-3 inline mr-1 text-green-600" />
-                    {fileSK.name}
+                    {fileSK.name} ({fileSKSize})
                   </p>
                 )}
               </div>
             </div>
+            
+            {uploading && uploadProgress > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Mengupload file...</span>
+                  <span className="font-medium">{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2" />
+              </div>
+            )}
+            
             <Button
               onClick={handleUploadTTD}
               disabled={!fileKontrak || !fileSK || uploading}
@@ -482,7 +624,7 @@ export default function AdminKontrakDetailPage() {
               {uploading ? (
                 <>
                   <Clock className="h-4 w-4 mr-2 animate-spin" />
-                  Mengupload...
+                  Mengupload... ({uploadProgress}%)
                 </>
               ) : (
                 <>

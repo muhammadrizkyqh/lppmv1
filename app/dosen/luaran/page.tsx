@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { validateFileSize, validateFileType, formatFileSize, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils"
 import {
   Table,
   TableBody,
@@ -158,23 +159,45 @@ export default function DosenLuaranPage() {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("File harus berupa PDF, JPG, atau PNG")
-        return
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validasi tipe file - accept PDF dan gambar
+    const acceptedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+    const typeValidation = validateFileType(file, acceptedTypes)
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Validasi ukuran file
+    const sizeValidation = validateFileSize(file)
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Warning jika file besar
+    if (sizeValidation.warning) {
+      toast.warning(sizeValidation.warning, { duration: 5000 })
+    }
+
+    // Analisis dan rekomendasi untuk PDF
+    if (file.type === 'application/pdf') {
+      const recommendation = await getCompressionRecommendation(file.size)
+      if (recommendation) {
+        toast.info(recommendation, { duration: 5000 })
       }
 
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("Ukuran file maksimal 10MB")
-        return
+      const compressionResult = await compressPDFIfNeeded(file)
+      if (compressionResult.recommendation) {
+        toast.info(compressionResult.recommendation, { duration: 6000 })
       }
-
+      setSelectedFile(compressionResult.file)
+    } else {
       setSelectedFile(file)
     }
   }

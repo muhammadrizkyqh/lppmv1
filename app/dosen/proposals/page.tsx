@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { SearchFilter, PROPOSAL_FILTERS } from "@/components/ui/search-filter";
 import { NoProposalsFound, NoSearchResults } from "@/components/ui/empty-states";
+import { validateFileSize, validateFileType, formatFileSize, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils";
 import { getStatusBadgeVariant } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -168,20 +169,43 @@ export default function ProposalsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Ukuran file maksimal 10MB");
-      return;
+    // Validasi tipe file
+    const typeValidation = validateFileType(file, 'application/pdf')
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!)
+      e.target.value = ''
+      return
     }
 
-    if (file.type !== "application/pdf") {
-      toast.error("Hanya file PDF yang diperbolehkan");
-      return;
+    // Validasi ukuran file
+    const sizeValidation = validateFileSize(file)
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Warning jika file besar
+    if (sizeValidation.warning) {
+      toast.warning(sizeValidation.warning, { duration: 5000 })
+    }
+
+    // Cek rekomendasi kompresi
+    const recommendation = await getCompressionRecommendation(file.size)
+    if (recommendation) {
+      toast.info(recommendation, { duration: 5000 })
+    }
+
+    // Analisis PDF dan rekomendasi kompresi jika perlu
+    const compressionResult = await compressPDFIfNeeded(file)
+    if (compressionResult.recommendation) {
+      toast.info(compressionResult.recommendation, { duration: 6000 })
     }
 
     try {
       setUploading(true);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressionResult.file);
 
       const response = await fetch("/api/upload", {
         method: "POST",

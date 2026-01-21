@@ -65,6 +65,22 @@ export async function POST(
       );
     }
 
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    const formatFileSize = (bytes: number) => {
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+    }
+    
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `File terlalu besar (${formatFileSize(file.size)}). Maksimal ${formatFileSize(maxSize)}. Silakan kompres file Anda terlebih dahulu.` 
+        },
+        { status: 400 }
+      )
+    }
+
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);

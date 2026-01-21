@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { usePeriode, useSkema, useBidangKeahlian } from "@/hooks/use-data";
 import { proposalApi, uploadApi } from "@/lib/api-client";
+import { validateFileSize, validateFileType, formatFileSize, FILE_SIZE_LIMITS, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils";
 import { 
   isPeriodeOpen, 
   getRemainingDays, 
@@ -78,23 +79,41 @@ export default function CreateProposalPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      // Validate file type
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error("File harus berformat PDF");
-        return;
-      }
-      // Validate file size (10MB)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error("Ukuran file maksimal 10MB");
-        return;
-      }
-      console.log("✅ File selected:", selectedFile.name, selectedFile.size, "bytes");
-      setFile(selectedFile);
-      toast.success("File berhasil dipilih");
+    if (!selectedFile) return;
+
+    // Validate file type
+    const typeValidation = validateFileType(selectedFile, 'application/pdf');
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!);
+      e.target.value = '';
+      return;
     }
+
+    // Validate file size
+    const sizeValidation = validateFileSize(selectedFile);
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!);
+      e.target.value = '';
+      return;
+    }
+
+    // Check if compression is recommended
+    const recommendation = getCompressionRecommendation(selectedFile.size);
+    if (recommendation) {
+      toast.warning(recommendation, { duration: 5000 });
+    }
+
+    // Try to analyze and provide compression guidance
+    const compressionResult = await compressPDFIfNeeded(selectedFile);
+    if (compressionResult.message) {
+      toast.info(compressionResult.message, { duration: 6000 });
+    }
+
+    console.log("✅ File selected:", selectedFile.name, formatFileSize(selectedFile.size));
+    setFile(compressionResult.file);
+    toast.success("File berhasil dipilih");
   };
 
   const validateForm = () => {
@@ -380,7 +399,8 @@ export default function CreateProposalPage() {
                       <ul className="mt-1 space-y-1 text-xs">
                         <li>• File dapat diupload sekarang atau nanti di halaman detail</li>
                         <li>• File WAJIB ada sebelum submit proposal</li>
-                        <li>• Format PDF, ukuran maksimal 10MB</li>
+                        <li>• Format PDF, maksimal {formatFileSize(FILE_SIZE_LIMITS.MAX_SIZE)} (rekomendasi: {formatFileSize(FILE_SIZE_LIMITS.RECOMMENDED_SIZE)})</li>
+                        <li>• Jika file besar, kompres di: <a href="https://www.ilovepdf.com/compress_pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">iLovePDF ↗</a> atau <a href="https://smallpdf.com/compress-pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">Smallpdf ↗</a></li>
                       </ul>
                     </div>
                   </div>

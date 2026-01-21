@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { seminarApi, SeminarList } from "@/lib/api-client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { validateFileSize, validateFileType, formatFileSize, FILE_SIZE_LIMITS, compressPDFIfNeeded, getCompressionRecommendation } from "@/lib/file-utils";
 
 interface SeminarSectionProps {
   proposalId: string;
@@ -37,6 +38,48 @@ export default function SeminarSection({ proposalId, isAdmin = false }: SeminarS
       setLoading(false);
     }
   };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, seminarId: string, field: "materiPresentasi" | "notulensi" | "daftarHadir" | "dokumentasi") => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validasi tipe file
+    const typeValidation = validateFileType(file, 'application/pdf')
+    if (!typeValidation.valid) {
+      toast.error(typeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Validasi ukuran file
+    const sizeValidation = validateFileSize(file)
+    if (!sizeValidation.valid) {
+      toast.error(sizeValidation.error!)
+      e.target.value = ''
+      return
+    }
+
+    // Warning jika file besar
+    if (sizeValidation.warning) {
+      toast.warning(sizeValidation.warning, { duration: 5000 })
+    }
+
+    // Cek rekomendasi kompresi
+    const recommendation = await getCompressionRecommendation(file.size)
+    if (recommendation) {
+      toast.info(recommendation, { duration: 5000 })
+    }
+
+    // Analisis PDF dan rekomendasi kompresi jika perlu
+    const compressionResult = await compressPDFIfNeeded(file)
+    if (compressionResult.recommendation) {
+      toast.info(compressionResult.recommendation, { duration: 6000 })
+    }
+
+    // Upload file yang sudah divalidasi
+    await handleFileUpload(seminarId, field, compressionResult.file)
+    e.target.value = ''
+  }
 
   const handleFileUpload = async (seminarId: string, field: "materiPresentasi" | "notulensi" | "daftarHadir" | "dokumentasi", file: File) => {
     try {
@@ -238,13 +281,10 @@ export default function SeminarSection({ proposalId, isAdmin = false }: SeminarS
                       <div>
                         <input
                           type="file"
-                          accept=".pdf,.ppt,.pptx"
+                          accept=".pdf"
                           id={`materi-${seminar.id}`}
                           className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileUpload(seminar.id, "materiPresentasi", file);
-                          }}
+                          onChange={(e) => handleFileChange(e, seminar.id, "materiPresentasi")}
                           disabled={uploading === seminar.id}
                         />
                         <Button
@@ -288,10 +328,7 @@ export default function SeminarSection({ proposalId, isAdmin = false }: SeminarS
                             accept=".pdf"
                             id={`notulensi-${seminar.id}`}
                             className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleFileUpload(seminar.id, "notulensi", file);
-                            }}
+                            onChange={(e) => handleFileChange(e, seminar.id, "notulensi")}
                             disabled={uploading === seminar.id}
                           />
                           <Button
@@ -331,10 +368,7 @@ export default function SeminarSection({ proposalId, isAdmin = false }: SeminarS
                             accept=".pdf"
                             id={`daftar-hadir-${seminar.id}`}
                             className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleFileUpload(seminar.id, "daftarHadir", file);
-                            }}
+                            onChange={(e) => handleFileChange(e, seminar.id, "daftarHadir")}
                             disabled={uploading === seminar.id}
                           />
                           <Button
@@ -371,13 +405,10 @@ export default function SeminarSection({ proposalId, isAdmin = false }: SeminarS
                         <div>
                           <input
                             type="file"
-                            accept="image/*,.pdf"
+                            accept=".pdf"
                             id={`dokumentasi-${seminar.id}`}
                             className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleFileUpload(seminar.id, "dokumentasi", file);
-                            }}
+                            onChange={(e) => handleFileChange(e, seminar.id, "dokumentasi")}
                             disabled={uploading === seminar.id}
                           />
                           <Button
