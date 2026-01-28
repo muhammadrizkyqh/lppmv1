@@ -167,7 +167,15 @@ export default function AdminKontrakDetailPage() {
 
     // Try to analyze and provide compression guidance
     const compressionResult = await compressPDFIfNeeded(file)
-    if (compressionResult.mesasync (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (compressionResult.message) {
+      toast.info(compressionResult.message, { duration: 6000 })
+    }
+
+    setFileKontrak(compressionResult.file)
+    setFileKontrakSize(formatFileSize(compressionResult.newSize))
+  }
+
+  const handleFileSKChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -200,15 +208,7 @@ export default function AdminKontrakDetailPage() {
     }
 
     setFileSK(compressionResult.file)
-    setFileSKSize(formatFileSize(compressionResult.newSize)
-    }
-
-    if (sizeValidation.warning) {
-      toast.warning(sizeValidation.warning)
-    }
-
-    setFileSK(file)
-    setFileSKSize(sizeValidation.size)
+    setFileSKSize(formatFileSize(compressionResult.newSize))
   }
 
   const handleUploadTTD = async () => {

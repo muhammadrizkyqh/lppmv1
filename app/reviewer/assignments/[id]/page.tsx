@@ -119,21 +119,6 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
     (rekomendasi ? 30 : 0)
   );
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error('File harus berformat PDF');
-        return;
-      }
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error('Ukuran file maksimal 10MB');
-        return;
-      }
-      setFile(selectedFile);
-    }
-  };
-
   const handleNilaiChange = (value: string) => {
     const numValue = parseInt(value) || 0;
     if (numValue >= 0 && numValue <= 100) {

@@ -2,8 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'standalone', // ✨ ENABLE STANDALONE BUILD
-  
   productionBrowserSourceMaps: false, // Disable source maps in production
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
@@ -12,14 +10,6 @@ const nextConfig: NextConfig = {
   },
   compress: true, // Enable gzip compression
   poweredByHeader: false, // Remove X-Powered-By header
-  
-  // 🔧 CRITICAL: Include Prisma files in standalone build
-  outputFileTracingIncludes: {
-    '/api/**/*': [
-      './node_modules/.prisma/**/*',
-      './node_modules/@prisma/client/**/*',
-    ],
-  },
   
   // Disable experimental features that increase build size
   experimental: {

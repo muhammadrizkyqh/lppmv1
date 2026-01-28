@@ -182,8 +182,8 @@ export default function LuaranSection({ proposalId, proposalStatus }: LuaranSect
 
     // Analisis PDF dan rekomendasi kompresi jika perlu
     const compressionResult = await compressPDFIfNeeded(file)
-    if (compressionResult.recommendation) {
-      toast.info(compressionResult.recommendation, { duration: 6000 })
+    if (compressionResult.message) {
+      toast.info(compressionResult.message, { duration: 6000 })
     }
 
     setFileToUpload(compressionResult.file)

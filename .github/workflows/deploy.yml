@@ -24,29 +24,47 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
       
-      - name: Build Next.js (on GitHub runner)
+      - name: Build Next.js with Standalone (on GitHub runner)
         run: npm run build
         env:
           NODE_ENV: production
       
-      - name: Create deployment package
+      - name: Prepare Standalone Deployment Package
         run: |
+          # Run deployment preparation script
+          npm run deploy:prepare
+          
+          # Verify standalone folder exists
+          if [ ! -d ".next/standalone" ]; then
+            echo "ERROR: Standalone folder not created!"
+            exit 1
+          fi
+          
+          # Create deployment package from standalone
           mkdir -p deploy-package
-          cp -r .next deploy-package/
-          cp -r public deploy-package/
-          cp package.json deploy-package/
-          cp package-lock.json deploy-package/
+          
+          # Copy entire standalone folder (contains all needed dependencies)
+          cp -r .next/standalone/* deploy-package/
+          
+          # Copy prisma files for migrations
           mkdir -p deploy-package/prisma
           cp prisma/schema.prisma deploy-package/prisma/
           cp -r prisma/migrations deploy-package/prisma/ || echo "No migrations to copy"
           
-          # Create compressed archive, exclude source maps and cache
-          tar -czf deploy.tar.gz --exclude='*.map' --exclude='cache' --exclude='trace' deploy-package/
+          # Copy .env.production if exists
+          cp .env.production deploy-package/.env 2>/dev/null || echo "No .env.production found"
           
-          # Show package size
-          echo "Deployment package size:"
+          # Create compressed archive
+          tar -czf deploy.tar.gz deploy-package/
+          
+          # Show package size comparison
+          echo "=========================================="
+          echo "📊 Deployment Package Size:"
           ls -lh deploy.tar.gz
           du -sh deploy-package
+          echo "=========================================="
+          echo "✅ Standalone deployment package ready!"
+          echo "This includes all runtime dependencies (no npm install needed on VPS)"
       
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
@@ -66,7 +84,7 @@ jobs:
           rsync -avz --progress --compress-level=9 -e "ssh -o StrictHostKeyChecking=no" deploy.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/deploy/
           echo "Upload complete!"
       
-      - name: Deploy and restart on VPS
+      - name: Deploy Standalone Build and Restart on VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -78,91 +96,132 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             
-            cd /home/deploy/lppmv1
+            echo "🚀 Starting Standalone Deployment..."
             
             # Stop application before replacing files
             pm2 stop lppm || echo "App not running"
             
-            # Backup current .next
-            if [ -d ".next" ]; then
-              mv .next .next.backup.$(date +%Y%m%d_%H%M%S)
-              ls -t .next.backup.* 2>/dev/null | tail -n +3 | xargs -r rm -rf
+            # Backup current deployment (entire folder)
+            cd /home/deploy
+            if [ -d "lppmv1" ]; then
+              echo "📦 Creating backup..."
+              tar -czf lppmv1-backup-$(date +%Y%m%d_%H%M%S).tar.gz lppmv1
+              # Keep only last 3 backups
+              ls -t lppmv1-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs -r rm -f
             fi
             
-            # Extract deployment package
+            # Extract standalone deployment package
             cd /home/deploy
             tar -xzf deploy.tar.gz
             
-            # Verify extraction
-            if [ ! -d "deploy-package/.next" ]; then
-              echo "ERROR: .next folder not found in deployment package!"
+            # Verify standalone package structure
+            if [ ! -f "deploy-package/server.js" ]; then
+              echo "❌ ERROR: Standalone server.js not found!"
+              echo "This is not a valid standalone deployment package!"
               exit 1
             fi
             
-            # Replace build files
-            cd /home/deploy/lppmv1
-            rm -rf .next public
-            cp -r /home/deploy/deploy-package/.next .
-            cp -r /home/deploy/deploy-package/public .
-            cp /home/deploy/deploy-package/package.json .
-            cp /home/deploy/deploy-package/package-lock.json .
+            echo "✅ Standalone package verified"
             
-            # Verify .next exists
+            # Replace entire application with standalone build
+            rm -rf /home/deploy/lppmv1
+            mv /home/deploy/deploy-package /home/deploy/lppmv1
+            
+            cd /home/deploy/lppmv1
+            
+            # Verify critical files exist
+            if [ ! -f "server.js" ]; then
+              echo "❌ ERROR: server.js missing after deployment!"
+              exit 1
+            fi
+            
             if [ ! -d ".next" ]; then
-              echo "ERROR: .next folder copy failed!"
+              echo "❌ ERROR: .next folder missing!"
               exit 1
             fi
             
-            # Update prisma schema and migrations
-            mkdir -p prisma
-            cp /home/deploy/deploy-package/prisma/schema.prisma prisma/
-            if [ -d "/home/deploy/deploy-package/prisma/migrations" ]; then
-              cp -r /home/deploy/deploy-package/prisma/migrations prisma/
+            echo "✅ File structure verified"
+            
+            # Copy environment variables (should be on VPS already)
+            if [ -f "/home/deploy/.env.production" ]; then
+              cp /home/deploy/.env.production .env
+              echo "✅ Environment variables copied"
+            else
+              echo "⚠️  WARNING: No .env.production found on VPS!"
+              echo "Make sure DATABASE_URL and other env vars are set"
             fi
             
-            # Cleanup deploy package
+            # Run Prisma migrations (Prisma is bundled in standalone)
+            if [ -d "prisma" ]; then
+              echo "🔧 Running Prisma migrations..."
+              npx prisma migrate deploy 2>&1 | grep -v "P3005" || echo "Migrations applied or skipped"
+            fi
+            
+            # Cleanup
             cd /home/deploy
-            rm -rf deploy-package deploy.tar.gz
+            rm -f deploy.tar.gz
             
-            # Install/update dependencies
+            echo "=========================================="
+            echo "📊 Deployment Size on VPS:"
+            du -sh /home/deploy/lppmv1
+            echo "=========================================="
+            
+            # Update PM2 ecosystem to use standalone
             cd /home/deploy/lppmv1
-            npm ci --omit=dev || npm install --omit=dev
             
-            # Regenerate Prisma Client
-            npx prisma generate
+            # Create or update PM2 ecosystem file for standalone
+            cat > ecosystem.config.js << 'EOF'
+            module.exports = {
+              apps: [{
+                name: 'lppm',
+                script: './server.js',
+                instances: 1,
+                exec_mode: 'cluster',
+                env: {
+                  NODE_ENV: 'production',
+                  PORT: 3000
+                },
+                error_file: '/home/deploy/.pm2/logs/lppm-error.log',
+                out_file: '/home/deploy/.pm2/logs/lppm-out.log',
+                log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+                merge_logs: true,
+                autorestart: true,
+                max_restarts: 10,
+                min_uptime: '10s'
+              }]
+            }
+            EOF
             
-            # Run migrations (skip if baseline needed)
-            npx prisma migrate deploy 2>&1 | grep -v "P3005" || echo "Migrations applied or skipped"
-            
-            # Verify build exists before restart
-            if [ ! -d ".next" ] || [ ! -f ".next/package.json" ]; then
-              echo "ERROR: No valid .next build found!"
-              ls -la .next/ || echo ".next folder missing"
-              exit 1
-            fi
-            
-            # Verify Prisma schema exists
-            if [ ! -f "prisma/schema.prisma" ]; then
-              echo "ERROR: Prisma schema not found!"
-              exit 1
-            fi
-            
-            echo "Build verification passed!"
-            
-            # Clear Next.js cache to fix Server Action issues
-            rm -rf .next/cache/fetch-cache
-            rm -rf .next/cache/webpack
-            
-            # Flush PM2 logs and cache before restart
+            # Flush PM2 logs
             pm2 flush lppm || echo "No logs to flush"
             
-            # Restart application
-            pm2 restart lppm || pm2 start npm --name lppm -- start
+            # Delete old PM2 process and start with new config
+            pm2 delete lppm 2>/dev/null || echo "No existing PM2 process"
+            pm2 start ecosystem.config.js
             
             # Save PM2 configuration
             pm2 save
             
+            # Ensure PM2 starts on boot
+            pm2 startup systemd -u deploy --hp /home/deploy 2>/dev/null || echo "PM2 startup already configured"
+            
+            echo "⏳ Waiting for application to start..."
+            sleep 5
+            
             # Check status
-            sleep 3
             pm2 status lppm
-            pm2 logs lppm --lines 20 --nostream
+            
+            echo "=========================================="
+            echo "📋 Application Logs (last 30 lines):"
+            pm2 logs lppm --lines 30 --nostream
+            echo "=========================================="
+            
+            # Test if app is responding
+            if curl -f http://localhost:3000 >/dev/null 2>&1; then
+              echo "✅ Application is responding!"
+            else
+              echo "⚠️  WARNING: Application might not be responding yet"
+              echo "Check logs with: pm2 logs lppm"
+            fi
+            
+            echo "🎉 Standalone deployment complete!"

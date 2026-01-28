@@ -185,14 +185,14 @@ export default function AdminPencairanPage() {
 
     // Analisis dan rekomendasi untuk PDF
     if (file.type === 'application/pdf') {
-      const recommendation = await getCompressionRecommendation(file.size, 5 * 1024 * 1024)
+      const recommendation = getCompressionRecommendation(file.size)
       if (recommendation) {
         toast.info(recommendation, { duration: 5000 })
       }
 
       const compressionResult = await compressPDFIfNeeded(file)
-      if (compressionResult.recommendation) {
-        toast.info(compressionResult.recommendation, { duration: 6000 })
+      if (compressionResult.message) {
+        toast.info(compressionResult.message, { duration: 6000 })
       }
       setFileBukti(compressionResult.file)
     } else {

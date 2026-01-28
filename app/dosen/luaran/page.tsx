@@ -193,8 +193,8 @@ export default function DosenLuaranPage() {
       }
 
       const compressionResult = await compressPDFIfNeeded(file)
-      if (compressionResult.recommendation) {
-        toast.info(compressionResult.recommendation, { duration: 6000 })
+      if (compressionResult.message) {
+        toast.info(compressionResult.message, { duration: 6000 })
       }
       setSelectedFile(compressionResult.file)
     } else {
