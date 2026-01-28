@@ -114,14 +114,17 @@ jobs:
             cd /home/deploy
             tar -xzf deploy.tar.gz
             
-            # Verify standalone package structure
+            # Verify standalone package structure BEFORE moving
             if [ ! -f "deploy-package/server.js" ]; then
               echo "❌ ERROR: Standalone server.js not found!"
-              echo "This is not a valid standalone deployment package!"
+              echo "Package contents:"
+              ls -la deploy-package/
               exit 1
             fi
             
             echo "✅ Standalone package verified"
+            echo "📂 Package contents:"
+            ls -la deploy-package/
             
             # Replace entire application with standalone build
             rm -rf /home/deploy/lppmv1
@@ -129,7 +132,10 @@ jobs:
             
             cd /home/deploy/lppmv1
             
-            # Verify critical files exist
+            # Verify critical files exist AFTER moving
+            echo "📂 Checking deployed files:"
+            ls -la
+            
             if [ ! -f "server.js" ]; then
               echo "❌ ERROR: server.js missing after deployment!"
               exit 1
@@ -137,6 +143,8 @@ jobs:
             
             if [ ! -d ".next" ]; then
               echo "❌ ERROR: .next folder missing!"
+              echo "Current directory contents:"
+              ls -la
               exit 1
             fi
             
