@@ -4,6 +4,7 @@ module.exports = {
     script: './server.js', // Standalone server
     instances: 1,
     exec_mode: 'cluster',
+    env_file: '.env',
     env: {
       NODE_ENV: 'production',
       PORT: 3000

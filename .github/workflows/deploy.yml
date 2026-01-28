@@ -153,13 +153,41 @@ jobs:
             
             echo "✅ File structure verified"
             
-            # Copy environment variables (should be on VPS already)
-            if [ -f "/home/deploy/.env.production" ]; then
+            # CRITICAL: Copy environment variables
+            echo "🔐 Setting up environment variables..."
+            
+            # Check for .env in old deployment (backup)
+            if [ -f "/home/deploy/lppmv1-backup-"*"/.env" ]; then
+              BACKUP_ENV=$(ls -t /home/deploy/lppmv1-backup-*/.env 2>/dev/null | head -1)
+              if [ -f "$BACKUP_ENV" ]; then
+                cp "$BACKUP_ENV" .env
+                echo "✅ Environment variables restored from backup: $BACKUP_ENV"
+              fi
+            # Check for .env.production in home directory
+            elif [ -f "/home/deploy/.env.production" ]; then
               cp /home/deploy/.env.production .env
-              echo "✅ Environment variables copied"
+              echo "✅ Environment variables copied from /home/deploy/.env.production"
+            # Check for .env in home directory
+            elif [ -f "/home/deploy/.env" ]; then
+              cp /home/deploy/.env .env
+              echo "✅ Environment variables copied from /home/deploy/.env"
             else
-              echo "⚠️  WARNING: No .env.production found on VPS!"
-              echo "Make sure DATABASE_URL and other env vars are set"
+              echo "❌ CRITICAL ERROR: No environment file found!"
+              echo "   Checked:"
+              echo "   - /home/deploy/lppmv1-backup-*/.env"
+              echo "   - /home/deploy/.env.production"
+              echo "   - /home/deploy/.env"
+              echo ""
+              echo "   Application will fail without DATABASE_URL and NEXTAUTH_SECRET!"
+              exit 1
+            fi
+            
+            # Verify critical env vars exist
+            if ! grep -q "DATABASE_URL" .env 2>/dev/null; then
+              echo "⚠️  WARNING: DATABASE_URL not found in .env!"
+            fi
+            if ! grep -q "NEXTAUTH_SECRET" .env 2>/dev/null; then
+              echo "⚠️  WARNING: NEXTAUTH_SECRET not found in .env!"
             fi
             
             # Run Prisma migrations (Prisma is bundled in standalone)
