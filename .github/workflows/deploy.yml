@@ -31,7 +31,7 @@ jobs:
       
       - name: Prepare Standalone Deployment Package
         run: |
-          # Run deployment preparation script
+          # Run deployment preparation script (copies public, static, prisma to standalone)
           npm run deploy:prepare
           
           # Verify standalone folder exists
@@ -40,28 +40,34 @@ jobs:
             exit 1
           fi
           
-          # Create deployment package from standalone
-          mkdir -p deploy-package
+          echo "📂 Checking standalone structure:"
+          ls -la .next/standalone/ | head -20
           
-          # Copy entire standalone folder (contains all needed dependencies)
-          cp -r .next/standalone/* deploy-package/
+          # Verify .next folder exists inside standalone
+          if [ ! -d ".next/standalone/.next" ]; then
+            echo "ERROR: .next folder missing in standalone!"
+            echo "Standalone contents:"
+            ls -la .next/standalone/
+            exit 1
+          fi
           
-          # Copy prisma files for migrations
-          mkdir -p deploy-package/prisma
-          cp prisma/schema.prisma deploy-package/prisma/
-          cp -r prisma/migrations deploy-package/prisma/ || echo "No migrations to copy"
+          echo "✅ Standalone structure verified"
           
-          # Copy .env.production if exists
-          cp .env.production deploy-package/.env 2>/dev/null || echo "No .env.production found"
+          # Create deployment package directly from standalone
+          # The standalone folder already contains everything needed
+          cd .next/standalone
           
-          # Create compressed archive
-          tar -czf deploy.tar.gz deploy-package/
+          # Create compressed archive from standalone folder
+          tar -czf ../../deploy.tar.gz .
+          
+          cd ../..
           
           # Show package size comparison
           echo "=========================================="
           echo "📊 Deployment Package Size:"
           ls -lh deploy.tar.gz
-          du -sh deploy-package
+          echo "Standalone folder size:"
+          du -sh .next/standalone
           echo "=========================================="
           echo "✅ Standalone deployment package ready!"
           echo "This includes all runtime dependencies (no npm install needed on VPS)"
@@ -114,39 +120,36 @@ jobs:
             cd /home/deploy
             tar -xzf deploy.tar.gz
             
-            # Verify standalone package structure BEFORE moving
-            if [ ! -f "deploy-package/server.js" ]; then
+            # Create temp directory for extraction
+            mkdir -p lppmv1-new
+            tar -xzf deploy.tar.gz -C lppmv1-new
+            
+            # Verify standalone package structure
+            if [ ! -f "lppmv1-new/server.js" ]; then
               echo "❌ ERROR: Standalone server.js not found!"
               echo "Package contents:"
-              ls -la deploy-package/
+              ls -la lppmv1-new/
+              exit 1
+            fi
+            
+            if [ ! -d "lppmv1-new/.next" ]; then
+              echo "❌ ERROR: .next folder not found in package!"
+              echo "Package contents:"
+              ls -la lppmv1-new/
               exit 1
             fi
             
             echo "✅ Standalone package verified"
-            echo "📂 Package contents:"
-            ls -la deploy-package/
             
             # Replace entire application with standalone build
             rm -rf /home/deploy/lppmv1
-            mv /home/deploy/deploy-package /home/deploy/lppmv1
+            mv /home/deploy/lppmv1-new /home/deploy/lppmv1
             
             cd /home/deploy/lppmv1
             
-            # Verify critical files exist AFTER moving
-            echo "📂 Checking deployed files:"
-            ls -la
-            
-            if [ ! -f "server.js" ]; then
-              echo "❌ ERROR: server.js missing after deployment!"
-              exit 1
-            fi
-            
-            if [ ! -d ".next" ]; then
-              echo "❌ ERROR: .next folder missing!"
-              echo "Current directory contents:"
-              ls -la
-              exit 1
-            fi
+            # Verify deployment successful
+            echo "📂 Deployed files:"
+            ls -la | head -25
             
             echo "✅ File structure verified"
             
