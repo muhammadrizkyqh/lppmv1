@@ -208,6 +208,28 @@ jobs:
             
             echo "✅ Environment setup complete"
             
+            # Setup persistent uploads folder with symlink
+            echo "📁 Setting up persistent uploads folder..."
+            
+            # Create persistent uploads folder if not exists
+            mkdir -p /home/deploy/uploads-persistent
+            
+            # If uploads folder exists in deployment (not symlink), backup to persistent
+            if [ -d "public/uploads" ] && [ ! -L "public/uploads" ]; then
+              echo "   Backing up uploaded files to persistent storage..."
+              cp -r public/uploads/* /home/deploy/uploads-persistent/ 2>/dev/null || true
+            fi
+            
+            # Remove uploads folder and create symlink
+            rm -rf public/uploads
+            ln -s /home/deploy/uploads-persistent public/uploads
+            
+            # Set permissions
+            chmod -R 755 /home/deploy/uploads-persistent
+            
+            echo "✅ Uploads folder symlinked to persistent storage"
+            echo "   Files will not be deleted on future deployments"
+            
             # Run Prisma migrations (Prisma is bundled in standalone)
             if [ -d "prisma" ]; then
               echo "🔧 Running Prisma migrations..."
