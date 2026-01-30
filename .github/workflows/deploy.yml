@@ -116,11 +116,8 @@ jobs:
               ls -t lppmv1-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs -r rm -f
             fi
             
-            # Extract standalone deployment package
+            # Extract standalone deployment package to temp directory
             cd /home/deploy
-            tar -xzf deploy.tar.gz
-            
-            # Create temp directory for extraction
             mkdir -p lppmv1-new
             tar -xzf deploy.tar.gz -C lppmv1-new
             
