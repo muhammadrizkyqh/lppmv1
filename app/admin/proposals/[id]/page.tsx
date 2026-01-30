@@ -155,6 +155,7 @@ export default function ProposalDetailPage() {
   const [userRole, setUserRole] = useState<string>("");
   const [timelineData, setTimelineData] = useState<ProposalTimeline | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [resetFileDialog, setResetFileDialog] = useState(false);
 
   useEffect(() => {
     // Get user role from session API
@@ -366,6 +367,29 @@ export default function ProposalDetailPage() {
     });
   };
 
+  const handleResetFile = async () => {
+    setSubmitting(true);
+    try {
+      const response = await fetch(`/api/admin/proposals/${id}/reset-file`, {
+        method: 'POST',
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(result.message || "File berhasil direset. Dosen dapat upload ulang.");
+        setResetFileDialog(false);
+        refetch(); // Refresh proposal data
+      } else {
+        toast.error(result.error || "Gagal mereset file");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Terjadi kesalahan saat mereset file");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Filter available members (exclude already added)
   const memberIds = new Set(
     (members || []).map((m) => m.dosenId || m.mahasiswaId).filter(Boolean)
@@ -391,6 +415,18 @@ export default function ProposalDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Admin: Reset File (untuk proposal yang file-nya hilang) */}
+            {isAdmin && proposal && (status === "diajukan" || status === "direview" || status === "revisi" || status === "lulus_administratif") && (
+              <Button 
+                variant="outline"
+                onClick={() => setResetFileDialog(true)}
+                className="border-orange-500 text-orange-600 hover:bg-orange-50"
+              >
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Reset File
+              </Button>
+            )}
+            
             {/* Admin: Assign Reviewer (untuk proposal DIREVIEW - setelah seminar selesai) */}
             {isAdmin && status === "direview" && (
               <Button 
@@ -1365,6 +1401,44 @@ export default function ProposalDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reset File Dialog (Admin Only) */}
+      <AlertDialog open={resetFileDialog} onOpenChange={setResetFileDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+              Reset File Proposal?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Tindakan ini akan:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>Menghapus informasi file yang ada (filePath, fileName, fileSize)</li>
+                <li>Mengubah status proposal ke <strong>DRAFT</strong></li>
+                <li>Reset penilaian administratif</li>
+                <li>Memungkinkan dosen untuk upload file baru</li>
+              </ul>
+              <p className="mt-3 text-amber-700 font-medium">
+                ⚠️ Gunakan fitur ini hanya jika file benar-benar hilang atau corrupt!
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetFile}
+              disabled={submitting}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {submitting ? "Mereset..." : "Ya, Reset File"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
