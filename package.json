@@ -11,6 +11,7 @@
     "start:standalone": "node .next/standalone/server.js",
     "deploy:prepare": "node scripts/deploy-prepare.js",
     "test:standalone": "npm run build && npm run deploy:prepare && cd .next/standalone && node server.js",
+    "cleanup": "node scripts/cleanup-local.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

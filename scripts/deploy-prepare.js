@@ -1,136 +1,251 @@
+#!/usr/bin/env node
+
+/**
+ * 🚀 Deployment Preparation Script for Next.js Standalone Build
+ * 
+ * This script prepares the standalone build for deployment by:
+ * 1. Copying the public folder to standalone
+ * 2. Copying .next/static to standalone/.next/static
+ * 3. Copying prisma schema and migrations
+ * 4. Creating necessary symlinks structure info
+ * 
+ * This is CRITICAL for standalone builds to work properly!
+ */
+
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚀 Preparing Next.js Standalone Deployment');
-console.log('==========================================\n');
+// Colors for terminal output
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[36m',
+  red: '\x1b[31m'
+};
 
-const standaloneDir = path.join(process.cwd(), '.next', 'standalone');
-
-if (!fs.existsSync(standaloneDir)) {
-  console.error('❌ Error: .next/standalone directory not found!');
-  console.error('   Please run "npm run build" first.');
-  process.exit(1);
+function log(message, color = 'reset') {
+  console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-console.log('📦 Preparing standalone package...\n');
+function copyRecursiveSync(src, dest) {
+  const exists = fs.existsSync(src);
+  const stats = exists && fs.statSync(src);
+  const isDirectory = exists && stats.isDirectory();
 
-// Helper function to copy directory recursively
-function copyDir(src, dest) {
-  if (!fs.existsSync(src)) {
-    console.log(`  ⚠️  ${src} not found, skipping...`);
-    return false;
-  }
-  
-  fs.mkdirSync(dest, { recursive: true });
-  const entries = fs.readdirSync(src, { withFileTypes: true });
-  
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
+  if (isDirectory) {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
     }
-  }
-  return true;
-}
-
-// Copy public folder
-console.log('  ↳ Copying public files...');
-if (copyDir(
-  path.join(process.cwd(), 'public'),
-  path.join(standaloneDir, 'public')
-)) {
-  console.log('     ✓ Public files copied');
-}
-
-// Copy .next/static
-console.log('  ↳ Copying .next/static...');
-if (copyDir(
-  path.join(process.cwd(), '.next', 'static'),
-  path.join(standaloneDir, '.next', 'static')
-)) {
-  console.log('     ✓ Static files copied');
-}
-
-// Copy Prisma schema
-console.log('  ↳ Copying Prisma files...');
-if (copyDir(
-  path.join(process.cwd(), 'prisma'),
-  path.join(standaloneDir, 'prisma')
-)) {
-  console.log('     ✓ Prisma files copied');
-}
-
-// Copy environment file
-console.log('  ↳ Copying environment file...');
-const envFiles = ['.env.production', '.env'];
-let envCopied = false;
-for (const envFile of envFiles) {
-  const envPath = path.join(process.cwd(), envFile);
-  if (fs.existsSync(envPath)) {
-    fs.copyFileSync(
-      envPath,
-      path.join(standaloneDir, '.env')
-    );
-    console.log(`     ✓ ${envFile} copied as .env`);
-    envCopied = true;
-    break;
+    fs.readdirSync(src).forEach(function(childItemName) {
+      copyRecursiveSync(
+        path.join(src, childItemName),
+        path.join(dest, childItemName)
+      );
+    });
+  } else {
+    fs.copyFileSync(src, dest);
   }
 }
-if (!envCopied) {
-  console.log('     ⚠️  No .env file found');
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
-// Create uploads directory
-console.log('  ↳ Creating uploads directory...');
-const uploadsDir = path.join(standaloneDir, 'public', 'uploads');
-fs.mkdirSync(uploadsDir, { recursive: true });
-console.log('     ✓ Uploads directory created');
-
-// Calculate size
 function getDirectorySize(dirPath) {
-  let size = 0;
+  let totalSize = 0;
   
-  if (!fs.existsSync(dirPath)) return 0;
-  
-  const files = fs.readdirSync(dirPath, { withFileTypes: true });
-  
-  for (const file of files) {
-    const filePath = path.join(dirPath, file.name);
+  function calculateSize(currentPath) {
+    const stats = fs.statSync(currentPath);
     
-    if (file.isDirectory()) {
-      size += getDirectorySize(filePath);
+    if (stats.isDirectory()) {
+      const files = fs.readdirSync(currentPath);
+      files.forEach(file => {
+        calculateSize(path.join(currentPath, file));
+      });
     } else {
-      try {
-        const stats = fs.statSync(filePath);
-        size += stats.size;
-      } catch (e) {
-        // Skip files we can't access
-      }
+      totalSize += stats.size;
     }
   }
   
-  return size;
+  try {
+    calculateSize(dirPath);
+  } catch (err) {
+    // Ignore errors
+  }
+  
+  return totalSize;
 }
 
-const sizeBytes = getDirectorySize(standaloneDir);
-const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
+async function prepareDeployment() {
+  log('\n🚀 Preparing Standalone Build for Deployment...', 'bright');
+  log('=' .repeat(60), 'blue');
 
-console.log('\n📊 Size Analysis:');
-console.log(`  Standalone build size: ${sizeMB} MB`);
-console.log('  (Compare with baseline: ~1,609 MB)');
+  const rootDir = process.cwd();
+  const standaloneDir = path.join(rootDir, '.next', 'standalone');
+  const publicDir = path.join(rootDir, 'public');
+  const staticDir = path.join(rootDir, '.next', 'static');
+  const prismaDir = path.join(rootDir, 'prisma');
 
-const reduction = ((1609 - parseFloat(sizeMB)) / 1609 * 100).toFixed(1);
-console.log(`  Reduction: ${reduction}% 🎉`);
+  // Step 1: Verify standalone folder exists
+  log('\n📂 Step 1: Verifying standalone build...', 'yellow');
+  
+  if (!fs.existsSync(standaloneDir)) {
+    log('❌ ERROR: Standalone folder not found!', 'red');
+    log('   Please run "npm run build" first.', 'red');
+    process.exit(1);
+  }
+  
+  if (!fs.existsSync(path.join(standaloneDir, 'server.js'))) {
+    log('❌ ERROR: server.js not found in standalone build!', 'red');
+    log('   Make sure next.config.ts has: output: "standalone"', 'red');
+    process.exit(1);
+  }
+  
+  log('✅ Standalone folder verified', 'green');
 
-console.log('\n✅ Standalone build ready!');
-console.log('📍 Location: .next/standalone/\n');
-console.log('🎯 To test locally:');
-console.log('   cd .next\\standalone');
-console.log('   node server.js\n');
-console.log('🚀 To deploy:');
-console.log('   Upload .next/standalone/ folder to your server');
-console.log('   Run: node server.js');
+  // Step 2: Copy public folder
+  log('\n📁 Step 2: Copying public folder...', 'yellow');
+  
+  const standalonePublicDir = path.join(standaloneDir, 'public');
+  
+  if (fs.existsSync(publicDir)) {
+    // Remove existing public in standalone (except uploads)
+    if (fs.existsSync(standalonePublicDir)) {
+      const entries = fs.readdirSync(standalonePublicDir);
+      entries.forEach(entry => {
+        if (entry !== 'uploads') {
+          const entryPath = path.join(standalonePublicDir, entry);
+          if (fs.statSync(entryPath).isDirectory()) {
+            fs.rmSync(entryPath, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(entryPath);
+          }
+        }
+      });
+    }
+    
+    // Copy public folder (excluding uploads - will be symlinked in VPS)
+    fs.readdirSync(publicDir).forEach(item => {
+      if (item !== 'uploads') {
+        const srcPath = path.join(publicDir, item);
+        const destPath = path.join(standalonePublicDir, item);
+        
+        if (fs.statSync(srcPath).isDirectory()) {
+          copyRecursiveSync(srcPath, destPath);
+        } else {
+          if (!fs.existsSync(standalonePublicDir)) {
+            fs.mkdirSync(standalonePublicDir, { recursive: true });
+          }
+          fs.copyFileSync(srcPath, destPath);
+        }
+      }
+    });
+    
+    // Create empty uploads folder structure (will be symlinked in VPS)
+    const uploadsDir = path.join(standalonePublicDir, 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Create README for uploads
+    fs.writeFileSync(
+      path.join(uploadsDir, 'README.md'),
+      '# Uploads Directory\n\n' +
+      'This directory will be symlinked to /home/deploy/uploads-persistent in production.\n' +
+      'Files uploaded in production are stored in persistent storage and survive deployments.\n'
+    );
+    
+    log('✅ Public folder copied (uploads folder ready for symlink)', 'green');
+  } else {
+    log('⚠️  Warning: Public folder not found', 'yellow');
+  }
+
+  // Step 3: Copy .next/static
+  log('\n⚡ Step 3: Copying static assets...', 'yellow');
+  
+  const standaloneStaticDir = path.join(standaloneDir, '.next', 'static');
+  
+  if (fs.existsSync(staticDir)) {
+    if (fs.existsSync(standaloneStaticDir)) {
+      fs.rmSync(standaloneStaticDir, { recursive: true, force: true });
+    }
+    
+    copyRecursiveSync(staticDir, standaloneStaticDir);
+    log('✅ Static assets copied', 'green');
+  } else {
+    log('⚠️  Warning: Static folder not found', 'yellow');
+  }
+
+  // Step 4: Copy Prisma files
+  log('\n🗄️  Step 4: Copying Prisma files...', 'yellow');
+  
+  const standalonePrismaDir = path.join(standaloneDir, 'prisma');
+  
+  if (fs.existsSync(prismaDir)) {
+    if (fs.existsSync(standalonePrismaDir)) {
+      fs.rmSync(standalonePrismaDir, { recursive: true, force: true });
+    }
+    
+    copyRecursiveSync(prismaDir, standalonePrismaDir);
+    log('✅ Prisma files copied', 'green');
+  } else {
+    log('⚠️  Warning: Prisma folder not found', 'yellow');
+  }
+
+  // Step 5: Create deployment info file
+  log('\n📋 Step 5: Creating deployment info...', 'yellow');
+  
+  const deployInfo = {
+    buildDate: new Date().toISOString(),
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    standalone: true,
+    uploadsSymlink: '/home/deploy/uploads-persistent',
+    instructions: {
+      uploads: 'The public/uploads folder should be symlinked to /home/deploy/uploads-persistent',
+      start: 'Run: node server.js',
+      env: 'Copy .env file before starting'
+    }
+  };
+  
+  fs.writeFileSync(
+    path.join(standaloneDir, 'DEPLOY_INFO.json'),
+    JSON.stringify(deployInfo, null, 2)
+  );
+  
+  log('✅ Deployment info created', 'green');
+
+  // Step 6: Calculate sizes
+  log('\n📊 Step 6: Calculating deployment size...', 'yellow');
+  
+  const standaloneSize = getDirectorySize(standaloneDir);
+  
+  log('\n' + '='.repeat(60), 'blue');
+  log('📦 DEPLOYMENT PACKAGE READY', 'bright');
+  log('='.repeat(60), 'blue');
+  log(`📏 Total Size: ${formatBytes(standaloneSize)}`, 'green');
+  log(`📂 Location: .next/standalone/`, 'green');
+  log(`🚀 Ready to deploy!`, 'green');
+  log('\n📌 Important Notes:', 'yellow');
+  log('   • The uploads folder will be symlinked in VPS', 'blue');
+  log('   • No npm install needed on VPS', 'blue');
+  log('   • All dependencies are bundled', 'blue');
+  log('   • Just run: node server.js', 'blue');
+  log('='.repeat(60), 'blue');
+  log('');
+}
+
+// Run the script
+prepareDeployment().catch(err => {
+  log('\n❌ ERROR: Deployment preparation failed!', 'red');
+  log(err.message, 'red');
+  console.error(err);
+  process.exit(1);
+});
