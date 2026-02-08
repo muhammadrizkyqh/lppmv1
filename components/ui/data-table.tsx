@@ -35,7 +35,7 @@ import {
 
 interface Column<T> {
   key: keyof T;
-  header: string;
+  header: string | (() => React.ReactNode);
   sortable?: boolean;
   render?: (value: any, row: T) => React.ReactNode;
   width?: string;
@@ -153,11 +153,11 @@ export function DataTable<T extends { id: string }>({
                       className="-ml-3 h-8 data-[state=open]:bg-accent"
                       onClick={() => handleSort(column.key)}
                     >
-                      <span>{column.header}</span>
+                      <span>{typeof column.header === 'function' ? column.header() : column.header}</span>
                       {getSortIcon(column.key)}
                     </Button>
                   ) : (
-                    column.header
+                    typeof column.header === 'function' ? column.header() : column.header
                   )}
                 </TableHead>
               ))}
